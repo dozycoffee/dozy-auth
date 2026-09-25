@@ -108,7 +108,7 @@ MockMvc 테스트에서 인증된 사용자를 만듭니다. JWT를 만들지 �
 | 속성 | 기본값 | 설명 |
 |---|---|---|
 | `type` | `EMPLOYEE` | `PrincipalType` |
-| `id` | `1` | principal id |
+| `id` | `00000000-0000-7000-8000-000000000001` | principal id. 애노테이션 속성은 `UUID` 타입을 쓸 수 없어 UUID 문자열로 받습니다 |
 | `realm` | type에 맞는 realm | `Realm` |
 | `roles` | `[]` | `{audience}:{code}` 형식. 스타터와 같은 규칙으로 변환 |
 
@@ -119,7 +119,7 @@ MockMvc 테스트에서 인증된 사용자를 만듭니다. JWT를 만들지 �
 ```kotlin
 val token = DozyTestTokens.issue(
     type = PrincipalType.PARTNER,
-    id = 7,
+    id = UUID.fromString("0199a3c5-1d4f-7a8b-b2c6-5e9f0a3d7c21"),
     realm = Realm.PARTNER,
     audience = listOf("store"),
     roles = emptyList(),

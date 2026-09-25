@@ -12,7 +12,7 @@
 | 본문 | `application/json`, UTF-8. 서비스 토큰 발급만 `application/x-www-form-urlencoded` |
 | 필드 이름 | camelCase. 서비스 토큰 발급 응답만 OAuth 표준을 따라 snake_case |
 | 시각 | ISO 8601, UTC (예: `2026-09-24T05:00:00Z`) |
-| id | principal id는 숫자, 세션 id는 UUID 문자열 |
+| id | principal id와 세션 id는 소문자·하이픈 포함 UUID 문자열. role·audience·감사 로그 id는 숫자 |
 | enum 값 | 계정 상태·action 등은 대문자(`ACTIVE`), principal type과 realm은 소문자(`employee`, `internal`) |
 | 민감정보 | 토큰, 이메일은 URL 경로나 쿼리에 넣지 않고 본문으로 받습니다. 예외는 목록 검색어 `q` ([§9](#9-추적과-로그)) |
 

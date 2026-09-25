@@ -9,7 +9,7 @@
 | 번호 | 결정 | 상태 | 요약 |
 |---|---|---|---|
 | [0001](0001-principal-common-table.md) | 계정은 공통 principal 테이블과 타입별 profile로 나눈다 | 채택 | 공통 `principal` + 타입별 profile 테이블(PK=FK) |
-| [0002](0002-bigint-principal-id.md) | principal id는 bigint 순번이고 토큰에는 type과 id를 함께 싣는다 | 채택 | bigint identity id, `sub="{type}:{id}"` + `principalType`/`principalId` |
+| [0002](0002-bigint-principal-id.md) | principal id는 bigint 순번이고 토큰에는 type과 id를 함께 싣는다 | 대체됨(→ 0028) | bigint identity id, `sub="{type}:{id}"` + `principalType`/`principalId` |
 | [0003](0003-multi-audience-token.md) | 토큰 하나에 여러 audience를 싣고 role은 audience로 네임스페이스한다 | 채택 | `aud` 배열, role은 `{audience}:{code}` |
 | [0004](0004-no-immediate-revocation.md) | access token 즉시 차단은 지금 지원하지 않는다 | 채택 | access token은 만료까지 유효. 필요해지면 차단 이벤트 + 서비스별 블랙리스트 |
 | [0005](0005-partner-without-roles.md) | 파트너에게는 Auth role을 주지 않고 매장 관계는 Store가 관리한다 | 채택 | 점주-매장 관계는 Store 서비스 소유 |
@@ -35,6 +35,7 @@
 | [0025](0025-konsist-architecture-tests.md) | 아키텍처 규칙은 Konsist로 검사하고 detekt는 나중에 도입한다 | 채택 | Konsist 처음부터, ktlint로 포맷, detekt 보류 |
 | [0026](0026-problem-details-errors.md) | 에러 응답은 RFC 9457 Problem Details에 code와 traceId를 더한다 | 채택 | `application/problem+json` + `code` + `traceId`. Auth 전용 규칙 |
 | [0027](0027-argon2id-password-hash.md) | 비밀번호 해시는 argon2id로 한다 | 채택 | Spring Security `Argon2PasswordEncoder` + Bouncy Castle |
+| [0028](0028-uuidv7-principal-id.md) | principal id는 UUIDv7이고 토큰에는 type과 id를 함께 싣는다 | 채택 | `uuid DEFAULT uuidv7()`, `sub="{type}:{uuid}"` + `principalType`/`principalId`(UUID 문자열). ADR-0002 대체 |
 
 ## 양식
 

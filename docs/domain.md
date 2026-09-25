@@ -10,9 +10,9 @@ Auth의 용어, 정책 수치, 규칙, 감사·알림을 정의합니다. 다른
 | 용어 | 뜻 |
 |---|---|
 | **realm** | 인증 도메인. 로그인 방식, 계정 저장소, 토큰 issuer의 경계. `internal`, `partner`, `customer` |
-| **principal** | 인증 주체(계정). 공통 `principal` 테이블의 행 하나이며 id는 타입과 관계없이 전역에서 유일 |
+| **principal** | 인증 주체(계정). 공통 `principal` 테이블의 행 하나이며 id는 UUIDv7로 타입과 관계없이 전역에서 유일 ([ADR-0028](adr/0028-uuidv7-principal-id.md)) |
 | **principal type** | 계정 종류. `employee`(본사 직원), `system`(마이크로서비스), `partner`(점주), `customer`(고객, 보류). 생성 후 바뀌지 않음 |
-| **principal key** | `(principalType, principalId)` 쌍. 서비스는 항상 이 쌍으로 주체를 다룸. 문자열 형식은 `{type}:{id}` (예: `employee:42`) |
+| **principal key** | `(principalType, principalId)` 쌍. 서비스는 항상 이 쌍으로 주체를 다룸. 문자열 형식은 `{type}:{id}` (예: `employee:0199a3c4-7b2e-7c1a-9f3d-2b6e8a1c4d5f`) |
 | **profile** | 타입별 계정 정보 (`employee_profile`, `partner_profile`, `customer_profile`, `system_client`) |
 | **credential** | 인증 수단. 방식별로 테이블을 나눔 (`password_credential`, 추후 `external_identity` 등) |
 | **audience** | 토큰을 받는 서비스. `wms`, `catalog`, `store`, `auth` |

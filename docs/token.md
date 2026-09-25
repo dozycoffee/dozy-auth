@@ -37,14 +37,15 @@ Auth가 발급하는 토큰의 형식과 검증 규칙입니다. Auth(발급)와
 | `sub` | ✅ | string | `{principalType}:{principalId}` |
 | `aud` | ✅ | string[] | 이 토큰을 받을 수 있는 audience ([§4](#4-aud-결정-규칙)) |
 | `principalType` | ✅ | string | `employee` / `system` / `partner` / `customer` |
-| `principalId` | ✅ | number | 양의 정수. JavaScript 안전 정수 범위(2^53 - 1) 이내 |
+| `principalId` | ✅ | string | principal id. 소문자·하이픈 포함 정규형 UUID (예: `0199a3c4-7b2e-7c1a-9f3d-2b6e8a1c4d5f`) ([ADR-0028](adr/0028-uuidv7-principal-id.md)) |
 | `roles` | ✅ | string[] | `{audience}:{code}` 목록. 없으면 빈 배열 |
 | `iat` | ✅ | number | 발급 시각 (Unix 초) |
 | `exp` | ✅ | number | 만료 시각 (Unix 초) |
 | `jti` | ✅ | string | 토큰 고유 ID (UUID) |
 | `sid` | | string | refresh 세션 id (UUID). system token에는 없음 |
 
-- `sub`, `principalType`, `principalId`는 항상 일치합니다.
+- `sub`, `principalType`, `principalId`는 항상 일치합니다. 예: `sub`가 `employee:0199a3c4-7b2e-7c1a-9f3d-2b6e8a1c4d5f`이면 `principalType`은 `employee`, `principalId`는 `0199a3c4-7b2e-7c1a-9f3d-2b6e8a1c4d5f`입니다.
+- 받는 쪽은 `principalId`의 UUID 형식(8-4-4-4-12자리 소문자 16진수)만 검사하고 버전은 검사하지 않습니다. Auth는 UUIDv7로 발급합니다.
 - `iss`의 realm과 `principalType`은 [DOM-01](domain.md#11-realm과-principal-type)의 조합만 허용합니다.
 - `roles`에는 `aud`에 포함된 audience의 role만 들어갑니다.
 - 개인정보(이름, 이메일)는 넣지 않습니다 ([SEC-04](domain.md#12-민감정보-sec)).
@@ -68,10 +69,10 @@ Auth가 발급하는 토큰의 형식과 검증 규칙입니다. Auth(발급)와
 ```json
 {
   "iss": "https://auth.dozycoffee.com/realms/internal",
-  "sub": "employee:42",
+  "sub": "employee:0199a3c4-7b2e-7c1a-9f3d-2b6e8a1c4d5f",
   "aud": ["wms", "catalog"],
   "principalType": "employee",
-  "principalId": 42,
+  "principalId": "0199a3c4-7b2e-7c1a-9f3d-2b6e8a1c4d5f",
   "roles": ["wms:inbound_manager", "wms:stock_viewer", "catalog:menu_editor"],
   "iat": 1790000000,
   "exp": 1790000600,
@@ -85,10 +86,10 @@ Auth가 발급하는 토큰의 형식과 검증 규칙입니다. Auth(발급)와
 ```json
 {
   "iss": "https://auth.dozycoffee.com/realms/partner",
-  "sub": "partner:7",
+  "sub": "partner:0199a3c5-1d4f-7a8b-b2c6-5e9f0a3d7c21",
   "aud": ["store"],
   "principalType": "partner",
-  "principalId": 7,
+  "principalId": "0199a3c5-1d4f-7a8b-b2c6-5e9f0a3d7c21",
   "roles": [],
   "iat": 1790000000,
   "exp": 1790000600,
@@ -102,10 +103,10 @@ Auth가 발급하는 토큰의 형식과 검증 규칙입니다. Auth(발급)와
 ```json
 {
   "iss": "https://auth.dozycoffee.com/realms/internal",
-  "sub": "system:3",
+  "sub": "system:0199a3c2-8e5a-7f30-8c4b-9d1e2f6a0b73",
   "aud": ["auth"],
   "principalType": "system",
-  "principalId": 3,
+  "principalId": "0199a3c2-8e5a-7f30-8c4b-9d1e2f6a0b73",
   "roles": ["auth:partner_reader"],
   "iat": 1790000000,
   "exp": 1790000600,
@@ -127,14 +128,14 @@ Auth가 발급하는 토큰의 형식과 검증 규칙입니다. Auth(발급)와
 | 6 | `exp`, `iat` | 만료. `policy.clock-skew` 허용 |
 | 7 | `iss` | 허용한 realm의 issuer가 아님 |
 | 8 | `aud` | 자기 audience가 없음 |
-| 9 | `principalType`, `principalId`, `sub` | [DOM-01](domain.md#11-realm과-principal-type) 조합 위반, `sub` 불일치, 값 누락 |
+| 9 | `principalType`, `principalId`, `sub` | [DOM-01](domain.md#11-realm과-principal-type) 조합 위반, `principalId`가 UUID 형식이 아님, `sub` 불일치, 값 누락 |
 
 검증을 통과한 뒤의 판단은 `403`입니다.
 
 | 판단 | 근거 | 담당 |
 |---|---|---|
 | 기능 인가 | 자기 audience의 role | 각 서비스 |
-| 리소스 인가 | 서비스 자체 데이터 (예: `store_member`) | 각 서비스. principal id가 순번이라 모든 서비스의 필수 규칙 |
+| 리소스 인가 | 서비스 자체 데이터 (예: `store_member`) | 각 서비스. 모든 서비스의 필수 규칙 (id를 추측하기 어렵다는 것은 인가를 대신하지 않음) |
 
 - 서비스는 모르는 claim을 무시해야 합니다.
 
@@ -175,7 +176,7 @@ Auth가 발급하는 토큰의 형식과 검증 규칙입니다. Auth(발급)와
 enum class Realm { INTERNAL, PARTNER, CUSTOMER }
 enum class PrincipalType { EMPLOYEE, SYSTEM, PARTNER, CUSTOMER }
 
-data class PrincipalKey(val type: PrincipalType, val id: Long) {
+data class PrincipalKey(val type: PrincipalType, val id: UUID) {
     val sub: String get() = "${type.name.lowercase()}:$id"
 }
 
