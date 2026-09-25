@@ -20,26 +20,29 @@ dependencies {
 
 저장소 설정은 [auth-spring-boot-starter README](../auth-spring-boot-starter/README.md#사용-방법)와 같습니다.
 
-## 공개 타입 (준비 중)
+## 공개 타입
 
 | 타입 | 설명 |
 |---|---|
-| `Realm` | `INTERNAL`, `PARTNER`, `CUSTOMER` |
-| `PrincipalType` | `EMPLOYEE`, `SYSTEM`, `PARTNER`, `CUSTOMER` |
-| `PrincipalKey` | `(type, id)`. `sub` 문자열 생성과 파싱 |
+| `Realm` | `INTERNAL`, `PARTNER`, `CUSTOMER`. 경로 값 변환, 허용 type 판정, issuer 계산 |
+| `PrincipalType` | `EMPLOYEE`, `SYSTEM`, `PARTNER`, `CUSTOMER`. claim 값 변환, 소속 realm |
+| `PrincipalKey` | `(type, id)`. `sub` 생성과 파싱(정규형만), id 범위 검사 |
 | `AuthenticatedPrincipal` | 검증된 토큰의 주체 (key, realm, 자기 audience의 role, 세션 id) |
-| `ClaimNames` | claim 이름 상수 |
-| role 코드 검증 | `{audience}:{code}` 파싱과 형식 검사 |
+| `RoleCode` | `{audience}:{code}` 파싱과 형식 검사 |
+| `ClaimNames` | Auth가 정의한 claim 이름 상수 |
+| `AccessTokenFormat` | header의 `typ`, `alg` 고정 값 |
 
 정의와 동작은 명세를 따르며, 이 표에는 이름과 한 줄 설명만 둡니다.
+
+- 파싱 함수는 두 가지입니다. `fromSub`·`parse` 같은 이름은 형식이 틀리면 `IllegalArgumentException`을, `...OrNull`은 `null`을 돌려줍니다.
+- JSON·경로 값은 소문자(`employee`, `internal`), Kotlin enum 이름은 대문자입니다.
 
 ## 구조
 
 ```text
-src/main/kotlin/com/dozycoffee/auth/core/
+src/main/kotlin/com/dozycoffee/auth/core/    공개 타입 (하위 패키지 없음)
+src/test/kotlin/com/dozycoffee/auth/core/    단위 테스트
 ```
-
-(준비 중: 타입이 추가되면 패키지 구성을 적습니다.)
 
 ## 제약
 
