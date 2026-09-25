@@ -1,0 +1,78 @@
+[versions]
+kotlin = "2.3.21"
+spring-boot = "4.1.1"
+exposed = "1.5.0"
+# Spring Security 7.1.1(spring-security-oauth2-jose)이 사용하는 버전과 맞춘다
+nimbus-jose-jwt = "10.9.1"
+# Argon2PasswordEncoder가 요구
+bouncycastle = "1.86"
+bucket4j = "8.20.0"
+mockk = "1.14.11"
+springmockk = "5.0.1"
+konsist = "0.17.3"
+# Spring Boot 4.1.1이 관리하는 버전과 맞춘다 (Spring 없는 모듈에서도 같은 버전을 쓰기 위해)
+junit = "6.0.3"
+ktlint-gradle = "14.2.0"
+
+[libraries]
+# BOM
+spring-boot-dependencies = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
+
+# build-logic에서 쓰는 Gradle 플러그인
+kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+kotlin-allopen = { module = "org.jetbrains.kotlin:kotlin-allopen", version.ref = "kotlin" }
+spring-boot-gradle-plugin = { module = "org.springframework.boot:spring-boot-gradle-plugin", version.ref = "spring-boot" }
+ktlint-gradle-plugin = { module = "org.jlleitschuh.gradle:ktlint-gradle", version.ref = "ktlint-gradle" }
+
+# Spring Boot (버전은 Spring Boot BOM이 관리)
+spring-boot-starter-webmvc = { module = "org.springframework.boot:spring-boot-starter-webmvc" }
+spring-boot-starter-security = { module = "org.springframework.boot:spring-boot-starter-security" }
+spring-boot-starter-oauth2-resource-server = { module = "org.springframework.boot:spring-boot-starter-security-oauth2-resource-server" }
+spring-boot-starter-validation = { module = "org.springframework.boot:spring-boot-starter-validation" }
+spring-boot-starter-mail = { module = "org.springframework.boot:spring-boot-starter-mail" }
+spring-boot-starter-thymeleaf = { module = "org.springframework.boot:spring-boot-starter-thymeleaf" }
+spring-boot-starter-flyway = { module = "org.springframework.boot:spring-boot-starter-flyway" }
+spring-boot-starter-actuator = { module = "org.springframework.boot:spring-boot-starter-actuator" }
+spring-boot-docker-compose = { module = "org.springframework.boot:spring-boot-docker-compose" }
+spring-boot-starter-webmvc-test = { module = "org.springframework.boot:spring-boot-starter-webmvc-test" }
+spring-boot-autoconfigure = { module = "org.springframework.boot:spring-boot-autoconfigure" }
+spring-boot-starter-security-test = { module = "org.springframework.boot:spring-boot-starter-security-test" }
+spring-boot-testcontainers = { module = "org.springframework.boot:spring-boot-testcontainers" }
+
+# Kotlin
+kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect" }
+kotlin-test-junit5 = { module = "org.jetbrains.kotlin:kotlin-test-junit5" }
+jackson-module-kotlin = { module = "tools.jackson.module:jackson-module-kotlin" }
+
+# 데이터
+exposed-bom = { module = "org.jetbrains.exposed:exposed-bom", version.ref = "exposed" }
+exposed-core = { module = "org.jetbrains.exposed:exposed-core" }
+exposed-jdbc = { module = "org.jetbrains.exposed:exposed-jdbc" }
+exposed-java-time = { module = "org.jetbrains.exposed:exposed-java-time" }
+exposed-json = { module = "org.jetbrains.exposed:exposed-json" }
+exposed-spring-boot4-starter = { module = "org.jetbrains.exposed:exposed-spring-boot4-starter" }
+flyway-postgresql = { module = "org.flywaydb:flyway-database-postgresql" }
+postgresql = { module = "org.postgresql:postgresql" }
+
+# 보안
+nimbus-jose-jwt = { module = "com.nimbusds:nimbus-jose-jwt", version.ref = "nimbus-jose-jwt" }
+bouncycastle-bcprov = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncycastle" }
+bucket4j-core = { module = "com.bucket4j:bucket4j_jdk17-core", version.ref = "bucket4j" }
+
+# 운영
+micrometer-prometheus = { module = "io.micrometer:micrometer-registry-prometheus" }
+
+# 테스트
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
+springmockk = { module = "com.ninja-squad:springmockk", version.ref = "springmockk" }
+konsist = { module = "com.lemonappdev:konsist", version.ref = "konsist" }
+testcontainers-junit-jupiter = { module = "org.testcontainers:testcontainers-junit-jupiter" }
+testcontainers-postgresql = { module = "org.testcontainers:testcontainers-postgresql" }
+
+[bundles]
+exposed = ["exposed-core", "exposed-jdbc", "exposed-java-time", "exposed-json", "exposed-spring-boot4-starter"]
+testcontainers = ["spring-boot-testcontainers", "testcontainers-junit-jupiter", "testcontainers-postgresql"]
+

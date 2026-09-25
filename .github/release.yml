@@ -1,0 +1,22 @@
+changelog:
+  exclude:
+    labels:
+      - duplicate
+      - wontfix
+  categories:
+    - title: 호환성 변경
+      labels:
+        - breaking-change
+    - title: 기능
+      labels:
+        - feature
+        - request
+    - title: 버그 수정
+      labels:
+        - bug
+    - title: 보안
+      labels:
+        - security
+    - title: 기타
+      labels:
+        - "*"

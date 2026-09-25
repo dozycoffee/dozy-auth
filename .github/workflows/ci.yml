@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      # 라이브러리는 JDK 17, 서버는 JDK 21 toolchain을 쓴다. 마지막에 적은 21이 Gradle 실행용 기본 JDK가 된다.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: |
+            17
+            21
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      # ktlint 검사, 테스트(Testcontainers는 러너의 Docker 사용), Konsist 아키텍처 테스트
+      - run: ./gradlew build -Porg.gradle.java.installations.fromEnv=JAVA_HOME_17_X64,JAVA_HOME_21_X64
+
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports
+          path: '**/build/reports/'
+          retention-days: 7

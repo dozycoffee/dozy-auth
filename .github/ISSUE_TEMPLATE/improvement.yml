@@ -1,0 +1,50 @@
+name: 개선
+description: 작업하다 발견한 구조 문제, 기술 부채, 리팩터링 거리
+labels: ["refactor", "needs-triage"]
+body:
+  - type: dropdown
+    id: module
+    attributes:
+      label: 대상 모듈
+      multiple: true
+      options:
+        - auth-core
+        - auth-server
+        - auth-spring-boot-starter
+        - auth-test
+        - 빌드·CI
+    validations:
+      required: true
+  - type: input
+    id: location
+    attributes:
+      label: 위치
+      description: 패키지, 클래스, 파일
+  - type: textarea
+    id: problem
+    attributes:
+      label: 지금 문제
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 개선 방향
+  - type: dropdown
+    id: behavior
+    attributes:
+      label: 동작 변화
+      description: 동작이 바뀌면 refactor가 아니라 feat·fix이며 명세도 함께 고쳐야 합니다.
+      options:
+        - 없음 (순수 리팩터링)
+        - 있음
+    validations:
+      required: true
+  - type: dropdown
+    id: spec
+    attributes:
+      label: 명세(docs/) 영향
+      options:
+        - 없음
+        - 있음
+        - 모르겠음

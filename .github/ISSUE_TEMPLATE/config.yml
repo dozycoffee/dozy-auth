@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: role 등록·부여 요청
+    url: https://app.notion.com/p/3e30aa34aee281fc8bb6d79ee8a03cd5
+    about: role 등록과 부여는 코드 변경이 아니라 Auth admin에게 요청합니다.
+  - name: 서비스 연동 가이드
+    url: https://app.notion.com/p/3e50aa34aee28072894ad810a9a0a9ea
+    about: 스타터 사용법과 자주 묻는 질문

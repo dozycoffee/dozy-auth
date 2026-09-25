@@ -1,0 +1,57 @@
+name: 요청
+description: 다른 팀의 기능·변경 요청 (스타터 기능, API, 토큰 claim 등)
+labels: ["request", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        role 등록이나 부여는 코드 변경이 아니라 Auth admin에게 요청하는 운영 작업입니다. 여기에 올리지 마세요.
+  - type: dropdown
+    id: team
+    attributes:
+      label: 요청 팀
+      options:
+        - WMS
+        - Catalog
+        - Store
+        - 관리 콘솔
+        - 파트너 웹
+        - 기타
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: 종류
+      options:
+        - 스타터·auth-test 기능
+        - Auth API
+        - 토큰 claim
+        - 기타
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: 요청 내용
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: 필요한 이유
+      description: 지금 방식으로 안 되는 이유, 대안을 검토했다면 함께
+    validations:
+      required: true
+  - type: input
+    id: when
+    attributes:
+      label: 원하는 시점
+  - type: dropdown
+    id: compat
+    attributes:
+      label: 기존 동작이 바뀌어도 되나요?
+      options:
+        - 기존 동작 유지 필요
+        - 바뀌어도 됨
+        - 모르겠음

@@ -1,0 +1,54 @@
+name: 버그
+description: Auth 서버, 스타터, auth-test의 잘못된 동작
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **토큰 전체, 비밀번호, client secret, 쿠키 값을 붙이지 마세요.** 만료 전 토큰은 그대로 쓸 수 있습니다.
+        토큰 내용이 필요하면 서명 부분(마지막 `.` 뒤)을 지운 payload만 붙여주세요.
+  - type: dropdown
+    id: area
+    attributes:
+      label: 영향 범위
+      multiple: true
+      options:
+        - Auth 서버 (API)
+        - auth-spring-boot-starter
+        - auth-test
+        - auth-core
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: 스타터·auth-test 버전
+      description: 서버 문제면 비워도 됩니다.
+      placeholder: 0.1.0
+  - type: textarea
+    id: steps
+    attributes:
+      label: 재현 방법
+      placeholder: |
+        1. POST /realms/internal/login ...
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 기대한 동작
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 실제 동작
+      description: 응답 상태, 에러 `code`, `traceId`를 적어주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: 추가 정보
+      description: 로그(민감정보 제거), 토큰 payload(서명 제거) 등

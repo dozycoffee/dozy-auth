@@ -1,0 +1,26 @@
+# CLAUDE.local.md
+
+<!--
+이 파일을 복사해 CLAUDE.local.md로 만들고 채웁니다. CLAUDE.local.md는 git에 올라가지 않습니다.
+비밀번호, 토큰, 키 같은 비밀값은 여기에도 적지 않습니다. 필요하면 위치만 적습니다.
+명세나 결정은 여기에 두지 않고 docs/로 옮깁니다.
+-->
+
+## 로컬 환경
+
+- 앱: http://localhost:8080
+- Mailpit 메일함: http://localhost:8025
+- 부트스트랩 owner 이메일: owner@dozycoffee.local
+- 로컬 서명 키: .local/signing-keys/ (자동 생성)
+- 테스트 계정: (이메일만. 비밀번호는 적지 않음)
+
+## 로컬 컨텍스트
+
+- 진행 중인 작업: .context/current.md (작업 시작할 때 먼저 읽기)
+- 작업별 계획: .context/plans/
+- 조사 결과·임시 기록: .context/scratch/ (필요할 때만)
+
+## 개인 선호
+
+- 응답 언어:
+- 설명 수준:
