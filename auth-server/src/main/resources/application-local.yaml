@@ -1,0 +1,16 @@
+# 개발자 PC. 프로필별 동작은 docs/configuration.md §4
+spring:
+  docker:
+    compose:
+      enabled: true
+      # 앱을 꺼도 DB와 Mailpit은 계속 띄워 둡니다. 멈추려면 docker compose stop
+      lifecycle-management: start-only
+  # DB 접속 정보는 Docker Compose 지원이 compose.yaml의 postgres에서 가져옵니다.
+  mail:
+    host: localhost
+    port: 1025
+
+logging:
+  level:
+    com.dozycoffee.auth: debug
+    Exposed: debug # 실행되는 SQL

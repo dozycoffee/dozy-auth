@@ -1,0 +1,5 @@
+# 공용 개발 서버. DB는 application.yaml의 dev | prod 설정을 따릅니다.
+# 개발용 토큰 API(/dev/**)는 local, dev에서만 등록합니다 (docs/api/dev.md).
+logging:
+  level:
+    com.dozycoffee.auth: debug

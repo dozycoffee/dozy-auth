@@ -28,20 +28,33 @@ PR과 `main` 푸시마다 GitHub Actions가 `./gradlew build`(ktlint, 테스트)
 ./gradlew build                      # 빌드, 테스트, ktlint 검사
 ```
 
-### 로컬 실행 (준비 중: 로컬 Compose·프로필 설정)
+### 로컬 실행
+
+1. Docker를 켭니다.
+2. `local` 프로필로 서버를 실행합니다.
+
+   ```bash
+   ./gradlew :auth-server:bootRun --args='--spring.profiles.active=local'
+   ```
+
+   - Spring Boot Docker Compose 지원이 `compose.yaml`의 PostgreSQL(DB `auth`)과 Mailpit을 띄우고 접속 정보를 자동으로 설정합니다. `docker compose up`을 따로 하지 않아도 됩니다.
+   - 로그에 `Started DozyAuthApplicationKt`가 나오면 준비된 것입니다.
+3. 서버를 꺼도 DB와 Mailpit은 계속 떠 있습니다. 멈추려면 `docker compose stop`, 데이터까지 지우려면 `docker compose down -v`를 씁니다.
+
+호스트의 5432 포트를 다른 PostgreSQL이 쓰고 있으면 포트를 바꿔 실행합니다. 앱은 바뀐 포트를 자동으로 찾습니다.
 
 ```bash
-./gradlew :auth-server:bootRun --args='--spring.profiles.active=local'
+AUTH_LOCAL_DB_PORT=15432 ./gradlew :auth-server:bootRun --args='--spring.profiles.active=local'
 ```
-
-- Docker Compose 지원이 `compose.yaml`의 PostgreSQL과 Mailpit을 자동으로 띄웁니다.
-- 서명 키가 없으면 `.local/signing-keys/`에 자동으로 만듭니다.
 
 | 확인할 곳 | 주소 |
 |---|---|
 | 앱 | http://localhost:8080 |
-| JWKS | http://localhost:8080/.well-known/jwks.json |
+| DB | `localhost:5432` (또는 `AUTH_LOCAL_DB_PORT`), DB·계정·비밀번호 모두 `auth` |
 | Mailpit 메일함 | http://localhost:8025 |
+| JWKS (준비 중: 서명 키) | http://localhost:8080/.well-known/jwks.json |
+
+- 서명 키가 없으면 `.local/signing-keys/`에 자동으로 만듭니다 (준비 중: 서명 키).
 
 ### 첫 owner 계정 만들기 (준비 중: 초대·로그인 API)
 

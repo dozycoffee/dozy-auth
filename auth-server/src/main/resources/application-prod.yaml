@@ -1,0 +1,5 @@
+# 운영. 기동 시 검사 항목은 docs/configuration.md §2
+logging:
+  structured:
+    format:
+      console: ecs # JSON 로그

@@ -1,9 +1,22 @@
+# 로컬 개발 환경. local 프로필로 bootRun하면 Spring Boot Docker Compose 지원이 자동으로 띄웁니다.
 services:
   postgres:
-    image: 'postgres:latest'
+    image: postgres:18
     environment:
-      - 'POSTGRES_DB=mydatabase'
-      - 'POSTGRES_PASSWORD=secret'
-      - 'POSTGRES_USER=myuser'
+      POSTGRES_DB: auth
+      POSTGRES_USER: auth
+      POSTGRES_PASSWORD: auth
     ports:
-      - '5432'
+      # 호스트의 5432를 다른 DB가 쓰고 있으면 AUTH_LOCAL_DB_PORT로 바꿉니다. 앱은 실제 포트를 자동으로 찾습니다.
+      - "${AUTH_LOCAL_DB_PORT:-5432}:5432"
+    volumes:
+      - auth-db:/var/lib/postgresql
+
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # 메일함 웹 화면
+
+volumes:
+  auth-db:

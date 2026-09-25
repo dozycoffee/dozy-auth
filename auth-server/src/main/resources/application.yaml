@@ -1,3 +1,18 @@
 spring:
   application:
     name: dozy-auth
+  docker:
+    compose:
+      # local 프로필에서만 켭니다 (application-local.yaml)
+      enabled: false
+
+---
+# 공용 서버(dev, prod)는 환경 변수로 DB를 받습니다. 변수 목록은 docs/configuration.md §1
+spring:
+  config:
+    activate:
+      on-profile: dev | prod
+  datasource:
+    url: ${AUTH_DB_URL}
+    username: ${AUTH_DB_USERNAME}
+    password: ${AUTH_DB_PASSWORD}

@@ -63,8 +63,12 @@ auth-server가 읽는 설정과 프로필별 동작입니다. 비밀값(DB 비�
 | 항목 | 값 |
 |---|---|
 | Compose 파일 | 저장소 루트 `compose.yaml` (`bootRun`의 작업 폴더가 루트) |
-| PostgreSQL | 이미지 `postgres:18`, DB `auth` |
+| PostgreSQL | 이미지 `postgres:18`, DB·계정·비밀번호 `auth`. 호스트 포트는 `AUTH_LOCAL_DB_PORT`(기본 `5432`) |
 | Mailpit | SMTP `1025`, 메일함 `http://localhost:8025` |
 | 앱 | `http://localhost:8080` |
+| Compose 수명 | 앱을 꺼도 컨테이너를 유지 (`lifecycle-management: start-only`) |
+
+- `local` 프로필에서만 Docker Compose 지원을 켭니다. 다른 프로필과 테스트에서는 꺼져 있습니다.
+- DB 접속 정보는 Docker Compose 지원이 `compose.yaml`에서 가져오므로 `AUTH_DB_*`가 필요 없습니다. `dev`·`prod`는 `AUTH_DB_*`가 없으면 기동에 실패합니다.
 
 - 브라우저는 `localhost`를 예외로 취급해 `Secure` 쿠키를 HTTP에서도 보냅니다. 포트가 달라도 같은 사이트라 쿠키가 전달됩니다.

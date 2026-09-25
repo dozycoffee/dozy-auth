@@ -37,7 +37,7 @@ src/main/resources/
 src/test/kotlin/com/dozycoffee/auth/server/    테스트
 ```
 
-(`db/migration/`, `templates/mail/`, 프로필별 설정 파일은 준비 중입니다.)
+(`db/migration/`, `templates/mail/`은 준비 중입니다. 프로필별 설정 파일은 `local`, `dev`, `prod`가 있습니다.)
 
 ## 무엇을 어디에 추가하나
 
