@@ -53,7 +53,7 @@ sequenceDiagram
 **응답** `201 Created`
 
 ```json
-{ "principalId": 42, "status": "PENDING", "invitationExpiresAt": "2026-09-27T05:00:00Z" }
+{ "principalId": "0199a3c4-7b2e-7c1a-9f3d-2b6e8a1c4d5f", "status": "PENDING", "invitationExpiresAt": "2026-09-27T05:00:00Z" }
 ```
 
 **에러**
@@ -92,7 +92,7 @@ sequenceDiagram
 {
   "items": [
     {
-      "principalId": 42,
+      "principalId": "0199a3c4-7b2e-7c1a-9f3d-2b6e8a1c4d5f",
       "email": "kim@dozycoffee.com",
       "name": "김도윤",
       "status": "ACTIVE",
@@ -116,7 +116,7 @@ sequenceDiagram
 
 ```json
 {
-  "principalId": 42,
+  "principalId": "0199a3c4-7b2e-7c1a-9f3d-2b6e8a1c4d5f",
   "email": "kim@dozycoffee.com",
   "name": "김도윤",
   "phone": "010-1234-5678",
@@ -237,7 +237,7 @@ sequenceDiagram
 ```json
 {
   "items": [
-    { "principalId": 7, "email": "owner@example.com", "name": "이점주", "status": "ACTIVE", "createdAt": "2026-09-24T05:00:00Z" }
+    { "principalId": "0199a3c5-1d4f-7a8b-b2c6-5e9f0a3d7c21", "email": "owner@example.com", "name": "이점주", "status": "ACTIVE", "createdAt": "2026-09-24T05:00:00Z" }
   ],
   "page": { "number": 0, "size": 20, "totalElements": 1, "totalPages": 1 }
 }
@@ -257,7 +257,7 @@ sequenceDiagram
 
 ```json
 {
-  "principalId": 7,
+  "principalId": "0199a3c5-1d4f-7a8b-b2c6-5e9f0a3d7c21",
   "email": "owner@example.com",
   "name": "이점주",
   "phone": "010-1234-5678",
@@ -449,7 +449,7 @@ sequenceDiagram
 |---|
 | `auth:owner`, `auth:admin` |
 
-**요청** 경로 변수 `role`은 `{audience}:{code}` (예: `/admin/principals/42/roles/wms:inbound_manager`)
+**요청** 경로 변수 `role`은 `{audience}:{code}` (예: `/admin/principals/0199a3c4-7b2e-7c1a-9f3d-2b6e8a1c4d5f/roles/wms:inbound_manager`)
 
 **응답** `204 No Content`
 
@@ -645,7 +645,7 @@ sequenceDiagram
 {
   "items": [
     {
-      "principalId": 3,
+      "principalId": "0199a3c2-8e5a-7f30-8c4b-9d1e2f6a0b73",
       "clientId": "svc-store",
       "name": "Store 서비스",
       "status": "ACTIVE",
@@ -678,7 +678,7 @@ sequenceDiagram
 **응답** `201 Created`
 
 ```json
-{ "principalId": 3, "clientId": "svc-store", "clientSecret": "Zr8qL2mX..." }
+{ "principalId": "0199a3c2-8e5a-7f30-8c4b-9d1e2f6a0b73", "clientId": "svc-store", "clientSecret": "Zr8qL2mX..." }
 ```
 
 **에러**
@@ -734,7 +734,7 @@ sequenceDiagram
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `targetPrincipalId` | number | ✅ | 대상 직원 |
+| `targetPrincipalId` | string | ✅ | 대상 직원의 principal id |
 
 **응답** `202 Accepted`
 
@@ -828,11 +828,11 @@ sequenceDiagram
     {
       "id": 1024,
       "occurredAt": "2026-09-24T05:00:00Z",
-      "actorId": 12,
+      "actorId": "0199a3b0-2c7d-7e41-a5f8-3b0c9d6e1f24",
       "actorType": "employee",
       "action": "ROLE_GRANTED",
       "targetType": "PRINCIPAL",
-      "targetId": "42",
+      "targetId": "0199a3c4-7b2e-7c1a-9f3d-2b6e8a1c4d5f",
       "detail": { "roles": ["wms:inbound_manager"] },
       "ip": "203.0.113.10"
     }

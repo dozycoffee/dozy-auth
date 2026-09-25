@@ -132,7 +132,7 @@ Cache-Control: public, max-age=300
 **응답** `200 OK`
 
 ```json
-{ "principalId": 7, "name": "이점주", "maskedPhone": "010-****-5678" }
+{ "principalId": "0199a3c5-1d4f-7a8b-b2c6-5e9f0a3d7c21", "name": "이점주", "maskedPhone": "010-****-5678" }
 ```
 
 **에러**

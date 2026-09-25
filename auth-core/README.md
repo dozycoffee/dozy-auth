@@ -26,7 +26,7 @@ dependencies {
 |---|---|
 | `Realm` | `INTERNAL`, `PARTNER`, `CUSTOMER`. 경로 값 변환, 허용 type 판정, issuer 계산 |
 | `PrincipalType` | `EMPLOYEE`, `SYSTEM`, `PARTNER`, `CUSTOMER`. claim 값 변환, 소속 realm |
-| `PrincipalKey` | `(type, id)`. `sub` 생성과 파싱(정규형만), id 범위 검사 |
+| `PrincipalKey` | `(type, id: UUID)`. `sub` 생성과 파싱, `principalId` 파싱 (정규형만) |
 | `AuthenticatedPrincipal` | 검증된 토큰의 주체 (key, realm, 자기 audience의 role, 세션 id) |
 | `RoleCode` | `{audience}:{code}` 파싱과 형식 검사 |
 | `ClaimNames` | Auth가 정의한 claim 이름 상수 |
@@ -34,7 +34,8 @@ dependencies {
 
 정의와 동작은 명세를 따르며, 이 표에는 이름과 한 줄 설명만 둡니다.
 
-- 파싱 함수는 두 가지입니다. `fromSub`·`parse` 같은 이름은 형식이 틀리면 `IllegalArgumentException`을, `...OrNull`은 `null`을 돌려줍니다.
+- 파싱 함수는 두 가지입니다. `fromSub`·`parseId`·`parse` 같은 이름은 형식이 틀리면 `IllegalArgumentException`을, `...OrNull`은 `null`을 돌려줍니다.
+- principal id는 `java.util.UUID`입니다. 소문자·하이픈 포함 정규형만 받고, 버전은 검사하지 않습니다 ([ADR-0028](../docs/adr/0028-uuidv7-principal-id.md)).
 - JSON·경로 값은 소문자(`employee`, `internal`), Kotlin enum 이름은 대문자입니다.
 
 ## 구조

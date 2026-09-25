@@ -154,7 +154,7 @@ Set-Cookie: dozy_refresh=...; HttpOnly; Secure; SameSite=Strict; Path=/realms/{r
 ```json
 {
   "principalType": "employee",
-  "principalId": 42,
+  "principalId": "0199a3c4-7b2e-7c1a-9f3d-2b6e8a1c4d5f",
   "name": "김도윤",
   "email": "kim@dozycoffee.com",
   "roles": ["wms:inbound_manager", "catalog:menu_editor"]

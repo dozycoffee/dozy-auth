@@ -80,7 +80,7 @@ curl -i -X POST http://localhost:8080/realms/internal/login \
 ```bash
 curl -X POST http://localhost:8080/dev/tokens \
   -H 'Content-Type: application/json' \
-  -d '{"realm": "internal", "principalType": "employee", "principalId": 1, "roles": ["wms:inbound_manager"]}'
+  -d '{"realm": "internal", "principalType": "employee", "principalId": "0199a3c4-7b2e-7c1a-9f3d-2b6e8a1c4d5f", "roles": ["wms:inbound_manager"]}'
 ```
 
 ## 자주 쓰는 명령

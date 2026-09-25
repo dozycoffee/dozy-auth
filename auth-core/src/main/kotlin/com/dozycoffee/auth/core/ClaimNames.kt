@@ -9,7 +9,7 @@ public object ClaimNames {
     /** 계정 종류. 값은 [PrincipalType.claimValue]. */
     public const val PRINCIPAL_TYPE: String = "principalType"
 
-    /** principal id. 값은 number. */
+    /** principal id. 값은 소문자·하이픈 포함 정규형 UUID 문자열 ([PrincipalKey.parseId]로 파싱). */
     public const val PRINCIPAL_ID: String = "principalId"
 
     /** `{audience}:{code}` 형식의 role 목록. 값은 string 배열. */

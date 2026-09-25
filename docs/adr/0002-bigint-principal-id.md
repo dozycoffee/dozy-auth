@@ -1,6 +1,6 @@
 # 0002. principal id는 bigint 순번이고 토큰에는 type과 id를 함께 싣는다
 
-- 상태: 채택
+- 상태: 대체됨(→ [0028](0028-uuidv7-principal-id.md))
 - 날짜: 2026-09-24
 
 ## 맥락

@@ -20,11 +20,11 @@
 |---|---|---|---|
 | `realm` | string | ✅ | `internal`, `partner` |
 | `principalType` | string | ✅ | [DOM-01](../domain.md#11-realm과-principal-type)의 조합만 허용 |
-| `principalId` | number | ✅ | 임의의 양의 정수 |
+| `principalId` | string | ✅ | 임의의 UUID (소문자, 하이픈 포함) |
 | `roles` | string[] | | `{audience}:{code}`. 기본은 빈 배열 |
 
 ```json
-{ "realm": "internal", "principalType": "employee", "principalId": 1, "roles": ["wms:inbound_manager"] }
+{ "realm": "internal", "principalType": "employee", "principalId": "0199a3c4-7b2e-7c1a-9f3d-2b6e8a1c4d5f", "roles": ["wms:inbound_manager"] }
 ```
 
 **응답** `200 OK`

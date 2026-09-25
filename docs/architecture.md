@@ -152,7 +152,7 @@ com.dozycoffee.auth.server
 | 종류 | 허용 |
 |---|---|
 | 다른 도메인의 동작 호출, 다른 도메인 객체를 필드로 보유 | ❌ |
-| 다른 도메인을 ID로 참조 (`principalId: Long`) | ✅ |
+| 다른 도메인을 ID로 참조 (`principalId: UUID`) | ✅ |
 | `auth-core` 타입 사용 | ✅ |
 | 도메인 간 순환 참조 | ❌ |
 
