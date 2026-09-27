@@ -1,6 +1,7 @@
 package com.dozycoffee.auth.server.config
 
 import com.dozycoffee.auth.server.adapter.outbound.jwt.SigningKeyProperties
+import com.dozycoffee.auth.server.support.TestSigningKeys
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.springframework.mock.env.MockEnvironment
@@ -26,7 +27,11 @@ class JwtConfigTest {
         val prod = MockEnvironment().apply { setActiveProfiles("prod") }
 
         assertFailsWith<IllegalStateException> {
-            JwtConfig().signingKeys(SigningKeyProperties(dir.resolve("missing"), activeKid = "dozy-2026-09"), Clock.systemUTC(), prod)
+            JwtConfig().signingKeys(
+                SigningKeyProperties(dir.resolve("missing"), activeKid = TestSigningKeys.CURRENT_KID),
+                Clock.systemUTC(),
+                prod,
+            )
         }
     }
 }

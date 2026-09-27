@@ -4,34 +4,39 @@ import com.dozycoffee.auth.core.PrincipalKey
 import com.dozycoffee.auth.core.PrincipalType
 import com.dozycoffee.auth.core.Realm
 import com.dozycoffee.auth.core.RoleCode
+import com.dozycoffee.auth.server.support.TokenFixtures.EMPLOYEE
+import com.dozycoffee.auth.server.support.TokenFixtures.ISSUER_BASE
+import com.dozycoffee.auth.server.support.TokenFixtures.NOW
+import com.dozycoffee.auth.server.support.TokenFixtures.PARTNER
+import com.dozycoffee.auth.server.support.TokenFixtures.SESSION_ID
+import com.dozycoffee.auth.server.support.TokenFixtures.SYSTEM
+import com.dozycoffee.auth.server.support.TokenFixtures.TOKEN_ID
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import java.time.Duration
-import java.time.Instant
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
+/**
+ * token.md §3, §4.
+ *
+ * `iss` 형식, `aud` 값, 수명 같은 기대값은 명세 값을 그대로 씁니다.
+ */
 class AccessTokenFactoryTest {
-    private val base = IssuerBaseUri("https://auth.dozycoffee.com")
-    private val now = Instant.parse("2026-09-25T00:00:00Z")
-    private val employee = PrincipalKey(PrincipalType.EMPLOYEE, UUID.fromString("0199a3c4-7b2e-7c1a-9f3d-2b6e8a1c4d5f"))
-    private val partner = PrincipalKey(PrincipalType.PARTNER, UUID.fromString("0199a3c5-1d4f-7a8b-b2c6-5e9f0a3d7c21"))
-    private val system = PrincipalKey(PrincipalType.SYSTEM, UUID.fromString("0199a3c2-8e5a-7f30-8c4b-9d1e2f6a0b73"))
-
     private fun create(
-        principal: PrincipalKey = employee,
+        principal: PrincipalKey = EMPLOYEE,
         realm: Realm = principal.type.realm,
         roles: List<String> = emptyList(),
-        sessionId: String? = "8c1d4f5f-2b9c-4e8a-a4d1-c9d3f2b7a6e0",
-    ) = AccessTokenFactory.create(principal, realm, roles.map(RoleCode::parse), sessionId, base, now, "jti-1")
+        sessionId: String? = SESSION_ID,
+    ) = AccessTokenFactory.create(principal, realm, roles.map(RoleCode::parse), sessionId, ISSUER_BASE, NOW, TOKEN_ID)
 
     @Test
     fun `iss는 realm별 issuer`() {
         assertEquals("https://auth.dozycoffee.com/realms/internal", create().issuer)
-        assertEquals("https://auth.dozycoffee.com/realms/partner", create(principal = partner, roles = emptyList()).issuer)
+        assertEquals("https://auth.dozycoffee.com/realms/partner", create(principal = PARTNER).issuer)
     }
 
     @Test
@@ -49,7 +54,7 @@ class AccessTokenFactoryTest {
 
     @Test
     fun `system token의 aud도 보유한 role의 audience이고 sid가 없음`() {
-        val claims = create(principal = system, roles = listOf("auth:partner_reader"), sessionId = null)
+        val claims = create(principal = SYSTEM, roles = listOf("auth:partner_reader"), sessionId = null)
 
         assertEquals(listOf("auth"), claims.audience)
         assertNull(claims.sessionId)
@@ -57,18 +62,18 @@ class AccessTokenFactoryTest {
 
     @Test
     fun `파트너의 aud는 store 고정`() {
-        assertEquals(listOf("store"), create(principal = partner).audience)
+        assertEquals(listOf("store"), create(principal = PARTNER).audience)
     }
 
     @Test
     fun `DOM-04 파트너에게 role이 있으면 거부`() {
-        assertFailsWith<IllegalArgumentException> { create(principal = partner, roles = listOf("store:store_admin")) }
+        assertFailsWith<IllegalArgumentException> { create(principal = PARTNER, roles = listOf("store:store_admin")) }
     }
 
     @Test
     fun `DOM-01 realm이 받을 수 없는 type이면 거부`() {
-        assertFailsWith<IllegalArgumentException> { create(principal = employee, realm = Realm.PARTNER) }
-        assertFailsWith<IllegalArgumentException> { create(principal = partner, realm = Realm.INTERNAL) }
+        assertFailsWith<IllegalArgumentException> { create(principal = EMPLOYEE, realm = Realm.PARTNER) }
+        assertFailsWith<IllegalArgumentException> { create(principal = PARTNER, realm = Realm.INTERNAL) }
     }
 
     @Test
@@ -78,16 +83,16 @@ class AccessTokenFactoryTest {
 
     @Test
     fun `system token에 세션 id가 있으면 거부`() {
-        assertFailsWith<IllegalArgumentException> { create(principal = system, sessionId = "8c1d4f5f-2b9c-4e8a-a4d1-c9d3f2b7a6e0") }
+        assertFailsWith<IllegalArgumentException> { create(principal = SYSTEM, sessionId = SESSION_ID) }
     }
 
     @Test
-    fun `exp는 iat에서 access token 수명(10분) 뒤`() {
+    fun `exp는 iat에서 policy access-token-ttl(10분) 뒤`() {
         val claims = create()
 
-        assertEquals(now, claims.issuedAt)
+        assertEquals(NOW, claims.issuedAt)
         assertEquals(Duration.ofMinutes(10), Duration.between(claims.issuedAt, claims.expiresAt))
-        assertEquals("jti-1", claims.tokenId)
+        assertEquals(TOKEN_ID, claims.tokenId)
     }
 
     @ParameterizedTest

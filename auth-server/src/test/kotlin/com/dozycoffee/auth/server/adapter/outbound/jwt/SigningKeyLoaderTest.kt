@@ -1,48 +1,47 @@
 package com.dozycoffee.auth.server.adapter.outbound.jwt
 
-import com.dozycoffee.auth.server.domain.AuthPolicy
+import com.dozycoffee.auth.server.support.TestSigningKeys
+import com.dozycoffee.auth.server.support.TestSigningKeys.CURRENT_KID
+import com.dozycoffee.auth.server.support.TestSigningKeys.NEXT_KID
+import com.dozycoffee.auth.server.support.TokenFixtures.FIXED_CLOCK
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
-import java.security.SecureRandom
 import java.time.Clock
-import java.time.Instant
 import java.time.ZoneOffset
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
+/** configuration.md §2, §3. */
 class SigningKeyLoaderTest {
     @TempDir
     lateinit var dir: Path
 
-    private val clock = Clock.fixed(Instant.parse("2026-09-25T00:00:00Z"), ZoneOffset.UTC)
-    private val loader = SigningKeyLoader(clock)
+    private val loader = SigningKeyLoader(FIXED_CLOCK)
 
     @Test
     fun `폴더의 모든 키를 공개키로 게시하고 활성 키로 서명`() {
-        dir.resolve("dozy-2026-09.pem").writeText(KEY_A)
-        dir.resolve("dozy-2027-09.pem").writeText(KEY_B)
+        TestSigningKeys.writeCurrentAndNext(dir)
 
-        val keys = loader.load(SigningKeyProperties(dir, activeKid = "dozy-2026-09"))
+        val keys = loader.load(SigningKeyProperties(dir, activeKid = CURRENT_KID))
 
-        assertEquals("dozy-2026-09", keys.active.keyID)
+        assertEquals(CURRENT_KID, keys.active.keyID)
         assertTrue(keys.active.isPrivate)
-        assertEquals(listOf("dozy-2026-09", "dozy-2027-09"), keys.published.map { it.keyID })
+        assertEquals(listOf(CURRENT_KID, NEXT_KID), keys.published.map { it.keyID })
         assertTrue(keys.published.none { it.isPrivate })
     }
 
     @Test
     fun `pem이 아닌 파일은 무시`() {
-        dir.resolve("dozy-2026-09.pem").writeText(KEY_A)
+        TestSigningKeys.write(dir, CURRENT_KID, TestSigningKeys.CURRENT_PEM)
         dir.resolve("README.txt").writeText("메모")
 
-        val keys = loader.load(SigningKeyProperties(dir, activeKid = "dozy-2026-09"))
+        val keys = loader.load(SigningKeyProperties(dir, activeKid = CURRENT_KID))
 
         assertEquals(1, keys.published.size)
     }
@@ -50,46 +49,44 @@ class SigningKeyLoaderTest {
     @Test
     fun `폴더가 없으면 기동 실패`() {
         assertFailsWith<IllegalStateException> {
-            loader.load(SigningKeyProperties(dir.resolve("missing"), activeKid = "dozy-2026-09"))
+            loader.load(SigningKeyProperties(dir.resolve("missing"), activeKid = CURRENT_KID))
         }
     }
 
     @Test
     fun `활성 키 파일이 없으면 기동 실패`() {
-        dir.resolve("dozy-2026-09.pem").writeText(KEY_A)
+        TestSigningKeys.write(dir, CURRENT_KID, TestSigningKeys.CURRENT_PEM)
 
-        assertFailsWith<IllegalStateException> {
-            loader.load(SigningKeyProperties(dir, activeKid = "dozy-2027-09"))
-        }
+        assertFailsWith<IllegalStateException> { loader.load(SigningKeyProperties(dir, activeKid = NEXT_KID)) }
     }
 
     @Test
     fun `자동 생성이 아니면 활성 키를 지정해야 함`() {
-        dir.resolve("dozy-2026-09.pem").writeText(KEY_A)
+        TestSigningKeys.write(dir, CURRENT_KID, TestSigningKeys.CURRENT_PEM)
 
         assertFailsWith<IllegalStateException> { loader.load(SigningKeyProperties(dir)) }
     }
 
     @Test
-    fun `3072비트보다 작은 키는 기동 실패`() {
-        dir.resolve("dozy-2026-09.pem").writeText(SigningKeyPem.generate(2048, SecureRandom()))
+    fun `policy signing-key-size(3072비트)보다 작은 키는 기동 실패`() {
+        TestSigningKeys.write(dir, CURRENT_KID, TestSigningKeys.weakPem())
 
-        val error = assertFailsWith<IllegalStateException> { loader.load(SigningKeyProperties(dir, activeKid = "dozy-2026-09")) }
+        val error = assertFailsWith<IllegalStateException> { loader.load(SigningKeyProperties(dir, activeKid = CURRENT_KID)) }
         assertTrue(error.message!!.contains("3072"))
     }
 
     @Test
     fun `kid 형식이 dozy-연도-월이 아니면 기동 실패`() {
-        dir.resolve("2026-09.pem").writeText(KEY_A)
+        TestSigningKeys.write(dir, "2026-09", TestSigningKeys.CURRENT_PEM)
 
         assertFailsWith<IllegalStateException> { loader.load(SigningKeyProperties(dir, activeKid = "2026-09")) }
     }
 
     @Test
     fun `PKCS8 PEM이 아니면 기동 실패`() {
-        dir.resolve("dozy-2026-09.pem").writeText("not a key")
+        TestSigningKeys.write(dir, CURRENT_KID, "not a key")
 
-        assertFailsWith<IllegalStateException> { loader.load(SigningKeyProperties(dir, activeKid = "dozy-2026-09")) }
+        assertFailsWith<IllegalStateException> { loader.load(SigningKeyProperties(dir, activeKid = CURRENT_KID)) }
     }
 
     @Test
@@ -98,8 +95,10 @@ class SigningKeyLoaderTest {
         val properties = SigningKeyProperties(keysDir, autoGenerate = true)
 
         val first = loader.load(properties)
+        // kid 형식(dozy-{연도}-{월})은 명세 값이라 FIXED_CLOCK(2026-09-25)에서 기대하는 이름을 그대로 씁니다
         val saved = keysDir.resolve("dozy-2026-09.pem").readText()
-        val second = SigningKeyLoader(Clock.fixed(Instant.parse("2027-01-01T00:00:00Z"), ZoneOffset.UTC)).load(properties)
+        val later = SigningKeyLoader(Clock.offset(FIXED_CLOCK, java.time.Duration.ofDays(100)).withZone(ZoneOffset.UTC))
+        val second = later.load(properties)
 
         assertEquals("dozy-2026-09", first.active.keyID)
         assertEquals(first.active.toPublicJWK(), second.active.toPublicJWK())
@@ -108,27 +107,22 @@ class SigningKeyLoaderTest {
 
     @Test
     fun `자동 생성은 지정한 kid의 키가 없을 때만 만듦`() {
-        dir.resolve("dozy-2026-09.pem").writeText(KEY_A)
+        TestSigningKeys.write(dir, CURRENT_KID, TestSigningKeys.CURRENT_PEM)
 
-        val keys = loader.load(SigningKeyProperties(dir, activeKid = "dozy-2026-10", autoGenerate = true))
+        val keys = loader.load(SigningKeyProperties(dir, activeKid = NEXT_KID, autoGenerate = true))
 
-        assertEquals("dozy-2026-10", keys.active.keyID)
-        assertEquals(listOf("dozy-2026-09", "dozy-2026-10"), keys.published.map { it.keyID })
+        assertEquals(NEXT_KID, keys.active.keyID)
+        assertEquals(listOf(CURRENT_KID, NEXT_KID), keys.published.map { it.keyID })
     }
 
     @Test
-    fun `자동 생성한 키 파일은 소유자만 읽고 쓸 수 있음`() {
+    fun `자동 생성한 키 파일은 소유자만 읽고 쓸 수 있는 PKCS8 PEM`() {
         loader.load(SigningKeyProperties(dir, autoGenerate = true))
 
         val file = dir.resolve("dozy-2026-09.pem")
         if (file.fileSystem.supportedFileAttributeViews().contains("posix")) {
             assertEquals("rw-------", PosixFilePermissions.toString(Files.getPosixFilePermissions(file)))
         }
-        assertFalse(file.readText().contains("RSA PRIVATE KEY"))
-    }
-
-    companion object {
-        private val KEY_A = SigningKeyPem.generate(AuthPolicy.SIGNING_KEY_SIZE, SecureRandom())
-        private val KEY_B = SigningKeyPem.generate(AuthPolicy.SIGNING_KEY_SIZE, SecureRandom())
+        assertTrue(file.readText().startsWith("-----BEGIN PRIVATE KEY-----"))
     }
 }
