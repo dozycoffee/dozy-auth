@@ -6,7 +6,7 @@ auth-server가 읽는 설정과 프로필별 동작입니다. 비밀값(DB 비�
 
 | 변수 | 필수 | 예시 | 설명 |
 |---|---|---|---|
-| `AUTH_ISSUER_BASE_URL` | ✅ | `https://auth.dozycoffee.com` | issuer 기준 주소. 뒤에 `/realms/{realm}`이 붙음 |
+| `AUTH_ISSUER_BASE_URL` | ✅ | `https://auth.dozycoffee.com` | issuer 기준 주소. 뒤에 `/realms/{realm}`이 붙음. 속성 `dozy.auth.issuer-base-url`, local·test 기본값 `http://localhost:8080` |
 | `AUTH_DB_URL` | ✅ | `jdbc:postgresql://db:5432/auth` | local은 Docker Compose 지원이 대신 설정 |
 | `AUTH_DB_USERNAME`, `AUTH_DB_PASSWORD` | ✅ | | |
 | `AUTH_SIGNING_KEYS_DIR` | ✅ | `/secrets/signing-keys` | 서명 키 폴더 ([§3](#3-서명-키)) |
@@ -19,7 +19,7 @@ auth-server가 읽는 설정과 프로필별 동작입니다. 비밀값(DB 비�
 | `AUTH_MAIL_FROM` | ✅ | `no-reply@dozycoffee.com` | |
 | `BOOTSTRAP_OWNER_EMAIL` | owner가 없을 때 | `owner@dozycoffee.com` | [GOV-11](domain.md#8-관리-권한-규칙-gov). 비밀번호는 설정에 두지 않음 |
 
-- 정책 수치([domain.md §2](domain.md#2-정책-값))는 코드 기본값으로 두고, 바꿀 필요가 생기면 `dozy.auth.policy.*` 속성으로 노출합니다. 속성 이름은 정책 이름에서 `policy.`를 뗀 것입니다 (예: `dozy.auth.policy.access-token-ttl`).
+- 정책 수치([domain.md §2](domain.md#2-정책-값))는 코드 기본값(`domain.AuthPolicy`)으로 두고, 바꿀 필요가 생기면 `dozy.auth.policy.*` 속성으로 노출합니다. 속성 이름은 정책 이름에서 `policy.`를 뗀 것입니다 (예: `dozy.auth.policy.access-token-ttl`).
 - 환경 변수와 Spring 속성의 연결은 `application.yaml`에서 `${AUTH_...}`로 합니다.
 
 ## 2. 기동 시 검사

@@ -1,4 +1,4 @@
-package com.dozycoffee.auth.server.application.port.out.jwt
+package com.dozycoffee.auth.server.application.port.outbound.jwt
 
 import com.dozycoffee.auth.server.domain.token.AccessTokenClaims
 

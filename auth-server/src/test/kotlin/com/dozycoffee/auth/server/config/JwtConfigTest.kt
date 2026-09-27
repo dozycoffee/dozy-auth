@@ -1,6 +1,6 @@
 package com.dozycoffee.auth.server.config
 
-import com.dozycoffee.auth.server.adapter.out.jwt.SigningKeyProperties
+import com.dozycoffee.auth.server.adapter.outbound.jwt.SigningKeyProperties
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.springframework.mock.env.MockEnvironment

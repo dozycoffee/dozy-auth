@@ -1,8 +1,8 @@
 package com.dozycoffee.auth.server.config
 
-import com.dozycoffee.auth.server.adapter.out.jwt.SigningKeyLoader
-import com.dozycoffee.auth.server.adapter.out.jwt.SigningKeyProperties
-import com.dozycoffee.auth.server.adapter.out.jwt.SigningKeys
+import com.dozycoffee.auth.server.adapter.outbound.jwt.SigningKeyLoader
+import com.dozycoffee.auth.server.adapter.outbound.jwt.SigningKeyProperties
+import com.dozycoffee.auth.server.adapter.outbound.jwt.SigningKeys
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration

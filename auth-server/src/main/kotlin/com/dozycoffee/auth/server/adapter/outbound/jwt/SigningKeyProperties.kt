@@ -1,4 +1,4 @@
-package com.dozycoffee.auth.server.adapter.out.jwt
+package com.dozycoffee.auth.server.adapter.outbound.jwt
 
 import org.springframework.boot.context.properties.ConfigurationProperties
 import java.nio.file.Path

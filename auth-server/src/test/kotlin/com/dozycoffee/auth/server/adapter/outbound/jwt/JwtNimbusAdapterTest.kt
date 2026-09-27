@@ -1,7 +1,8 @@
-package com.dozycoffee.auth.server.adapter.out.jwt
+package com.dozycoffee.auth.server.adapter.outbound.jwt
 
 import com.dozycoffee.auth.core.PrincipalKey
 import com.dozycoffee.auth.core.PrincipalType
+import com.dozycoffee.auth.server.domain.AuthPolicy
 import com.dozycoffee.auth.server.domain.token.AccessTokenClaims
 import com.nimbusds.jose.crypto.RSASSAVerifier
 import com.nimbusds.jose.jwk.JWKSet
@@ -109,7 +110,7 @@ class JwtNimbusAdapterTest {
     }
 
     companion object {
-        private val KEY_A = SigningKeyPem.generate(SigningKeyLoader.MIN_KEY_SIZE, SecureRandom())
-        private val KEY_B = SigningKeyPem.generate(SigningKeyLoader.MIN_KEY_SIZE, SecureRandom())
+        private val KEY_A = SigningKeyPem.generate(AuthPolicy.SIGNING_KEY_SIZE, SecureRandom())
+        private val KEY_B = SigningKeyPem.generate(AuthPolicy.SIGNING_KEY_SIZE, SecureRandom())
     }
 }

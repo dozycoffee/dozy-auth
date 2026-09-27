@@ -1,5 +1,6 @@
-package com.dozycoffee.auth.server.adapter.out.jwt
+package com.dozycoffee.auth.server.adapter.outbound.jwt
 
+import com.dozycoffee.auth.server.domain.AuthPolicy
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
@@ -127,7 +128,7 @@ class SigningKeyLoaderTest {
     }
 
     companion object {
-        private val KEY_A = SigningKeyPem.generate(SigningKeyLoader.MIN_KEY_SIZE, SecureRandom())
-        private val KEY_B = SigningKeyPem.generate(SigningKeyLoader.MIN_KEY_SIZE, SecureRandom())
+        private val KEY_A = SigningKeyPem.generate(AuthPolicy.SIGNING_KEY_SIZE, SecureRandom())
+        private val KEY_B = SigningKeyPem.generate(AuthPolicy.SIGNING_KEY_SIZE, SecureRandom())
     }
 }

@@ -1,4 +1,4 @@
-package com.dozycoffee.auth.server.application.port.out.jwt
+package com.dozycoffee.auth.server.application.port.outbound.jwt
 
 /** 게시할 JWKS를 읽습니다 (token.md §7). */
 interface LoadJwksPort {

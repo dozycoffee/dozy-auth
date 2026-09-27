@@ -12,6 +12,7 @@ spring:
 
 dozy:
   auth:
+    issuer-base-url: http://localhost:8080
     signing:
       # 없으면 만들어 저장하고 다음 기동부터 재사용합니다 (.local/은 git에 올리지 않음)
       keys-dir: .local/signing-keys

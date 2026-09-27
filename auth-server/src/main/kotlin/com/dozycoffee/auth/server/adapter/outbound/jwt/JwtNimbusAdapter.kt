@@ -1,9 +1,9 @@
-package com.dozycoffee.auth.server.adapter.out.jwt
+package com.dozycoffee.auth.server.adapter.outbound.jwt
 
 import com.dozycoffee.auth.core.AccessTokenFormat
 import com.dozycoffee.auth.core.ClaimNames
-import com.dozycoffee.auth.server.application.port.out.jwt.LoadJwksPort
-import com.dozycoffee.auth.server.application.port.out.jwt.SignTokenPort
+import com.dozycoffee.auth.server.application.port.outbound.jwt.LoadJwksPort
+import com.dozycoffee.auth.server.application.port.outbound.jwt.SignTokenPort
 import com.dozycoffee.auth.server.domain.token.AccessTokenClaims
 import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet

@@ -1,6 +1,7 @@
-package com.dozycoffee.auth.server.adapter.out.jwt
+package com.dozycoffee.auth.server.adapter.outbound.jwt
 
 import com.dozycoffee.auth.core.AccessTokenFormat
+import com.dozycoffee.auth.server.domain.AuthPolicy
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.RSAKey
@@ -55,8 +56,8 @@ class SigningKeyLoader(
         val (privateKey, publicKey) =
             runCatching { SigningKeyPem.read(file.readText()) }
                 .getOrElse { throw IllegalStateException("서명 키를 읽을 수 없습니다: ${file.fileName} (${it.message})") }
-        check(publicKey.modulus.bitLength() >= MIN_KEY_SIZE) {
-            "서명 키는 RSA $MIN_KEY_SIZE 비트 이상이어야 합니다: ${file.fileName} (${publicKey.modulus.bitLength()}비트)"
+        check(publicKey.modulus.bitLength() >= AuthPolicy.SIGNING_KEY_SIZE) {
+            "서명 키는 RSA ${AuthPolicy.SIGNING_KEY_SIZE} 비트 이상이어야 합니다: ${file.fileName} (${publicKey.modulus.bitLength()}비트)"
         }
 
         return RSAKey
@@ -82,14 +83,11 @@ class SigningKeyLoader(
             } ?: return
 
         val file = dir.resolve("$kid$EXTENSION")
-        Files.writeString(file, SigningKeyPem.generate(MIN_KEY_SIZE, random), CREATE_NEW, WRITE)
+        Files.writeString(file, SigningKeyPem.generate(AuthPolicy.SIGNING_KEY_SIZE, random), CREATE_NEW, WRITE)
         runCatching { Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rw-------")) }
     }
 
-    companion object {
-        /** `policy.signing-key-size` (domain.md §2). */
-        const val MIN_KEY_SIZE: Int = 3072
-
+    private companion object {
         private const val EXTENSION = ".pem"
 
         /** `dozy-{연도}-{월}` (token.md §2). */

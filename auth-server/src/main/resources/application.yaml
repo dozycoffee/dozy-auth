@@ -19,6 +19,7 @@ spring:
 
 dozy:
   auth:
+    issuer-base-url: ${AUTH_ISSUER_BASE_URL}
     signing:
       keys-dir: ${AUTH_SIGNING_KEYS_DIR}
       active-kid: ${AUTH_SIGNING_ACTIVE_KID}

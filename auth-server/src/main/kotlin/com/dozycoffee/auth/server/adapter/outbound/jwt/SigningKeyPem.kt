@@ -1,4 +1,4 @@
-package com.dozycoffee.auth.server.adapter.out.jwt
+package com.dozycoffee.auth.server.adapter.outbound.jwt
 
 import java.security.KeyFactory
 import java.security.KeyPairGenerator
