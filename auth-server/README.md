@@ -67,13 +67,7 @@ src/test/kotlin/com/dozycoffee/auth/server/    테스트
 ./gradlew :auth-server:test
 ```
 
-| 종류 | 대상 | 도구 |
-|---|---|---|
-| 단위 | `domain`, `application/service` | JUnit, MockK |
-| 웹 | 컨트롤러, 에러 응답, 보안 설정 | `@WebMvcTest`, spring-security-test, springmockk |
-| 영속성 | `adapter/outbound/persistence` | Testcontainers PostgreSQL |
-| 아키텍처 | 패키지 의존, 이름 규칙 | Konsist |
-
+- 테스트 종류와 작성 규칙은 [docs/testing.md](../docs/testing.md)를 따릅니다.
 - 아키텍처 테스트만 돌리려면 `./gradlew :auth-server:test --tests '*ArchitectureTest*'`. 규칙 목록은 [architecture.md §6.3](../docs/architecture.md#63-아키텍처-테스트)에 있습니다.
-- 시간이 관련된 테스트는 `Clock`을 고정해서 씁니다.
-- Testcontainers 테스트는 Docker가 필요합니다.
+- 공용 fixture(`TokenFixtures`, `TestSigningKeys`)는 `src/test/kotlin/com/dozycoffee/auth/server/support/`에 있습니다.
+- Testcontainers를 쓰는 테스트는 Docker가 필요합니다.
