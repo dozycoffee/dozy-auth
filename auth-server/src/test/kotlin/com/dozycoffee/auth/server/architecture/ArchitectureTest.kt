@@ -19,7 +19,7 @@ class ArchitectureTest {
      * Konsist의 `assertArchitecture`는 파일이 없는 계층이 있으면 실패하므로, 계층이 채워지기 전에도 동작하도록 import를 직접 검사합니다.
      */
     @Test
-    fun `§6_1 계층은 정해진 방향으로만 의존`() {
+    fun `계층은 정해진 방향으로만 의존`() {
         val violations =
             serverFiles.flatMap { file ->
                 val from = layerOf(file.packageName) ?: return@flatMap emptyList()
@@ -35,7 +35,7 @@ class ArchitectureTest {
     }
 
     @Test
-    fun `§6_2 도메인 하위 패키지끼리 import하지 않음`() {
+    fun `도메인 하위 패키지끼리 서로 import하지 않음`() {
         serverFiles
             .filter { it.packageName.startsWith("$DOMAIN.") }
             .assertFalse(testName = "도메인 간 import") { file ->
@@ -49,7 +49,7 @@ class ArchitectureTest {
     }
 
     @Test
-    fun `§6_1 domain은 Spring과 Exposed를 import하지 않음`() {
+    fun `domain은 Spring과 Exposed를 import하지 않음`() {
         serverFiles
             .filter { it.packageName.isInPackage(DOMAIN) }
             .assertFalse(testName = "domain의 기술 의존") { file ->
@@ -58,7 +58,7 @@ class ArchitectureTest {
     }
 
     @Test
-    fun `§6_1 application은 Exposed와 웹 클래스를 import하지 않음`() {
+    fun `application은 Exposed와 웹 클래스를 import하지 않음`() {
         serverFiles
             .filter { it.packageName.isInPackage("$ROOT.application") }
             .assertFalse(testName = "application의 기술 의존") { file ->
@@ -67,14 +67,14 @@ class ArchitectureTest {
     }
 
     @Test
-    fun `§6_3 @Transactional은 application service에만`() {
+    fun `@Transactional은 application service에서만 사용`() {
         serverFiles
             .filter { file -> file.imports.any { it.name in TRANSACTIONAL } }
             .assertTrue(testName = "@Transactional 위치") { it.packageName.isInPackage(SERVICE) }
     }
 
     @Test
-    fun `§7 이름 접미사별 위치`() {
+    fun `UseCase·Port·Adapter 같은 접미사가 붙은 클래스는 정해진 패키지에 있음`() {
         val scope = Konsist.scopeFromProduction(SERVER_MODULE)
         val declarations =
             scope.classes().map { it.name to it.packagee?.name.orEmpty() } +
@@ -91,7 +91,7 @@ class ArchitectureTest {
     }
 
     @Test
-    fun `§6_3 auth-core는 Kotlin·Java 표준 라이브러리와 자기 패키지만 import`() {
+    fun `auth-core는 Kotlin·Java 표준 라이브러리와 자기 패키지만 import`() {
         Konsist
             .scopeFromProduction(CORE_MODULE)
             .files
