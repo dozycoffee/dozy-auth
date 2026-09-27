@@ -52,9 +52,9 @@ AUTH_LOCAL_DB_PORT=15432 ./gradlew :auth-server:bootRun --args='--spring.profile
 | 앱 | http://localhost:8080 |
 | DB | `localhost:5432` (또는 `AUTH_LOCAL_DB_PORT`), DB·계정·비밀번호 모두 `auth` |
 | Mailpit 메일함 | http://localhost:8025 |
-| JWKS (준비 중: 서명 키) | http://localhost:8080/.well-known/jwks.json |
+| JWKS (준비 중: JWKS API) | http://localhost:8080/.well-known/jwks.json |
 
-- 서명 키가 없으면 `.local/signing-keys/`에 자동으로 만듭니다 (준비 중: 서명 키).
+- 서명 키가 없으면 `.local/signing-keys/`에 자동으로 만들고 다음 기동부터 재사용합니다. 키를 바꾸고 싶으면 파일을 지우고 다시 실행합니다.
 
 ### 첫 owner 계정 만들기 (준비 중: 초대·로그인 API)
 

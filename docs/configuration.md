@@ -30,7 +30,7 @@ auth-server가 읽는 설정과 프로필별 동작입니다. 비밀값(DB 비�
 - 서명 키 폴더가 없거나, `AUTH_SIGNING_ACTIVE_KID`에 해당하는 키 파일이 없음
 - 키가 `policy.signing-key-size`보다 작음
 - `AUTH_CORS_ALLOWED_ORIGINS`에 `*`가 있음
-- 개발용 토큰 API(`local`·`dev` 전용)나 서명 키 자동 생성(`local` 전용)이 활성화됨
+- 개발용 토큰 API(`local`·`dev` 전용)나 서명 키 자동 생성(`local`·`test` 전용)이 활성화됨
 
 ## 3. 서명 키
 
@@ -43,8 +43,23 @@ auth-server가 읽는 설정과 프로필별 동작입니다. 비밀값(DB 비�
 - 파일 이름(확장자 제외)이 `kid`입니다. 형식은 [token.md §2](token.md#2-header)를 따릅니다.
 - 폴더 안 모든 키의 공개키를 JWKS에 게시합니다.
 - 서명은 `AUTH_SIGNING_ACTIVE_KID` 키로만 합니다.
-- PEM은 PKCS#8 RSA 개인키입니다.
+- PEM은 PKCS#8 RSA 개인키(`BEGIN PRIVATE KEY`)입니다. PKCS#1(`BEGIN RSA PRIVATE KEY`)은 거부합니다.
+- 키 크기가 `policy.signing-key-size`보다 작거나, 파일 이름이 `kid` 형식이 아니면 **모든 프로필에서** 기동에 실패합니다.
 - 교체 순서는 [token.md §7](token.md#7-jwks와-서명-키)을 따릅니다.
+
+**설정 속성**
+
+| 속성 | 환경 변수 | 설명 |
+|---|---|---|
+| `dozy.auth.signing.keys-dir` | `AUTH_SIGNING_KEYS_DIR` | 서명 키 폴더 |
+| `dozy.auth.signing.active-kid` | `AUTH_SIGNING_ACTIVE_KID` | 서명에 쓸 키. 자동 생성이 켜져 있으면 비워도 됨 |
+| `dozy.auth.signing.auto-generate` | - | 키가 없으면 만들어 저장. `local`·`test` 전용이며 `prod`에서 켜면 기동 실패 |
+
+**자동 생성 (`local`, `test`)**
+
+- `active-kid`를 지정했으면 그 키 파일이 없을 때만 만듭니다.
+- 지정하지 않았으면 폴더가 비어 있을 때 `dozy-{연도}-{월}`(UTC 현재 시각)로 만들고, 이후에는 폴더에서 이름순으로 마지막 키로 서명합니다.
+- 만든 파일은 소유자만 읽고 쓸 수 있게(`rw-------`) 저장하고, 다음 기동부터 재사용합니다.
 
 ## 4. 프로필
 
@@ -53,7 +68,7 @@ auth-server가 읽는 설정과 프로필별 동작입니다. 비밀값(DB 비�
 | `local` | 개발자 PC | Docker Compose 지원으로 PostgreSQL·Mailpit 자동 기동. 서명 키가 없으면 `.local/signing-keys/`에 생성해 재사용. `/dev/**` 활성. 부트스트랩 이메일 기본값 `owner@dozycoffee.local` |
 | `dev` | 공용 개발 서버 | `/dev/**` 활성. 서명 키는 설정으로 주입 (자동 생성 없음) |
 | `prod` | 운영 | [§2](#2-기동-시-검사) 검사. `/dev/**` 비활성. JSON 로그 |
-| `test` | 자동 테스트 | Testcontainers PostgreSQL, 테스트용 서명 키, 메일은 테스트 대역 |
+| `test` | 자동 테스트 | Testcontainers PostgreSQL. 서명 키는 `auth-server/build/test-signing-keys/`에 자동 생성. 메일은 테스트 대역 |
 
 - 개발용 API는 `@Profile("local", "dev")`로만 등록합니다.
 - `.local/`은 git에 올리지 않습니다.
