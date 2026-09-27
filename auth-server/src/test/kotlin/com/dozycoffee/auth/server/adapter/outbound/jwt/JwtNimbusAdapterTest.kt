@@ -4,8 +4,9 @@ import com.dozycoffee.auth.server.support.TestSigningKeys
 import com.dozycoffee.auth.server.support.TestSigningKeys.CURRENT_KID
 import com.dozycoffee.auth.server.support.TestSigningKeys.NEXT_KID
 import com.dozycoffee.auth.server.support.TokenFixtures
+import com.dozycoffee.auth.server.support.TokenFixtures.EMPLOYEE
 import com.dozycoffee.auth.server.support.TokenFixtures.FIXED_CLOCK
-import com.dozycoffee.auth.server.support.TokenFixtures.NOW
+import com.dozycoffee.auth.server.support.TokenFixtures.ISSUER_BASE
 import com.dozycoffee.auth.server.support.TokenFixtures.SESSION_ID
 import com.dozycoffee.auth.server.support.TokenFixtures.SYSTEM
 import com.dozycoffee.auth.server.support.TokenFixtures.TOKEN_ID
@@ -23,7 +24,7 @@ import kotlin.test.assertTrue
 /**
  * token.md §2, §3, §7.
  *
- * header·claim의 이름과 형식은 서비스와의 계약이라 명세의 문자열을 그대로 기대값으로 씁니다.
+ * header·claim의 이름과 형식은 서비스와의 계약이라 명세의 문자열을 그대로 기대값으로 씁니다. 입력에서 온 값(issuer 기준 주소, principal id)만 fixture를 씁니다.
  * `ClaimNames` 같은 구현 상수를 쓰면 상수가 잘못 바뀌어도 테스트가 통과하기 때문입니다.
  */
 class JwtNimbusAdapterTest {
@@ -50,17 +51,18 @@ class JwtNimbusAdapterTest {
     }
 
     @Test
-    fun `claim은 token 명세 3장의 이름과 형식`() {
-        val body = SignedJWT.parse(adapter(activeKid = CURRENT_KID).sign(TokenFixtures.accessTokenClaims())).jwtClaimsSet
+    fun `토큰에 주체, audience, role, 발급·만료 시각, 토큰·세션 id를 담음`() {
+        val claims = TokenFixtures.accessTokenClaims()
+        val body = SignedJWT.parse(adapter(activeKid = CURRENT_KID).sign(claims)).jwtClaimsSet
 
-        assertEquals("https://auth.dozycoffee.com/realms/internal", body.issuer)
-        assertEquals("employee:0199a3c4-7b2e-7c1a-9f3d-2b6e8a1c4d5f", body.subject)
+        assertEquals("${ISSUER_BASE.value}/realms/internal", body.issuer)
+        assertEquals("employee:${EMPLOYEE.id}", body.subject)
         assertEquals(listOf("wms", "catalog"), body.audience)
         assertEquals("employee", body.getStringClaim("principalType"))
-        assertEquals("0199a3c4-7b2e-7c1a-9f3d-2b6e8a1c4d5f", body.getStringClaim("principalId"))
+        assertEquals(EMPLOYEE.id.toString(), body.getStringClaim("principalId"))
         assertEquals(listOf("wms:inbound_manager", "catalog:menu_editor"), body.getStringListClaim("roles"))
-        assertEquals(Date.from(NOW), body.issueTime)
-        assertEquals(Date.from(NOW.plusSeconds(600)), body.expirationTime)
+        assertEquals(Date.from(claims.issuedAt), body.issueTime)
+        assertEquals(Date.from(claims.expiresAt), body.expirationTime)
         assertEquals(TOKEN_ID, body.jwtid)
         assertEquals(SESSION_ID, body.getStringClaim("sid"))
     }

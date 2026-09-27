@@ -6,6 +6,7 @@ import com.dozycoffee.auth.core.Realm
 import com.dozycoffee.auth.core.RoleCode
 import com.dozycoffee.auth.server.TestcontainersConfiguration
 import com.dozycoffee.auth.server.application.port.outbound.jwt.SignTokenPort
+import com.dozycoffee.auth.server.domain.AuthPolicy
 import com.dozycoffee.auth.server.domain.token.AccessTokenFactory
 import com.dozycoffee.auth.server.domain.token.IssuerBaseUri
 import com.dozycoffee.auth.server.support.TokenFixtures.EMPLOYEE
@@ -59,19 +60,19 @@ class TokenIssuingIntegrationTest {
     lateinit var clock: Clock
 
     @Test
-    fun `직원 토큰을 JWKS 공개키로 검증하면 명세의 검증 규칙을 모두 통과`() {
+    fun `직원 토큰은 JWKS 공개키로 서명과 claim 검증을 모두 통과`() {
         val token = issue(EMPLOYEE, Realm.INTERNAL, listOf("wms:inbound_manager", "catalog:menu_editor"), SESSION_ID)
 
-        val claims = verify(token, audience = "wms", realm = Realm.INTERNAL)
+        val claims = verify(token, audience = "wms", issuerPath = "/realms/internal", realm = Realm.INTERNAL)
 
         assertEquals(listOf("wms:inbound_manager", "catalog:menu_editor"), claims.getStringListClaim("roles"))
     }
 
     @Test
-    fun `파트너 토큰은 store audience로 검증`() {
+    fun `파트너 토큰은 store audience로 서명과 claim 검증을 모두 통과`() {
         val token = issue(PARTNER, Realm.PARTNER, emptyList(), SESSION_ID)
 
-        verify(token, audience = "store", realm = Realm.PARTNER)
+        verify(token, audience = "store", issuerPath = "/realms/partner", realm = Realm.PARTNER)
     }
 
     @Test
@@ -79,7 +80,7 @@ class TokenIssuingIntegrationTest {
         mockMvc.get(JwksController.PATH).andExpect {
             status { isOk() }
             content { contentTypeCompatibleWith(MediaType.APPLICATION_JSON) }
-            header { string("Cache-Control", "max-age=300, public") }
+            header { string("Cache-Control", "max-age=${AuthPolicy.JWKS_CACHE_MAX_AGE.seconds}, public") }
             jsonPath("$.keys[0].kid") { exists() }
             jsonPath("$.keys[0].alg") { value("RS256") }
             jsonPath("$.keys[0].use") { value("sig") }
@@ -115,6 +116,7 @@ class TokenIssuingIntegrationTest {
     private fun verify(
         token: String,
         audience: String,
+        issuerPath: String,
         realm: Realm,
     ): JWTClaimsSet {
         val jwks =
@@ -133,7 +135,7 @@ class TokenIssuingIntegrationTest {
                 jwtClaimsSetVerifier =
                     DefaultJWTClaimsVerifier(
                         audience,
-                        JWTClaimsSet.Builder().issuer(realm.issuer(issuerBaseUri.value)).build(),
+                        JWTClaimsSet.Builder().issuer("${issuerBaseUri.value}$issuerPath").build(),
                         setOf("sub", "iat", "exp", "jti", "principalType", "principalId", "roles"),
                     )
             }

@@ -4,6 +4,7 @@ import com.dozycoffee.auth.core.PrincipalKey
 import com.dozycoffee.auth.core.PrincipalType
 import com.dozycoffee.auth.core.Realm
 import com.dozycoffee.auth.core.RoleCode
+import com.dozycoffee.auth.server.domain.AuthPolicy
 import com.dozycoffee.auth.server.support.TokenFixtures.EMPLOYEE
 import com.dozycoffee.auth.server.support.TokenFixtures.ISSUER_BASE
 import com.dozycoffee.auth.server.support.TokenFixtures.NOW
@@ -23,7 +24,8 @@ import kotlin.test.assertNull
 /**
  * token.md §3, §4.
  *
- * `iss` 형식, `aud` 값, 수명 같은 기대값은 명세 값을 그대로 씁니다.
+ * 기대값에서 입력(issuer 기준 주소 등)은 fixture를, 정책 값은 `AuthPolicy`를 쓰고, 명세가 정한 형식(`/realms/{realm}`, `aud` 값)은 문자열 그대로 씁니다.
+ * 구현 코드(`Realm.issuer()` 등)로 기대값을 만들면 구현이 틀려도 테스트가 통과하기 때문입니다.
  */
 class AccessTokenFactoryTest {
     private fun create(
@@ -35,8 +37,8 @@ class AccessTokenFactoryTest {
 
     @Test
     fun `iss는 realm별 issuer`() {
-        assertEquals("https://auth.dozycoffee.com/realms/internal", create().issuer)
-        assertEquals("https://auth.dozycoffee.com/realms/partner", create(principal = PARTNER).issuer)
+        assertEquals("${ISSUER_BASE.value}/realms/internal", create().issuer)
+        assertEquals("${ISSUER_BASE.value}/realms/partner", create(principal = PARTNER).issuer)
     }
 
     @Test
@@ -87,11 +89,11 @@ class AccessTokenFactoryTest {
     }
 
     @Test
-    fun `exp는 iat에서 policy access-token-ttl(10분) 뒤`() {
+    fun `exp는 iat에서 access token 수명만큼 뒤`() {
         val claims = create()
 
         assertEquals(NOW, claims.issuedAt)
-        assertEquals(Duration.ofMinutes(10), Duration.between(claims.issuedAt, claims.expiresAt))
+        assertEquals(AuthPolicy.ACCESS_TOKEN_TTL, Duration.between(claims.issuedAt, claims.expiresAt))
         assertEquals(TOKEN_ID, claims.tokenId)
     }
 

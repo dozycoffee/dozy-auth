@@ -2,6 +2,7 @@ package com.dozycoffee.auth.server.support
 
 import com.dozycoffee.auth.core.PrincipalKey
 import com.dozycoffee.auth.core.PrincipalType
+import com.dozycoffee.auth.server.domain.AuthPolicy
 import com.dozycoffee.auth.server.domain.token.AccessTokenClaims
 import com.dozycoffee.auth.server.domain.token.IssuerBaseUri
 import java.time.Clock
@@ -39,7 +40,7 @@ object TokenFixtures {
         audience = audience,
         roles = roles,
         issuedAt = NOW,
-        expiresAt = NOW.plusSeconds(600),
+        expiresAt = NOW.plus(AuthPolicy.ACCESS_TOKEN_TTL),
         tokenId = TOKEN_ID,
         sessionId = sessionId,
     )

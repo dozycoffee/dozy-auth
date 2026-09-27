@@ -1,5 +1,6 @@
 package com.dozycoffee.auth.server.adapter.outbound.jwt
 
+import com.dozycoffee.auth.server.domain.AuthPolicy
 import com.dozycoffee.auth.server.support.TestSigningKeys
 import com.dozycoffee.auth.server.support.TestSigningKeys.CURRENT_KID
 import com.dozycoffee.auth.server.support.TestSigningKeys.NEXT_KID
@@ -68,11 +69,11 @@ class SigningKeyLoaderTest {
     }
 
     @Test
-    fun `policy signing-key-size(3072비트)보다 작은 키는 기동 실패`() {
+    fun `서명 키가 최소 크기보다 작으면 기동 실패`() {
         TestSigningKeys.write(dir, CURRENT_KID, TestSigningKeys.weakPem())
 
         val error = assertFailsWith<IllegalStateException> { loader.load(SigningKeyProperties(dir, activeKid = CURRENT_KID)) }
-        assertTrue(error.message!!.contains("3072"))
+        assertTrue(error.message!!.contains(AuthPolicy.SIGNING_KEY_SIZE.toString()))
     }
 
     @Test
