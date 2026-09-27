@@ -43,14 +43,14 @@ src/test/kotlin/com/dozycoffee/auth/server/    테스트
 
 | 추가할 것 | 먼저 고칠 명세 | 코드 위치 |
 |---|---|---|
-| API | `docs/api/*.md` 중 해당 파일 | `adapter/in/web/{auth,admin,internal,dev}` → `application/port/in` → `application/service` |
+| API | `docs/api/*.md` 중 해당 파일 | `adapter/inbound/web/{auth,admin,internal,dev}` → `application/port/inbound` → `application/service` |
 | 도메인 규칙 | `docs/domain.md` (새 규칙 ID) | `domain/{도메인}` |
-| 테이블·컬럼 | `docs/data-model.md` | `src/main/resources/db/migration/V{번호}__{설명}.sql`, `adapter/out/persistence/*Table` |
+| 테이블·컬럼 | `docs/data-model.md` | `src/main/resources/db/migration/V{번호}__{설명}.sql`, `adapter/outbound/persistence/*Table` |
 | 에러 코드 | `docs/api/conventions.md` §11 | 도메인 예외 (`AuthException` 하위) |
 | 감사 action | `docs/domain.md` AUD-01 | `domain/audit` |
 | 설정 키·환경 변수 | `docs/configuration.md` | `application.yaml`, `config/` |
 | 정책 수치 | `docs/domain.md` §2 | 정책 상수 (속성으로 노출할 때는 `dozy.auth.policy.*`) |
-| 메일 | 해당 API 문서 | `adapter/out/mail`, `templates/mail/` |
+| 메일 | 해당 API 문서 | `adapter/outbound/mail`, `templates/mail/` |
 
 - 적용된 마이그레이션 파일은 고치지 않고 새 번호로 추가합니다.
 - 규칙을 구현한 코드와 테스트 이름에는 규칙 ID를 씁니다 (예: `SES-03`).
@@ -59,7 +59,7 @@ src/test/kotlin/com/dozycoffee/auth/server/    테스트
 
 - JDK 21.
 - 계층 간 의존과 도메인 간 참조 규칙은 Konsist 테스트가 검사합니다. 테스트가 실패하면 규칙을 우회하지 말고 구조를 고칩니다.
-- DB 접근은 Exposed DSL로 `adapter/out/persistence` 안에서만 합니다.
+- DB 접근은 Exposed DSL로 `adapter/outbound/persistence` 안에서만 합니다.
 
 ## 테스트
 
@@ -71,7 +71,7 @@ src/test/kotlin/com/dozycoffee/auth/server/    테스트
 |---|---|---|
 | 단위 | `domain`, `application/service` | JUnit, MockK |
 | 웹 | 컨트롤러, 에러 응답, 보안 설정 | `@WebMvcTest`, spring-security-test, springmockk |
-| 영속성 | `adapter/out/persistence` | Testcontainers PostgreSQL |
+| 영속성 | `adapter/outbound/persistence` | Testcontainers PostgreSQL |
 | 아키텍처 | 패키지 의존, 이름 규칙 | Konsist |
 
 - 아키텍처 테스트만 돌리려면 `./gradlew :auth-server:test --tests '*ArchitectureTest*'`. 규칙 목록은 [architecture.md §6.3](../docs/architecture.md#63-아키텍처-테스트)에 있습니다.

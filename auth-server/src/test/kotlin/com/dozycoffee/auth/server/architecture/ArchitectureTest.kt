@@ -106,11 +106,11 @@ class ArchitectureTest {
         allowed: () -> Set<Layer>,
     ) {
         DOMAIN("$ROOT.domain", { emptySet() }),
-        PORT_IN("$ROOT.application.port.in", { setOf(DOMAIN) }),
-        PORT_OUT("$ROOT.application.port.out", { setOf(DOMAIN) }),
-        SERVICE("$ROOT.application.service", { setOf(PORT_IN, PORT_OUT, DOMAIN) }),
-        ADAPTER_IN("$ROOT.adapter.in", { setOf(PORT_IN, DOMAIN) }),
-        ADAPTER_OUT("$ROOT.adapter.out", { setOf(PORT_OUT, DOMAIN) }),
+        PORT_INBOUND("$ROOT.application.port.inbound", { setOf(DOMAIN) }),
+        PORT_OUTBOUND("$ROOT.application.port.outbound", { setOf(DOMAIN) }),
+        SERVICE("$ROOT.application.service", { setOf(PORT_INBOUND, PORT_OUTBOUND, DOMAIN) }),
+        ADAPTER_INBOUND("$ROOT.adapter.inbound", { setOf(PORT_INBOUND, DOMAIN) }),
+        ADAPTER_OUTBOUND("$ROOT.adapter.outbound", { setOf(PORT_OUTBOUND, DOMAIN) }),
         CONFIG("$ROOT.config", { Layer.entries.toSet() }),
         ;
 
@@ -134,12 +134,12 @@ class ArchitectureTest {
         /** 이름 접미사 → 있어야 할 패키지 (architecture.md §7). */
         val NAMING =
             mapOf(
-                "UseCase" to "$ROOT.application.port.in",
-                "Command" to "$ROOT.application.port.in",
-                "Port" to "$ROOT.application.port.out",
-                "Adapter" to "$ROOT.adapter.out",
-                "Table" to "$ROOT.adapter.out.persistence",
-                "Controller" to "$ROOT.adapter.in.web",
+                "UseCase" to "$ROOT.application.port.inbound",
+                "Command" to "$ROOT.application.port.inbound",
+                "Port" to "$ROOT.application.port.outbound",
+                "Adapter" to "$ROOT.adapter.outbound",
+                "Table" to "$ROOT.adapter.outbound.persistence",
+                "Controller" to "$ROOT.adapter.inbound.web",
             )
 
         val KoFileDeclaration.packageName: String
