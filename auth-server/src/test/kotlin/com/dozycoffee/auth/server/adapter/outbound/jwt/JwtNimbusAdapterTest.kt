@@ -1,5 +1,6 @@
 package com.dozycoffee.auth.server.adapter.outbound.jwt
 
+import com.dozycoffee.auth.server.domain.token.AccessTokenClaims
 import com.dozycoffee.auth.server.support.TestSigningKeys
 import com.dozycoffee.auth.server.support.TestSigningKeys.CURRENT_KID
 import com.dozycoffee.auth.server.support.TestSigningKeys.NEXT_KID
@@ -7,14 +8,19 @@ import com.dozycoffee.auth.server.support.TokenFixtures
 import com.dozycoffee.auth.server.support.TokenFixtures.EMPLOYEE
 import com.dozycoffee.auth.server.support.TokenFixtures.FIXED_CLOCK
 import com.dozycoffee.auth.server.support.TokenFixtures.ISSUER_BASE
+import com.dozycoffee.auth.server.support.TokenFixtures.NOW
+import com.dozycoffee.auth.server.support.TokenFixtures.PARTNER
 import com.dozycoffee.auth.server.support.TokenFixtures.SESSION_ID
 import com.dozycoffee.auth.server.support.TokenFixtures.SYSTEM
 import com.dozycoffee.auth.server.support.TokenFixtures.TOKEN_ID
 import com.nimbusds.jose.crypto.RSASSAVerifier
 import com.nimbusds.jose.jwk.JWKSet
+import com.nimbusds.jose.util.JSONObjectUtils
 import com.nimbusds.jwt.SignedJWT
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import java.nio.file.Path
 import java.util.Date
 import kotlin.test.assertEquals
@@ -77,6 +83,35 @@ class JwtNimbusAdapterTest {
         assertEquals(emptyList(), body.getStringListClaim("roles"))
     }
 
+    /** 라이브러리가 claim을 읽으며 형식을 맞춰 주지 않도록, 서명된 본문의 JSON 원문을 검사합니다. */
+    @ParameterizedTest
+    @ValueSource(ints = [0, 1, 2])
+    fun `aud는 audience 수와 관계없이 항상 배열`(count: Int) {
+        val audience = listOf("wms", "catalog").take(count)
+        val roles = listOf("wms:inbound_manager", "catalog:menu_editor").take(count)
+
+        val body = rawBody(TokenFixtures.accessTokenClaims(audience = audience, roles = roles))
+
+        assertEquals(audience, body["aud"])
+    }
+
+    @Test
+    fun `파트너 토큰의 aud도 배열`() {
+        val body = rawBody(TokenFixtures.accessTokenClaims(principal = PARTNER, audience = listOf("store"), roles = emptyList()))
+
+        assertEquals(listOf("store"), body["aud"])
+    }
+
+    @Test
+    fun `iat와 exp는 초 단위 숫자`() {
+        val claims = TokenFixtures.accessTokenClaims()
+
+        val body = rawBody(claims)
+
+        assertEquals(NOW.epochSecond, body["iat"])
+        assertEquals(claims.expiresAt.epochSecond, body["exp"])
+    }
+
     @Test
     fun `JWKS는 게시 중인 모든 키의 공개키만 담음`() {
         val jwks = adapter(activeKid = CURRENT_KID).load()
@@ -86,6 +121,9 @@ class JwtNimbusAdapterTest {
         assertTrue(keys.none { it.isPrivate })
         assertTrue(keys.all { it.algorithm.name == "RS256" && it.keyUse.identifier() == "sig" })
     }
+
+    private fun rawBody(claims: AccessTokenClaims): Map<String, Any?> =
+        JSONObjectUtils.parse(SignedJWT.parse(adapter(activeKid = CURRENT_KID).sign(claims)).payload.toString())
 
     private fun adapter(activeKid: String): JwtNimbusAdapter {
         TestSigningKeys.writeCurrentAndNext(dir)
