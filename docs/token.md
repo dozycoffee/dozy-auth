@@ -128,7 +128,7 @@ Auth가 발급하는 토큰의 형식과 검증 규칙입니다. Auth(발급)와
 | 6 | `exp`, `iat` | 만료. `policy.clock-skew` 허용 |
 | 7 | `iss` | 허용한 realm의 issuer가 아님 |
 | 8 | `aud` | 자기 audience가 없음 |
-| 9 | `principalType`, `principalId`, `sub` | [DOM-01](domain.md#11-realm과-principal-type) 조합 위반, `principalId`가 UUID 형식이 아님, `sub` 불일치, 값 누락 |
+| 9 | `principalType`, `principalId`, `sub`, `roles` | [DOM-01](domain.md#11-realm과-principal-type) 조합 위반, `principalId`가 UUID 형식이 아님, `sub` 불일치, `roles`가 role 코드(`{audience}:{code}`, [DOM-03](domain.md#11-realm과-principal-type)) 목록이 아님, 값 누락 |
 
 검증을 통과한 뒤의 판단은 `403`입니다.
 

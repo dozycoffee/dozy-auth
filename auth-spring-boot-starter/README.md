@@ -44,14 +44,53 @@ dozy:
     issuer-base-uri: https://auth.dozycoffee.com
 ```
 
-## 구조 (준비 중)
+## 구조
 
 ```text
 src/main/kotlin/com/dozycoffee/auth/starter/
-src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports
+├─ DozyAuthAutoConfiguration      빈 등록 (모두 @ConditionalOnMissingBean)
+├─ DozyAuthProperties             dozy.auth.* 설정과 필수 값 검사
+├─ DozyJwtDecoders                JwtDecoder: RS256, JWKS 캐시·재조회 제한
+├─ DozyTokenValidators            token.md §6의 3, 6~9 검증기
+├─ DozyJwtAuthenticationConverter role 변환, AuthenticatedPrincipal 생성
+├─ DozyAuthenticationToken        인증 결과 (principal = AuthenticatedPrincipal)
+├─ CurrentPrincipal, DozyAuth     컨트롤러 인자, SpEL 헬퍼
+└─ DozyProblemResponses           401·403 Problem Details, traceId
+src/main/resources/META-INF/
+├─ spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports
+└─ spring-configuration-metadata.json   설정 자동완성 (직접 작성, 테스트로 설정 클래스와 비교)
 ```
 
-(자동 설정 클래스가 추가되면 패키지 구성을 적습니다.)
+- 서비스 간 호출(`dozy.auth.client.*`, [starter.md §6](../docs/starter.md#6-서비스-간-호출))은 준비 중입니다.
+
+### SecurityFilterChain을 바꾸고 싶을 때
+
+체인만 새로 정의하고 스타터의 부품 빈을 주입받아 쓰면 토큰 검증은 그대로 유지됩니다. stateless, CSRF, 공개 경로는 직접 다시 설정합니다.
+
+```kotlin
+@Bean
+fun securityFilterChain(
+    http: HttpSecurity,
+    dozyJwtAuthenticationConverter: Converter<Jwt, AbstractAuthenticationToken>,
+    entryPoint: AuthenticationEntryPoint,
+    accessDeniedHandler: AccessDeniedHandler,
+): SecurityFilterChain {
+    http {
+        authorizeHttpRequests {
+            authorize("/webhooks/**", permitAll)
+            authorize(anyRequest, authenticated)
+        }
+        oauth2ResourceServer {
+            jwt { jwtAuthenticationConverter = dozyJwtAuthenticationConverter } // JwtDecoder는 스타터 빈을 자동으로 씀
+            authenticationEntryPoint = entryPoint
+        }
+        exceptionHandling { this.accessDeniedHandler = accessDeniedHandler }
+        sessionManagement { sessionCreationPolicy = SessionCreationPolicy.STATELESS }
+        csrf { disable() }
+    }
+    return http.build()
+}
+```
 
 ## 제약
 
@@ -67,5 +106,7 @@ src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoCo
 ./gradlew :auth-spring-boot-starter:test
 ```
 
-- 검증 실패 경우(잘못된 `iss`, `aud`, `typ`, 만료, realm과 principal type 불일치)마다 401을 확인합니다.
-- 샘플 컨트롤러로 `@PreAuthorize`와 `@CurrentPrincipal`이 동작하는지 확인합니다.
+- `DozyJwtDecodersTest`: 검증 실패 경우(`alg`, `typ`, 서명, `kid`, 만료, `iss`, `aud`, realm과 principal type 불일치 등)마다 거부, JWKS 재조회와 재조회 제한
+- `DozyAuthWebTest`: 샘플 앱(`src/test/.../sample`)으로 401·403 응답 형식, `@PreAuthorize`, `@CurrentPrincipal`, `dozyAuth`
+- `DozyAuthAutoConfigurationTest`: 필수 설정 누락 시 기동 실패, 서비스가 빈을 정의하면 스타터 빈이 빠짐
+- JWKS는 테스트 안에서 JDK `HttpServer`로 띄웁니다 (`support/JwksServer`).

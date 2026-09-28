@@ -62,6 +62,7 @@ bucket4j-core = { module = "com.bucket4j:bucket4j_jdk17-core", version.ref = "bu
 
 # 운영
 micrometer-prometheus = { module = "io.micrometer:micrometer-registry-prometheus" }
+micrometer-tracing = { module = "io.micrometer:micrometer-tracing" }
 
 # 테스트
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }

@@ -1,0 +1,65 @@
+{
+  "groups": [
+    {
+      "name": "dozy.auth",
+      "type": "com.dozycoffee.auth.starter.DozyAuthProperties",
+      "sourceType": "com.dozycoffee.auth.starter.DozyAuthProperties"
+    }
+  ],
+  "properties": [
+    {
+      "name": "dozy.auth.audience",
+      "type": "java.lang.String",
+      "description": "이 서비스의 audience (wms, catalog, store). 필수.",
+      "sourceType": "com.dozycoffee.auth.starter.DozyAuthProperties"
+    },
+    {
+      "name": "dozy.auth.accepted-realms",
+      "type": "java.util.Set<com.dozycoffee.auth.core.Realm>",
+      "description": "받을 realm 목록 (internal, partner). 필수.",
+      "sourceType": "com.dozycoffee.auth.starter.DozyAuthProperties"
+    },
+    {
+      "name": "dozy.auth.issuer-base-uri",
+      "type": "java.lang.String",
+      "description": "Auth 주소. 허용 issuer는 {base}/realms/{realm}. 필수.",
+      "sourceType": "com.dozycoffee.auth.starter.DozyAuthProperties"
+    },
+    {
+      "name": "dozy.auth.jwk-set-uri",
+      "type": "java.lang.String",
+      "description": "JWKS 주소. 비우면 {issuer-base-uri}/.well-known/jwks.json.",
+      "sourceType": "com.dozycoffee.auth.starter.DozyAuthProperties"
+    },
+    {
+      "name": "dozy.auth.clock-skew",
+      "type": "java.time.Duration",
+      "description": "exp·iat 검증에서 허용하는 시계 오차.",
+      "sourceType": "com.dozycoffee.auth.starter.DozyAuthProperties",
+      "defaultValue": "30s"
+    },
+    {
+      "name": "dozy.auth.public-paths",
+      "type": "java.util.List<java.lang.String>",
+      "description": "인증 없이 허용할 경로 패턴.",
+      "sourceType": "com.dozycoffee.auth.starter.DozyAuthProperties"
+    },
+    {
+      "name": "dozy.auth.method-security",
+      "type": "java.lang.Boolean",
+      "description": "@PreAuthorize 활성화.",
+      "sourceType": "com.dozycoffee.auth.starter.DozyAuthProperties",
+      "defaultValue": true
+    }
+  ],
+  "hints": [
+    {
+      "name": "dozy.auth.audience",
+      "values": [
+        { "value": "wms" },
+        { "value": "catalog" },
+        { "value": "store" }
+      ]
+    }
+  ]
+}

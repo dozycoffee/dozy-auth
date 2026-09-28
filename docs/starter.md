@@ -40,12 +40,16 @@
 
 | 빈 | 동작 |
 |---|---|
-| `JwtDecoder` | RS256 고정, JWKS 캐시, 모르는 `kid`면 재조회(최소 간격 있음). 검증기 체인은 [token.md §6](token.md#6-검증-규칙)의 2~9 |
-| `JwtAuthenticationConverter` | `roles` 중 `{audience}:`로 시작하는 것만 골라 prefix를 떼고 `ROLE_{code}` 권한으로 변환. principal은 `AuthenticatedPrincipal` |
+| `JwtDecoder` | RS256 고정. 검증기 체인은 [token.md §6](token.md#6-검증-규칙)의 2~9. `iat`는 필수이고 `clock-skew`보다 미래면 거부 |
+| JWKS 조회 | `JwtDecoder` 안에서 5분 캐시. 모르는 `kid`면 재조회하되, 30초 간격마다 최대 두 번(처음 조회 + 재조회 한 번)으로 제한 |
+| `dozyJwtAuthenticationConverter` (`Converter<Jwt, AbstractAuthenticationToken>`) | `roles` 중 `{audience}:`로 시작하는 것만 골라 prefix를 떼고 `ROLE_{code}` 권한으로 변환. 결과는 `DozyAuthenticationToken`이며 principal은 `AuthenticatedPrincipal`. 이름으로 교체 |
 | `SecurityFilterChain` | 서비스에 없을 때만. stateless, CSRF 비활성, `public-paths` 외 모든 요청 인증 필요 |
 | `AuthenticationEntryPoint`, `AccessDeniedHandler` | [§5](#5-에러-응답) 형식으로 응답 |
 | `dozyAuth` | SpEL 헬퍼 ([§4](#4-인가-도구)) |
-| `@CurrentPrincipal` 인자 리졸버 | 컨트롤러 인자에 `AuthenticatedPrincipal` 주입 |
+
+- `@CurrentPrincipal`은 Spring Security `@AuthenticationPrincipal`을 메타 애노테이션으로 쓰므로 별도 빈이 없습니다.
+- `SecurityFilterChain`만 교체할 때는 위 빈(`JwtDecoder`, 변환기, 401·403 핸들러)을 주입받아 쓰면 토큰 검증 규칙이 그대로 유지됩니다. stateless, CSRF, `public-paths`는 교체한 쪽이 다시 설정합니다.
+- `Clock` 빈이 하나 있으면 `exp`·`iat` 검증에 그 시계를 씁니다 (테스트의 고정 시계 등). 없거나 여러 개면 UTC 시스템 시계를 씁니다. 서비스가 `Clock` 빈을 만들 필요는 없습니다.
 
 **권한 변환 예시** (WMS, `audience = wms`)
 
@@ -84,7 +88,8 @@ fun myStores(@CurrentPrincipal principal: AuthenticatedPrincipal)
 | role 또는 `dozyAuth` 조건 불만족 | 403 | `FORBIDDEN` |
 
 - `401`에는 `WWW-Authenticate: Bearer` 헤더를 넣습니다.
-- `detail`에 검증 실패 이유를 넣지 않습니다. 서버 로그에만 남깁니다.
+- `detail`에 검증 실패 이유를 넣지 않습니다. 실패 이유는 `com.dozycoffee.auth.starter` 로거의 debug 로그에만 남깁니다.
+- `traceId`와 응답 헤더 `X-Trace-Id`는 같은 값입니다. Micrometer Tracing의 현재 trace id → 요청의 `X-Trace-Id`(영문·숫자·하이픈 64자 이내만) → 새로 만든 값 순서로 정합니다.
 
 ## 6. 서비스 간 호출
 
