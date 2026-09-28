@@ -12,7 +12,7 @@
 | 좌표 | `com.dozycoffee.auth:auth-core`, `com.dozycoffee.auth:auth-spring-boot-starter`, `com.dozycoffee.auth:auth-test` |
 | 저장소 | GitHub Packages `https://maven.pkg.github.com/dozycoffee/dozy-auth` |
 | 버전 | 세 모듈이 한 버전. SemVer. 토큰 계약의 major 변경은 스타터 major 변경 ([token.md §11](token.md#11-호환성)) |
-| 대상 | Kotlin, Spring Boot 4.1, JVM 17 이상 |
+| 대상 | Kotlin, Spring Boot 4.1, JVM 17 이상. Spring MVC와 WebFlux(코루틴, Reactor) 모두 ([ADR-0030](adr/0030-starter-supports-mvc-and-webflux.md)) |
 | 공개 API | Kotlin `explicitApi()`. 공개 선언을 바꾸면 버전에 반영 |
 | Spring 버전 | 스타터는 Spring Boot BOM을 배포 메타데이터에 싣지 않습니다. 서비스의 Spring 버전을 바꾸지 않기 위해서입니다 |
 
@@ -36,19 +36,20 @@
 
 ## 3. 제공하는 빈
 
-모든 빈은 `@ConditionalOnMissingBean`이라 서비스가 교체할 수 있습니다.
+모든 빈은 `@ConditionalOnMissingBean`이라 서비스가 교체할 수 있습니다. 앱 종류(Spring MVC, WebFlux)에 맞는 쪽만 등록되며, 동작은 같습니다.
 
-| 빈 | 동작 |
-|---|---|
-| `JwtDecoder` | RS256 고정. 검증기 체인은 [token.md §6](token.md#6-검증-규칙)의 2~9. `iat`는 필수이고 `clock-skew`보다 미래면 거부 |
-| JWKS 조회 | `JwtDecoder` 안에서 [`policy.jwks-cache-max-age`](domain.md#2-정책-값) 동안 캐시. 모르는 `kid`면 재조회하되, [`policy.jwks-refetch-min-interval`](domain.md#2-정책-값)마다 최대 두 번(처음 조회 + 재조회 한 번)으로 제한 |
-| `dozyJwtAuthenticationConverter` (`Converter<Jwt, AbstractAuthenticationToken>`) | `roles` 중 `{audience}:`로 시작하는 것만 골라 prefix를 떼고 `ROLE_{code}` 권한으로 변환. 결과는 `DozyAuthenticationToken`이며 principal은 `AuthenticatedPrincipal`. 이름으로 교체 |
-| `SecurityFilterChain` | 서비스에 없을 때만. stateless, CSRF 비활성, `public-paths` 외 모든 요청 인증 필요 |
-| `AuthenticationEntryPoint`, `AccessDeniedHandler` | [§5](#5-에러-응답) 형식으로 응답 |
-| `dozyAuth` | SpEL 헬퍼 ([§4](#4-인가-도구)) |
+| 역할 | Spring MVC | WebFlux | 동작 |
+|---|---|---|---|
+| 토큰 해독·검증 | `JwtDecoder` | `ReactiveJwtDecoder` | RS256 고정. 검증기 체인은 [token.md §6](token.md#6-검증-규칙)의 2~9. `iat`는 필수이고 `clock-skew`보다 미래면 거부 |
+| JWKS 조회 | 위 디코더 안 | 위 디코더 안 | [`policy.jwks-cache-max-age`](domain.md#2-정책-값) 동안 캐시. 모르는 `kid`면 재조회하되, [`policy.jwks-refetch-min-interval`](domain.md#2-정책-값)마다 최대 두 번(처음 조회 + 재조회 한 번)으로 제한. WebFlux는 이벤트 루프를 막지 않도록 별도 스케줄러에서 조회 |
+| 권한 변환 (빈 이름 `dozyJwtAuthenticationConverter`) | `Converter<Jwt, AbstractAuthenticationToken>` | `Converter<Jwt, Mono<AbstractAuthenticationToken>>` | `roles` 중 `{audience}:`로 시작하는 것만 골라 prefix를 떼고 `ROLE_{code}` 권한으로 변환. 결과는 `DozyAuthenticationToken`이며 principal은 `AuthenticatedPrincipal`. 이름으로 교체 |
+| 필터 체인 | `SecurityFilterChain` | `SecurityWebFilterChain` | 서비스에 없을 때만. stateless, CSRF 비활성, `public-paths` 외 모든 요청 인증 필요 |
+| 401·403 | `AuthenticationEntryPoint`, `AccessDeniedHandler` | `ServerAuthenticationEntryPoint`, `ServerAccessDeniedHandler` | [§5](#5-에러-응답) 형식으로 응답 |
+| `dozyAuth` | `DozyAuth` | `DozyReactiveAuth` | SpEL 헬퍼 ([§4](#4-인가-도구)) |
+| 메서드 보안 | `@EnableMethodSecurity` | `@EnableReactiveMethodSecurity` | `dozy.auth.method-security`가 `true`일 때 |
 
 - `@CurrentPrincipal`은 Spring Security `@AuthenticationPrincipal`을 메타 애노테이션으로 쓰므로 별도 빈이 없습니다.
-- `SecurityFilterChain`만 교체할 때는 위 빈(`JwtDecoder`, 변환기, 401·403 핸들러)을 주입받아 쓰면 토큰 검증 규칙이 그대로 유지됩니다. stateless, CSRF, `public-paths`는 교체한 쪽이 다시 설정합니다.
+- 필터 체인만 교체할 때는 위 빈(디코더, 변환기, 401·403 핸들러)을 주입받아 쓰면 토큰 검증 규칙이 그대로 유지됩니다. stateless, CSRF, `public-paths`는 교체한 쪽이 다시 설정합니다.
 - `Clock` 빈이 하나 있으면 `exp`·`iat` 검증에 그 시계를 씁니다 (테스트의 고정 시계 등). 없거나 여러 개면 UTC 시스템 시계를 씁니다. 서비스가 `Clock` 빈을 만들 필요는 없습니다.
 
 **권한 변환 예시** (WMS, `audience = wms`)
@@ -63,16 +64,18 @@
 ```kotlin
 @PreAuthorize("hasRole('inbound_manager')")
 @PostMapping("/inbounds")
-fun create(@CurrentPrincipal principal: AuthenticatedPrincipal, ...)
+suspend fun create(@CurrentPrincipal principal: AuthenticatedPrincipal, ...)
 
 @PreAuthorize("@dozyAuth.isType('PARTNER')")
 @GetMapping("/my/stores")
-fun myStores(@CurrentPrincipal principal: AuthenticatedPrincipal)
+suspend fun myStores(@CurrentPrincipal principal: AuthenticatedPrincipal)
 ```
 
 | `dozyAuth` 메서드 | 결과 |
 |---|---|
-| `isType(type: String)` | 현재 principal type이 같으면 true. 값은 `PrincipalType` 이름 |
+| `isType(type: String)` | 현재 principal type이 같으면 true. 값은 `PrincipalType` 이름. WebFlux에서는 `Mono<Boolean>`이며 SpEL 사용법은 같음 |
+
+- WebFlux에서 `@PreAuthorize`는 `suspend` 함수나 `Mono`·`Flux`를 돌려주는 메서드에만 붙입니다. 값을 바로 돌려주는 일반 함수에 붙이면 호출할 때 오류가 납니다 (Spring Security reactive 메서드 보안의 제약).
 
 - 여러 realm을 받는 서비스(Store)는 모든 API에 type 조건을 붙이는 것을 규칙으로 안내합니다.
 
@@ -104,11 +107,13 @@ fun myStores(@CurrentPrincipal principal: AuthenticatedPrincipal)
 
 사용자 토큰을 다른 서비스로 전달하는 기능은 제공하지 않습니다.
 
+> WebFlux 서비스용 클라이언트(`WebClient`)는 이 기능을 구현하는 작업에서 정합니다 ([ADR-0030](adr/0030-starter-supports-mvc-and-webflux.md)).
+
 ## 7. auth-test
 
 ### 7.1 `@WithDozyPrincipal`
 
-MockMvc 테스트에서 인증된 사용자를 만듭니다. JWT를 만들지 않고 SecurityContext에 바로 넣습니다.
+컨트롤러 테스트에서 인증된 사용자를 만듭니다. JWT를 만들지 않고 SecurityContext에 바로 넣습니다. WebFlux(`WebTestClient`) 지원 방식은 이 도구를 구현하는 작업에서 정합니다 ([ADR-0030](adr/0030-starter-supports-mvc-and-webflux.md)).
 
 | 속성 | 기본값 | 설명 |
 |---|---|---|

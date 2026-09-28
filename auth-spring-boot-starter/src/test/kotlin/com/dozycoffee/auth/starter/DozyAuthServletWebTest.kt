@@ -33,8 +33,8 @@ import java.time.Clock
  */
 @SpringBootTest(classes = [SampleApplication::class])
 @AutoConfigureMockMvc
-@Import(DozyAuthWebTest.FixedClock::class)
-class DozyAuthWebTest {
+@Import(DozyAuthServletWebTest.FixedClock::class)
+class DozyAuthServletWebTest {
     @Autowired
     lateinit var mockMvc: MockMvc
 

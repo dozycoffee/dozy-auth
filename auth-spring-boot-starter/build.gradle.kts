@@ -9,12 +9,16 @@ dependencies {
     api(libs.spring.boot.starter.oauth2.resource.server)
     implementation(libs.spring.boot.autoconfigure)
 
-    // 서비스가 가진 것을 그대로 쓴다 (servlet 웹 앱, 선택적으로 Micrometer Tracing)
+    // 서비스가 가진 것을 그대로 쓴다 (Spring MVC 또는 WebFlux, 선택적으로 Micrometer Tracing)
     compileOnly(libs.spring.boot.starter.webmvc)
+    compileOnly(libs.spring.boot.starter.webflux)
     compileOnly(libs.micrometer.tracing)
 
     testImplementation(libs.spring.boot.starter.webmvc)
     testImplementation(libs.spring.boot.starter.webmvc.test)
+    testImplementation(libs.spring.boot.starter.webflux)
+    testImplementation(libs.spring.boot.starter.webflux.test)
+    testImplementation(libs.kotlinx.coroutines.reactor)
     testImplementation(libs.spring.boot.starter.security.test)
     testImplementation(libs.micrometer.tracing)
 }

@@ -19,7 +19,7 @@ dependencies {
 
 | 도구 | 쓰는 곳 |
 |---|---|
-| `@WithDozyPrincipal` | MockMvc 컨트롤러 테스트. JWT 없이 인증된 사용자를 바로 넣습니다 |
+| `@WithDozyPrincipal` | 컨트롤러 테스트. JWT 없이 인증된 사용자를 바로 넣습니다 (WebFlux 지원 방식은 구현 작업에서 정함, [ADR-0030](../docs/adr/0030-starter-supports-mvc-and-webflux.md)) |
 | `DozyTestTokens` | 통합 테스트. 실제 검증 과정을 거치는 서명된 토큰을 만듭니다 |
 
 (준비 중: 두 도구가 구현되면 짧은 예시를 추가합니다.)

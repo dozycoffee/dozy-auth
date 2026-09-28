@@ -46,50 +46,63 @@ dozy:
 
 ## 구조
 
+Spring MVC와 WebFlux를 모두 지원합니다 ([ADR-0030](../docs/adr/0030-starter-supports-mvc-and-webflux.md)). 앱 종류에 맞는 자동 설정만 켜지고, 검증 규칙과 권한 변환은 같은 코드를 씁니다.
+
 ```text
 src/main/kotlin/com/dozycoffee/auth/starter/
-├─ DozyAuthAutoConfiguration      빈 등록 (모두 @ConditionalOnMissingBean)
-├─ DozyAuthProperties             dozy.auth.* 설정과 필수 값 검사
-├─ DozyJwtDecoders                JwtDecoder: RS256, JWKS 캐시·재조회 제한
-├─ DozyTokenValidators            token.md §6의 3, 6~9 검증기
-├─ DozyJwtAuthenticationConverter role 변환, AuthenticatedPrincipal 생성
-├─ DozyAuthenticationToken        인증 결과 (principal = AuthenticatedPrincipal)
-├─ CurrentPrincipal, DozyAuth     컨트롤러 인자, SpEL 헬퍼
-└─ DozyProblemResponses           401·403 Problem Details, traceId
+├─ 공통
+│  ├─ DozyAuthProperties             dozy.auth.* 설정과 필수 값 검사
+│  ├─ DozyJwtDecoders                서명 검증(RS256), JWKS 캐시·재조회 제한, Spring MVC용 디코더
+│  ├─ DozyTokenValidators            token.md §6의 3, 6~9 검증기
+│  ├─ DozyJwtAuthenticationConverter role 변환, AuthenticatedPrincipal 생성
+│  ├─ DozyAuthenticationToken        인증 결과 (principal = AuthenticatedPrincipal)
+│  ├─ CurrentPrincipal               컨트롤러 인자
+│  └─ DozyProblems                   401·403 본문, traceId
+├─ Spring MVC
+│  ├─ DozyAuthServletAutoConfiguration
+│  ├─ DozyAuth                       dozyAuth SpEL 헬퍼
+│  └─ DozyProblemResponses           401·403 응답 쓰기
+└─ WebFlux
+   ├─ DozyAuthReactiveAutoConfiguration
+   ├─ DozyReactiveJwtDecoders        서명 검증을 별도 스케줄러에서 실행
+   ├─ DozyReactiveAuth               dozyAuth SpEL 헬퍼 (Mono<Boolean>)
+   └─ DozyReactiveProblemResponses   401·403 응답 쓰기
 src/main/resources/META-INF/
 ├─ spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports
 └─ spring-configuration-metadata.json   설정 자동완성 (직접 작성, 테스트로 설정 클래스와 비교)
 ```
 
+- Spring MVC 전용 클래스와 WebFlux 전용 클래스는 파일을 나눕니다. 서비스에는 둘 중 한쪽 라이브러리(servlet API 또는 Reactor)만 있을 수 있기 때문입니다.
 - 서비스 간 호출(`dozy.auth.client.*`, [starter.md §6](../docs/starter.md#6-서비스-간-호출))은 준비 중입니다.
 
-### SecurityFilterChain을 바꾸고 싶을 때
+### 필터 체인을 바꾸고 싶을 때
 
-체인만 새로 정의하고 스타터의 부품 빈을 주입받아 쓰면 토큰 검증은 그대로 유지됩니다. stateless, CSRF, 공개 경로는 직접 다시 설정합니다.
+체인만 새로 정의하고 스타터의 부품 빈을 주입받아 쓰면 토큰 검증은 그대로 유지됩니다. stateless, CSRF, 공개 경로는 직접 다시 설정합니다. WebFlux 예시입니다 (Spring MVC는 `SecurityFilterChain`, `HttpSecurity`, `AuthenticationEntryPoint`, `AccessDeniedHandler`로 같은 구성).
 
 ```kotlin
 @Bean
-fun securityFilterChain(
-    http: HttpSecurity,
-    dozyJwtAuthenticationConverter: Converter<Jwt, AbstractAuthenticationToken>,
-    entryPoint: AuthenticationEntryPoint,
-    accessDeniedHandler: AccessDeniedHandler,
-): SecurityFilterChain {
+fun securityWebFilterChain(
+    http: ServerHttpSecurity,
+    dozyJwtAuthenticationConverter: Converter<Jwt, Mono<AbstractAuthenticationToken>>,
+    entryPoint: ServerAuthenticationEntryPoint,
+    accessDeniedHandler: ServerAccessDeniedHandler,
+): SecurityWebFilterChain =
     http {
-        authorizeHttpRequests {
+        authorizeExchange {
             authorize("/webhooks/**", permitAll)
-            authorize(anyRequest, authenticated)
+            authorize(anyExchange, authenticated)
         }
         oauth2ResourceServer {
-            jwt { jwtAuthenticationConverter = dozyJwtAuthenticationConverter } // JwtDecoder는 스타터 빈을 자동으로 씀
+            jwt { jwtAuthenticationConverter = dozyJwtAuthenticationConverter } // ReactiveJwtDecoder는 스타터 빈을 자동으로 씀
             authenticationEntryPoint = entryPoint
         }
-        exceptionHandling { this.accessDeniedHandler = accessDeniedHandler }
-        sessionManagement { sessionCreationPolicy = SessionCreationPolicy.STATELESS }
+        exceptionHandling {
+            authenticationEntryPoint = entryPoint
+            this.accessDeniedHandler = accessDeniedHandler
+        }
+        securityContextRepository = NoOpServerSecurityContextRepository.getInstance()
         csrf { disable() }
     }
-    return http.build()
-}
 ```
 
 ## 제약
@@ -106,7 +119,7 @@ fun securityFilterChain(
 ./gradlew :auth-spring-boot-starter:test
 ```
 
-- `DozyJwtDecodersTest`: 검증 실패 경우(`alg`, `typ`, 서명, `kid`, 만료, `iss`, `aud`, realm과 principal type 불일치 등)마다 거부, JWKS 재조회와 재조회 제한
-- `DozyAuthWebTest`: 샘플 앱(`src/test/.../sample`)으로 401·403 응답 형식, `@PreAuthorize`, `@CurrentPrincipal`, `dozyAuth`
-- `DozyAuthAutoConfigurationTest`: 필수 설정 누락 시 기동 실패, 서비스가 빈을 정의하면 스타터 빈이 빠짐
+- `DozyJwtDecodersTest`: 검증 실패 경우(`alg`, `typ`, 서명, `kid`, 만료, `iss`, `aud`, realm과 principal type 불일치 등)마다 거부, JWKS 재조회와 재조회 제한. Spring MVC용(`Servlet`)과 WebFlux용(`Reactive`) 디코더에 같은 테스트를 돌립니다.
+- `DozyAuthServletWebTest`, `DozyAuthReactiveWebTest`: 샘플 앱(`sample`, `reactivesample`)으로 401·403 응답 형식, `@PreAuthorize`, `@CurrentPrincipal`, `dozyAuth`. WebFlux는 `suspend` 컨트롤러와 `Mono` 컨트롤러를 모두 확인합니다.
+- `DozyAuthServletAutoConfigurationTest`, `DozyAuthReactiveAutoConfigurationTest`: 필수 설정 누락 시 기동 실패, 앱 종류에 맞는 빈만 등록, 서비스가 빈을 정의하면 스타터 빈이 빠짐
 - JWKS는 테스트 안에서 JDK `HttpServer`로 띄웁니다 (`support/JwksServer`).

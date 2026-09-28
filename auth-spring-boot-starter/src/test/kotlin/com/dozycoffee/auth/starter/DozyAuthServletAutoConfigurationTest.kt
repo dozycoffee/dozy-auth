@@ -21,12 +21,12 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
-/** 자동 설정의 등록 조건과 설정 검사 (starter.md §2, §3). */
-class DozyAuthAutoConfigurationTest {
+/** Spring MVC 자동 설정의 등록 조건과 설정 검사 (starter.md §2, §3). */
+class DozyAuthServletAutoConfigurationTest {
     private val runner =
         WebApplicationContextRunner().withConfiguration(
             AutoConfigurations.of(
-                DozyAuthAutoConfiguration::class.java,
+                DozyAuthServletAutoConfiguration::class.java,
                 SecurityAutoConfiguration::class.java,
                 ServletWebSecurityAutoConfiguration::class.java,
                 UserDetailsServiceAutoConfiguration::class.java,

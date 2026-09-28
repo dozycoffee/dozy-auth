@@ -23,7 +23,7 @@ import org.springframework.security.web.access.AccessDeniedHandler
 import java.time.Clock
 
 /**
- * 서비스용 토큰 검증·인가 자동 설정 (starter.md §3).
+ * Spring MVC 서비스용 토큰 검증·인가 자동 설정 (starter.md §3). WebFlux는 [DozyAuthReactiveAutoConfiguration]입니다.
  *
  * 모든 빈은 서비스가 같은 타입의 빈을 정의하면 빠집니다. `SecurityFilterChain`만 교체할 때는 나머지 빈을 주입받아 쓰면
  * 토큰 검증 규칙은 그대로 유지됩니다.
@@ -41,13 +41,13 @@ import java.time.Clock
 )
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 @EnableConfigurationProperties(DozyAuthProperties::class)
-public class DozyAuthAutoConfiguration {
+public class DozyAuthServletAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     public fun dozyJwtDecoder(
         properties: DozyAuthProperties,
         clock: ObjectProvider<Clock>,
-    ): JwtDecoder = DozyJwtDecoders.create(properties, clock.getIfUnique { Clock.systemUTC() })
+    ): JwtDecoder = DozyJwtDecoders.servlet(properties, clock.getIfUnique { Clock.systemUTC() })
 
     @Bean
     @ConditionalOnMissingBean(name = ["dozyJwtAuthenticationConverter"])

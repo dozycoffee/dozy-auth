@@ -19,6 +19,7 @@ import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.PlainJWT
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
+import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.security.oauth2.jwt.JwtException
 import java.time.Duration
 import kotlin.test.assertEquals
@@ -26,8 +27,16 @@ import kotlin.test.assertFailsWith
 
 /**
  * token.md §6의 2~9. 검증에 실패하면 [JwtException]이고, 스타터는 이를 401로 응답합니다.
+ *
+ * Spring MVC용과 WebFlux용 디코더가 같은 규칙을 지키는지 두 하위 클래스에서 같은 테스트를 돌립니다.
  */
-class DozyJwtDecodersTest {
+abstract class DozyJwtDecodersTest {
+    /** 디코더를 만들어 토큰을 해독하는 함수를 돌려줍니다. */
+    protected abstract fun decoderFor(
+        properties: DozyAuthProperties,
+        refetchMinInterval: Duration,
+    ): (String) -> Jwt
+
     private val jwks = JwksServer()
 
     @AfterEach
@@ -223,18 +232,41 @@ class DozyJwtDecodersTest {
         audience: String = "wms",
         realms: Set<Realm> = setOf(Realm.INTERNAL),
         refetchMinInterval: Duration = DozyJwtDecoders.JWKS_REFETCH_MIN_INTERVAL,
-    ) = DozyJwtDecoders.create(
-        DozyAuthProperties().apply {
-            this.audience = audience
-            acceptedRealms = realms
-            issuerBaseUri = ISSUER_BASE
-            jwkSetUri = jwks.jwkSetUri
-            clockSkew = CLOCK_SKEW
-            afterPropertiesSet()
-        },
-        FIXED_CLOCK,
-        refetchMinInterval,
-    )
+    ): Decoder {
+        val properties =
+            DozyAuthProperties().apply {
+                this.audience = audience
+                acceptedRealms = realms
+                issuerBaseUri = ISSUER_BASE
+                jwkSetUri = jwks.jwkSetUri
+                clockSkew = CLOCK_SKEW
+                afterPropertiesSet()
+            }
+        return Decoder(decoderFor(properties, refetchMinInterval))
+    }
+
+    protected class Decoder(
+        private val decode: (String) -> Jwt,
+    ) {
+        fun decode(token: String): Jwt = decode.invoke(token)
+    }
+
+    class Servlet : DozyJwtDecodersTest() {
+        override fun decoderFor(
+            properties: DozyAuthProperties,
+            refetchMinInterval: Duration,
+        ): (String) -> Jwt = DozyJwtDecoders.servlet(properties, FIXED_CLOCK, refetchMinInterval)::decode
+    }
+
+    class Reactive : DozyJwtDecodersTest() {
+        override fun decoderFor(
+            properties: DozyAuthProperties,
+            refetchMinInterval: Duration,
+        ): (String) -> Jwt {
+            val decoder = DozyReactiveJwtDecoders.create(properties, FIXED_CLOCK, refetchMinInterval)
+            return { token -> checkNotNull(decoder.decode(token).block()) }
+        }
+    }
 
     private companion object {
         /** 테스트에서 설정하는 시계 오차. 기본값은 `DozyAuthPropertiesTest`에서 확인합니다. */
