@@ -1,6 +1,7 @@
 package com.dozycoffee.auth.starter
 
 import com.dozycoffee.auth.core.AccessTokenFormat
+import com.dozycoffee.auth.core.Jwks
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.source.JWKSource
 import com.nimbusds.jose.jwk.source.JWKSourceBuilder
@@ -22,10 +23,10 @@ import java.time.Duration
  *   Spring의 `NimbusJwtDecoder.withJwkSetUri`는 재조회 간격 제한을 끄므로 JWK source를 직접 만듭니다.
  */
 internal object DozyJwtDecoders {
-    /** JWKS 캐시 유지 시간. Auth의 JWKS 응답 캐시 시간(`policy.jwks-cache-max-age`)과 맞춥니다. */
-    val JWKS_CACHE_TTL: Duration = Duration.ofMinutes(5)
-
-    /** 모르는 `kid`로 JWKS를 다시 받는 최소 간격. 임의의 `kid`로 Auth에 요청을 몰아 보내는 것을 막습니다. */
+    /**
+     * `policy.jwks-refetch-min-interval`. 모르는 `kid`로 JWKS를 다시 받는 최소 간격입니다.
+     * 임의의 `kid`로 Auth에 요청을 몰아 보내는 것을 막습니다. 서비스만 쓰는 값이라 스타터에 둡니다.
+     */
     val JWKS_REFETCH_MIN_INTERVAL: Duration = Duration.ofSeconds(30)
 
     private val HTTP_TIMEOUT: Duration = Duration.ofSeconds(5)
@@ -58,7 +59,7 @@ internal object DozyJwtDecoders {
         val timeout = HTTP_TIMEOUT.toMillis().toInt()
         return JWKSourceBuilder
             .create<SecurityContext>(URI.create(jwkSetUri).toURL(), DefaultResourceRetriever(timeout, timeout))
-            .cache(JWKS_CACHE_TTL.toMillis(), HTTP_TIMEOUT.toMillis())
+            .cache(Jwks.CACHE_MAX_AGE.toMillis(), HTTP_TIMEOUT.toMillis())
             .rateLimited(refetchMinInterval.toMillis())
             .refreshAheadCache(false)
             .retrying(false)

@@ -1,5 +1,6 @@
 package com.dozycoffee.auth.starter
 
+import com.dozycoffee.auth.core.Jwks
 import com.dozycoffee.auth.core.Realm
 import org.springframework.beans.factory.InitializingBean
 import org.springframework.boot.context.properties.ConfigurationProperties
@@ -45,7 +46,7 @@ public class DozyAuthProperties : InitializingBean {
 
     /** 실제로 쓰는 JWKS 주소. */
     internal val resolvedJwkSetUri: String
-        get() = jwkSetUri ?: "${issuerBaseUri.trimEnd('/')}/.well-known/jwks.json"
+        get() = jwkSetUri ?: "${issuerBaseUri.trimEnd('/')}${Jwks.PATH}"
 
     /** 허용하는 issuer와 그 realm. */
     internal val acceptedIssuers: Map<String, Realm>

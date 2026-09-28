@@ -41,7 +41,7 @@
 | 빈 | 동작 |
 |---|---|
 | `JwtDecoder` | RS256 고정. 검증기 체인은 [token.md §6](token.md#6-검증-규칙)의 2~9. `iat`는 필수이고 `clock-skew`보다 미래면 거부 |
-| JWKS 조회 | `JwtDecoder` 안에서 5분 캐시. 모르는 `kid`면 재조회하되, 30초 간격마다 최대 두 번(처음 조회 + 재조회 한 번)으로 제한 |
+| JWKS 조회 | `JwtDecoder` 안에서 [`policy.jwks-cache-max-age`](domain.md#2-정책-값) 동안 캐시. 모르는 `kid`면 재조회하되, [`policy.jwks-refetch-min-interval`](domain.md#2-정책-값)마다 최대 두 번(처음 조회 + 재조회 한 번)으로 제한 |
 | `dozyJwtAuthenticationConverter` (`Converter<Jwt, AbstractAuthenticationToken>`) | `roles` 중 `{audience}:`로 시작하는 것만 골라 prefix를 떼고 `ROLE_{code}` 권한으로 변환. 결과는 `DozyAuthenticationToken`이며 principal은 `AuthenticatedPrincipal`. 이름으로 교체 |
 | `SecurityFilterChain` | 서비스에 없을 때만. stateless, CSRF 비활성, `public-paths` 외 모든 요청 인증 필요 |
 | `AuthenticationEntryPoint`, `AccessDeniedHandler` | [§5](#5-에러-응답) 형식으로 응답 |

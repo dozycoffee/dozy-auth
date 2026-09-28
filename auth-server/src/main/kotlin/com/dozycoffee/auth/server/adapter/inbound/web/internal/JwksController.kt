@@ -1,5 +1,6 @@
 package com.dozycoffee.auth.server.adapter.inbound.web.internal
 
+import com.dozycoffee.auth.core.Jwks
 import com.dozycoffee.auth.server.application.port.inbound.GetJwksUseCase
 import com.dozycoffee.auth.server.domain.AuthPolicy
 import org.springframework.http.CacheControl
@@ -21,6 +22,6 @@ class JwksController(
             .body(getJwks.getJwks())
 
     companion object {
-        const val PATH = "/.well-known/jwks.json"
+        const val PATH = Jwks.PATH
     }
 }
