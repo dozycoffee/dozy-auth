@@ -98,7 +98,7 @@ flowchart LR
 
 ## 5. auth-server 구조
 
-헥사고날 구조를 계층별 패키지로 나눕니다 ([ADR-0023](adr/0023-hexagonal-layer-first.md)).
+헥사고날 구조를 계층별 패키지로 나눕니다 ([ADR-0023](adr/0023-hexagonal-layer-first.md)). `in`은 Kotlin 예약어라 방향을 나타내는 패키지는 `inbound`/`outbound`로 씁니다 ([ADR-0029](adr/0029-inbound-outbound-packages.md)).
 
 ```text
 com.dozycoffee.auth.server
@@ -112,25 +112,25 @@ com.dozycoffee.auth.server
 │   ├─ token/                 claim 구성, aud 결정
 │   └─ audit/                 감사 이벤트
 ├─ application/
-│   ├─ port/in/               UseCase 인터페이스와 Command (auth, admin, internal)
-│   ├─ port/out/              외부로 나가는 인터페이스 (도메인별, mail, jwt, crypto)
+│   ├─ port/inbound/          UseCase 인터페이스와 Command (auth, admin, internal)
+│   ├─ port/outbound/         외부로 나가는 인터페이스 (도메인별, mail, jwt, crypto)
 │   └─ service/               UseCase 구현 (auth, admin, internal, system)
 ├─ adapter/
-│   ├─ in/web/                컨트롤러 (auth, admin, internal, dev), error, ratelimit
-│   ├─ in/scheduler/          정리 배치, 일일 요약
-│   ├─ in/startup/            owner 부트스트랩
-│   └─ out/                   persistence(Exposed), mail, jwt(Nimbus), crypto(Argon2)
+│   ├─ inbound/web/           컨트롤러 (auth, admin, internal, dev), error, ratelimit
+│   ├─ inbound/scheduler/     정리 배치, 일일 요약
+│   ├─ inbound/startup/       owner 부트스트랩
+│   └─ outbound/              persistence(Exposed), mail, jwt(Nimbus), crypto(Argon2)
 └─ config/                    Spring Security, Exposed, 빈 조립
 ```
 
 | 계층 | 역할 |
 |---|---|
 | `domain` | 규칙과 모델. 외부 기술을 모름 |
-| `application/port/in` | 외부에서 호출할 수 있는 기능 목록 |
-| `application/port/out` | 애플리케이션이 외부에 요구하는 기능 목록 |
+| `application/port/inbound` | 외부에서 호출할 수 있는 기능 목록 |
+| `application/port/outbound` | 애플리케이션이 외부에 요구하는 기능 목록 |
 | `application/service` | UseCase 구현. 여러 도메인과 포트를 엮고 트랜잭션 경계를 가짐 |
-| `adapter/in` | 외부 요청을 UseCase 호출로 변환 |
-| `adapter/out` | 포트를 실제 기술로 구현 |
+| `adapter/inbound` | 외부 요청을 UseCase 호출로 변환 |
+| `adapter/outbound` | 포트를 실제 기술로 구현 |
 | `config` | 빈 조립과 기술 설정 |
 
 ## 6. 의존 규칙
@@ -141,8 +141,8 @@ com.dozycoffee.auth.server
 |---|---|---|
 | `domain` | `auth-core` | Spring, Exposed, 다른 모든 계층 |
 | `application` | `domain`, Spring의 `@Service`·`@Transactional` | `adapter`, Exposed, 웹 클래스 |
-| `adapter/in` | `application/port/in`, `domain` | `adapter/out`, `application/service` |
-| `adapter/out` | `application/port/out`, `domain` | `adapter/in`, `application/service` |
+| `adapter/inbound` | `application/port/inbound`, `domain` | `adapter/outbound`, `application/service` |
+| `adapter/outbound` | `application/port/outbound`, `domain` | `adapter/inbound`, `application/service` |
 | `config` | 전부 | |
 
 - 컨트롤러는 UseCase 인터페이스만 호출합니다. UseCase 구현은 아웃바운드 포트만 호출합니다.
@@ -153,6 +153,7 @@ com.dozycoffee.auth.server
 |---|---|
 | 다른 도메인의 동작 호출, 다른 도메인 객체를 필드로 보유 | ❌ |
 | 다른 도메인을 ID로 참조 (`principalId: UUID`) | ✅ |
+| `domain` 바로 아래(하위 패키지 밖)의 공통 타입 사용 (예: `AuthException`, §9.1) | ✅ |
 | `auth-core` 타입 사용 | ✅ |
 | 도메인 간 순환 참조 | ❌ |
 
@@ -161,13 +162,16 @@ com.dozycoffee.auth.server
 
 ### 6.3 아키텍처 테스트
 
-아래 규칙을 Konsist로 CI에서 검사합니다 ([ADR-0025](adr/0025-konsist-architecture-tests.md)).
+아래 규칙을 Konsist로 CI에서 검사합니다 ([ADR-0025](adr/0025-konsist-architecture-tests.md)). 테스트는 `auth-server/src/test/kotlin/com/dozycoffee/auth/server/architecture/ArchitectureTest.kt`에 있고, production 소스만 검사합니다.
 
-- 6.1의 계층 의존
-- `domain`의 하위 패키지끼리 import 금지
+- 6.1의 계층 의존 (`config`는 제외)
+- `domain`은 Spring·Exposed를, `application`은 Exposed와 웹 클래스(`org.springframework.web`, `org.springframework.http`, `jakarta.servlet`)를 import하지 않음
+- `domain`의 하위 패키지끼리 import 금지 (6.2)
 - `@Transactional`은 `application/service`에만
-- 이름 규칙 (§7)
-- `auth-core`는 Spring을 import하지 않음
+- 이름 규칙 (§7): 접미사가 `UseCase`·`Command`면 `port/inbound`, `Port`면 `port/outbound`, `Adapter`면 `adapter/outbound`, `Table`이면 `adapter/outbound/persistence`, `Controller`면 `adapter/inbound/web`에 있어야 함
+- `auth-core`는 Kotlin·Java 표준 라이브러리와 자기 패키지만 import
+
+규칙은 import를 기준으로 검사합니다. 코드 안에서 패키지 전체 이름으로 직접 참조하면 잡히지 않으므로 import를 씁니다.
 
 ## 7. 이름 규칙
 
@@ -199,7 +203,7 @@ com.dozycoffee.auth.server
 
 | 항목 | 규칙 | 이유 |
 |---|---|---|
-| DB 접근 | Exposed DSL만, `adapter/out/persistence` 안에서만 | 실행되는 SQL을 코드에 드러내기 위해 |
+| DB 접근 | Exposed DSL만, `adapter/outbound/persistence` 안에서만 | 실행되는 SQL을 코드에 드러내기 위해 |
 | 트랜잭션 | `application/service`에만 `@Transactional`. 여러 테이블을 바꾸면 한 트랜잭션 | 중간 상태 방지 |
 | 메일 발송 | 트랜잭션 커밋 후 | 롤백된 작업의 메일 방지 |
 | 현재 시각 | `Clock` 주입. `Instant.now()` 직접 호출 금지 | 만료·유예 시간 테스트 |
@@ -213,7 +217,7 @@ com.dozycoffee.auth.server
 ### 9.1 에러 처리
 
 - 규칙 위반은 도메인 예외로 던집니다. 예외는 에러 code와 HTTP 상태(숫자)를 가집니다. 도메인은 Spring에 의존하지 않으므로 `HttpStatus`를 쓰지 않습니다.
-- `adapter/in/web/error`에서 모든 예외를 Problem Details로 변환합니다 ([api/conventions.md §4](api/conventions.md#4-에러-응답)).
+- `adapter/inbound/web/error`에서 모든 예외를 Problem Details로 변환합니다 ([api/conventions.md §4](api/conventions.md#4-에러-응답)).
 - 에러 code는 [api/conventions.md §11](api/conventions.md#11-에러-코드)의 목록과 같은 이름을 씁니다.
 - 결과가 여러 갈래인 정상 흐름(예: 토큰 갱신 판정)은 예외 대신 sealed class로 반환하고, UseCase에서 응답이나 예외로 바꿉니다.
 
