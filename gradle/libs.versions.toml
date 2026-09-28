@@ -43,7 +43,8 @@ spring-boot-starter-security-test = { module = "org.springframework.boot:spring-
 spring-boot-testcontainers = { module = "org.springframework.boot:spring-boot-testcontainers" }
 
 # Kotlin
-kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect" }
+# 스타터가 배포 메타데이터에 버전을 싣도록 Kotlin 버전을 직접 지정 (Boot BOM은 배포에 쓰지 않음)
+kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }
 kotlin-test-junit5 = { module = "org.jetbrains.kotlin:kotlin-test-junit5" }
 jackson-module-kotlin = { module = "tools.jackson.module:jackson-module-kotlin" }
 kotlinx-coroutines-reactor = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-reactor" }

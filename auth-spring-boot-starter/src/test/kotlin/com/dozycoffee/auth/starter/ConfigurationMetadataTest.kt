@@ -2,7 +2,7 @@ package com.dozycoffee.auth.starter
 
 import com.nimbusds.jose.util.JSONObjectUtils
 import org.junit.jupiter.api.Test
-import java.lang.reflect.Modifier
+import kotlin.reflect.full.primaryConstructor
 import kotlin.test.assertEquals
 
 /**
@@ -20,9 +20,9 @@ class ConfigurationMetadataTest {
                 .toSet()
 
         val declared =
-            DozyAuthProperties::class.java.declaredFields
-                .filterNot { Modifier.isStatic(it.modifiers) }
-                .map { "dozy.auth." + it.name.replace(Regex("[A-Z]")) { m -> "-" + m.value.lowercase() } }
+            checkNotNull(DozyAuthProperties::class.primaryConstructor)
+                .parameters
+                .map { "dozy.auth." + checkNotNull(it.name).replace(Regex("[A-Z]")) { m -> "-" + m.value.lowercase() } }
                 .toSet()
 
         assertEquals(declared, documented)

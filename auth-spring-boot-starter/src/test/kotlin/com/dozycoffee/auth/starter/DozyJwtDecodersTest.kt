@@ -234,14 +234,13 @@ abstract class DozyJwtDecodersTest {
         refetchMinInterval: Duration = DozyJwtDecoders.JWKS_REFETCH_MIN_INTERVAL,
     ): Decoder {
         val properties =
-            DozyAuthProperties().apply {
-                this.audience = audience
-                acceptedRealms = realms
-                issuerBaseUri = ISSUER_BASE
-                jwkSetUri = jwks.jwkSetUri
-                clockSkew = CLOCK_SKEW
-                afterPropertiesSet()
-            }
+            DozyAuthProperties(
+                audience = audience,
+                acceptedRealms = realms,
+                issuerBaseUri = ISSUER_BASE,
+                jwkSetUri = jwks.jwkSetUri,
+                clockSkew = CLOCK_SKEW,
+            )
         return Decoder(decoderFor(properties, refetchMinInterval))
     }
 
