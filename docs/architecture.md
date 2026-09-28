@@ -173,6 +173,8 @@ com.dozycoffee.auth.server
 
 규칙은 import를 기준으로 검사합니다. 코드 안에서 패키지 전체 이름으로 직접 참조하면 잡히지 않으므로 import를 씁니다.
 
+계층 의존은 Konsist `assertArchitecture`로 검사하며, 계층 패키지에 production 파일이 하나도 없으면 테스트가 실패합니다. 패키지 경로 오타로 규칙이 아무것도 검사하지 않는 것을 막기 위해서입니다.
+
 ## 7. 이름 규칙
 
 | 대상 | 규칙 | 예시 |

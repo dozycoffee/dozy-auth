@@ -1,6 +1,8 @@
 package com.dozycoffee.auth.server.architecture
 
 import com.lemonappdev.konsist.api.Konsist
+import com.lemonappdev.konsist.api.architecture.KoArchitectureCreator.assertArchitecture
+import com.lemonappdev.konsist.api.architecture.Layer
 import com.lemonappdev.konsist.api.declaration.KoFileDeclaration
 import com.lemonappdev.konsist.api.verify.assertFalse
 import com.lemonappdev.konsist.api.verify.assertTrue
@@ -16,22 +18,40 @@ class ArchitectureTest {
         get() = Konsist.scopeFromProduction(SERVER_MODULE).files
 
     /**
-     * Konsist의 `assertArchitecture`는 파일이 없는 계층이 있으면 실패하므로, 계층이 채워지기 전에도 동작하도록 import를 직접 검사합니다.
+     * 같은 계층 안의 참조는 항상 허용합니다. 계층 패키지에 파일이 없으면(경로 오타 포함) `assertArchitecture`가 실패합니다.
+     *
+     * Konsist의 `dependsOn`은 허용만 선언하고 나머지를 막지 않으므로, 허용하지 않은 계층은 `doesNotDependOn`으로 막습니다.
      */
     @Test
     fun `계층은 정해진 방향으로만 의존`() {
-        val violations =
-            serverFiles.flatMap { file ->
-                val from = layerOf(file.packageName) ?: return@flatMap emptyList()
-                if (from == Layer.CONFIG) return@flatMap emptyList()
+        Konsist.scopeFromProduction(SERVER_MODULE).assertArchitecture {
+            val domain = Layer("domain", "$DOMAIN..")
+            val portInbound = Layer("application.port.inbound", "$ROOT.application.port.inbound..")
+            val portOutbound = Layer("application.port.outbound", "$ROOT.application.port.outbound..")
+            val service = Layer("application.service", "$SERVICE..")
+            val adapterInbound = Layer("adapter.inbound", "$ROOT.adapter.inbound..")
+            val adapterOutbound = Layer("adapter.outbound", "$ROOT.adapter.outbound..")
+            val config = Layer("config", "$ROOT.config..")
+            val layers = setOf(domain, portInbound, portOutbound, service, adapterInbound, adapterOutbound, config)
 
-                file.imports.mapNotNull { import ->
-                    val to = layerOf(import.name) ?: return@mapNotNull null
-                    if (to == from || to in from.allowed) null else "${file.packageName} (${from.name}) → ${import.name} (${to.name})"
-                }
+            // 계층 → 의존해도 되는 계층 (architecture.md §6.1)
+            val allowed =
+                mapOf(
+                    portInbound to setOf(domain),
+                    portOutbound to setOf(domain),
+                    service to setOf(portInbound, portOutbound, domain),
+                    adapterInbound to setOf(portInbound, domain),
+                    adapterOutbound to setOf(portOutbound, domain),
+                    config to layers - config,
+                )
+
+            domain.dependsOnNothing()
+            allowed.forEach { (layer, targets) ->
+                layer.dependsOn(targets)
+                val forbidden = layers - layer - targets
+                if (forbidden.isNotEmpty()) layer.doesNotDependOn(forbidden)
             }
-
-        check(violations.isEmpty()) { "계층 의존 규칙 위반 (architecture.md §6.1):\n${violations.joinToString("\n")}" }
+        }
     }
 
     @Test
@@ -100,23 +120,6 @@ class ArchitectureTest {
             }
     }
 
-    /** auth-server 계층과 의존해도 되는 계층 (architecture.md §6.1). 같은 계층 안의 참조는 항상 허용합니다. */
-    private enum class Layer(
-        val packageName: String,
-        allowed: () -> Set<Layer>,
-    ) {
-        DOMAIN("$ROOT.domain", { emptySet() }),
-        PORT_INBOUND("$ROOT.application.port.inbound", { setOf(DOMAIN) }),
-        PORT_OUTBOUND("$ROOT.application.port.outbound", { setOf(DOMAIN) }),
-        SERVICE("$ROOT.application.service", { setOf(PORT_INBOUND, PORT_OUTBOUND, DOMAIN) }),
-        ADAPTER_INBOUND("$ROOT.adapter.inbound", { setOf(PORT_INBOUND, DOMAIN) }),
-        ADAPTER_OUTBOUND("$ROOT.adapter.outbound", { setOf(PORT_OUTBOUND, DOMAIN) }),
-        CONFIG("$ROOT.config", { Layer.entries.toSet() }),
-        ;
-
-        val allowed: Set<Layer> by lazy(allowed)
-    }
-
     private companion object {
         const val SERVER_MODULE = "auth-server"
         const val CORE_MODULE = "auth-core"
@@ -144,9 +147,6 @@ class ArchitectureTest {
 
         val KoFileDeclaration.packageName: String
             get() = packagee?.name.orEmpty()
-
-        /** 가장 구체적으로 맞는 계층. 계층 밖(루트 패키지, 외부 라이브러리)이면 `null`. */
-        fun layerOf(name: String): Layer? = Layer.entries.filter { name.isInPackage(it.packageName) }.maxByOrNull { it.packageName.length }
 
         fun String.isInPackage(parent: String): Boolean = this == parent || startsWith("$parent.")
 
