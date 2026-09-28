@@ -210,8 +210,7 @@ com.dozycoffee.auth.server
 | 난수 | `SecureRandom`만 | 예측 방지 |
 | 비교 | 토큰·해시는 상수 시간 비교 (`MessageDigest.isEqual`) | 타이밍 공격 방지 |
 | 로그 | [SEC-03](domain.md#12-민감정보-sec) | |
-| 테스트 대역 | MockK. 스프링 빈 대체는 springmockk | |
-| 통합 테스트 | Testcontainers PostgreSQL | 실제 SQL 검증 |
+| 테스트 | [testing.md](testing.md) | |
 | 포맷 | ktlint | |
 
 ### 9.1 에러 처리

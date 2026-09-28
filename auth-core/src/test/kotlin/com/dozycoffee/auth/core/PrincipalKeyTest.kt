@@ -9,6 +9,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
+/** id 형식 규칙은 ADR-0028을 따릅니다. */
 class PrincipalKeyTest {
     private val v7Id = UUID.fromString("0199a3c4-7b2e-7c1a-9f3d-2b6e8a1c4d5f")
 
@@ -34,7 +35,7 @@ class PrincipalKeyTest {
             "00000000-0000-0000-0000-000000000000",
         ],
     )
-    fun `ADR-0028 버전과 관계없이 정규형 UUID면 id로 받음`(value: String) {
+    fun `버전과 관계없이 정규형 UUID면 id로 받음`(value: String) {
         assertEquals(UUID.fromString(value), PrincipalKey.parseId(value))
     }
 
@@ -54,7 +55,7 @@ class PrincipalKeyTest {
             "",
         ],
     )
-    fun `ADR-0028 정규형 UUID가 아닌 id는 거부`(value: String) {
+    fun `정규형 UUID가 아닌 id는 거부`(value: String) {
         assertNull(PrincipalKey.parseIdOrNull(value))
         assertFailsWith<IllegalArgumentException> { PrincipalKey.parseId(value) }
     }

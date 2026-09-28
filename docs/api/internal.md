@@ -98,6 +98,7 @@ grant_type=client_credentials
 **응답** `200 OK`
 
 ```http
+Content-Type: application/json
 Cache-Control: public, max-age=300
 ```
 

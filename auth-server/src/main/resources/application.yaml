@@ -16,3 +16,10 @@ spring:
     url: ${AUTH_DB_URL}
     username: ${AUTH_DB_USERNAME}
     password: ${AUTH_DB_PASSWORD}
+
+dozy:
+  auth:
+    issuer-base-url: ${AUTH_ISSUER_BASE_URL}
+    signing:
+      keys-dir: ${AUTH_SIGNING_KEYS_DIR}
+      active-kid: ${AUTH_SIGNING_ACTIVE_KID}

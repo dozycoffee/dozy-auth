@@ -31,6 +31,7 @@ Dozy Coffee의 인증 서비스 저장소입니다. WMS, Catalog, Store 서비�
 
 - 구조, 의존 규칙, 이름 규칙, 코드 규칙은 [`docs/architecture.md`](docs/architecture.md)를 따릅니다.
 - 현재 시각은 `Clock` 주입, 난수는 `SecureRandom`, 비밀값 비교는 상수 시간입니다.
+- 테스트의 종류, 이름, 기대값, fixture는 [`docs/testing.md`](docs/testing.md)를 따릅니다.
 - 로그·예외 메시지·테스트 출력에 남기면 안 되는 값은 [`docs/domain.md` SEC-03](docs/domain.md#12-민감정보-sec)을 따릅니다.
 - 비밀값(서명 키, DB 비밀번호, client secret)을 저장소에 커밋하지 않습니다.
 
