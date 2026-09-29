@@ -50,6 +50,9 @@
 
 - `@CurrentPrincipal`은 Spring Security `@AuthenticationPrincipal`을 메타 애노테이션으로 쓰므로 별도 빈이 없습니다.
 - 필터 체인만 교체할 때는 위 빈(디코더, 변환기, 401·403 핸들러)을 주입받아 쓰면 토큰 검증 규칙이 그대로 유지됩니다. stateless, CSRF, `public-paths`는 교체한 쪽이 다시 설정합니다.
+- 슬라이스 테스트(`@WebFluxTest`, `@WebMvcTest`)에서도 자동 설정이 켜집니다.
+- 자동 설정과 다른 키 출처가 필요하면(테스트 키, Auth 서버의 메모리 키) `DozyJwtDecoders.create(properties, jwkSource, clock)`(Spring MVC), `DozyReactiveJwtDecoders.create(...)`(WebFlux)로 같은 검증 규칙의 디코더를 만듭니다. `jwkSource`를 생략하면 JWKS 주소에서 받습니다.
+- 토큰이 잘못된 경우(서명 불일치, 모르는 `kid`, 재조회 제한에 걸린 `kid`, 검증기 실패)는 401입니다. JWKS를 받지 못한 경우만 서버 오류입니다.
 - `Clock` 빈이 하나 있으면 `exp`·`iat` 검증에 그 시계를 씁니다 (테스트의 고정 시계 등). 없거나 여러 개면 UTC 시스템 시계를 씁니다. 서비스가 `Clock` 빈을 만들 필요는 없습니다.
 
 **권한 변환 예시** (WMS, `audience = wms`)
@@ -111,31 +114,40 @@ suspend fun myStores(@CurrentPrincipal principal: AuthenticatedPrincipal)
 
 ## 7. auth-test
 
+서비스의 `testImplementation`으로만 씁니다. 운영 classpath에 들어가면 스타터가 Auth의 공개키 대신 테스트 키를 믿게 되어, 실제 토큰이 모두 거부됩니다. 테스트 키는 기동 때 무작위로 만들어져 외부에서 서명할 수 없습니다. Spring MVC(MockMvc)와 WebFlux(`WebTestClient`)를 모두 지원합니다.
+
 ### 7.1 `@WithDozyPrincipal`
 
-컨트롤러 테스트에서 인증된 사용자를 만듭니다. JWT를 만들지 않고 SecurityContext에 바로 넣습니다. WebFlux(`WebTestClient`) 지원 방식은 이 도구를 구현하는 작업에서 정합니다 ([ADR-0030](adr/0030-starter-supports-mvc-and-webflux.md)).
+컨트롤러 테스트에서 인증된 사용자를 만듭니다. JWT를 검증하지 않고 SecurityContext에 바로 넣습니다. 슬라이스 테스트(`@WebFluxTest`, `@WebMvcTest`)와 `@SpringBootTest` 모두에서 동작합니다.
 
 | 속성 | 기본값 | 설명 |
 |---|---|---|
 | `type` | `EMPLOYEE` | `PrincipalType` |
 | `id` | `00000000-0000-7000-8000-000000000001` | principal id. 애노테이션 속성은 `UUID` 타입을 쓸 수 없어 UUID 문자열로 받습니다 |
-| `realm` | type에 맞는 realm | `Realm` |
-| `roles` | `[]` | `{audience}:{code}` 형식. 스타터와 같은 규칙으로 변환 |
+| `roles` | `[]` | `{audience}:{code}` 형식 |
+
+- realm은 `type`이 속한 realm입니다([DOM-01](domain.md#11-realm과-principal-type)). 속성으로 받지 않습니다.
+- 속성으로 claim만 채운 JWT를 만들어 스타터의 권한 변환기(`dozyJwtAuthenticationConverter`)에 넣습니다. role 변환이 실제 토큰과 같고, 서비스가 변환기를 교체했으면 교체한 변환기를 씁니다.
 
 ### 7.2 `DozyTestTokens`
 
-통합 테스트에서 실제 검증 체인을 거치는 토큰을 만듭니다.
+통합 테스트에서 실제 검증 체인을 거치는 토큰을 만듭니다. 테스트 컨텍스트의 빈이며, `iss`와 기본 `aud`는 서비스 설정(`dozy.auth.*`)을 따릅니다.
 
 ```kotlin
-val token = DozyTestTokens.issue(
-    type = PrincipalType.PARTNER,
-    id = UUID.fromString("0199a3c5-1d4f-7a8b-b2c6-5e9f0a3d7c21"),
-    realm = Realm.PARTNER,
-    audience = listOf("store"),
-    roles = emptyList(),
-)
+@Autowired lateinit var tokens: DozyTestTokens
+
+val token = tokens.issue(roles = listOf("wms:inbound_manager"))
 ```
 
-- 테스트용 RSA 키로 서명하고, 테스트 컨텍스트에서 스타터가 이 키의 JWKS를 보도록 자동 설정합니다.
-- 만료된 토큰, 다른 realm 토큰 등 실패 경우를 만드는 옵션을 둡니다.
-- 테스트 키는 테스트 classpath에서만 쓰며 운영 키와 섞지 않습니다.
+| 인자 | 기본값 | 실패 경우를 만들 때 |
+|---|---|---|
+| `type`, `id`, `roles` | `EMPLOYEE`, `@WithDozyPrincipal`과 같은 id, `[]` | 받지 않는 realm의 type (예: WMS에 `PARTNER`) |
+| `realm` | `type`이 속한 realm | 다른 realm (DOM-01 위반) |
+| `audience` | 서비스 audience | 다른 audience |
+| `issuerBaseUri` | 서비스 `issuer-base-uri` | 다른 Auth 주소 |
+| `issuedAt`, `expiresAt` | 지금, 10분 뒤 | 만료, 미래 `iat` |
+| `sessionId` | system token이 아니면 임의의 UUID | |
+| `signedBy` | `TRUSTED` | `UNTRUSTED` (믿지 않는 키) |
+
+- 형식은 [token.md §3](token.md#3-claims)과 같습니다 (`typ=at+jwt`, RS256, `aud`는 배열).
+- 테스트 키는 테스트 JVM에서 한 번 만들어 메모리에만 둡니다. 테스트 컨텍스트에서는 스타터 디코더가 JWKS 주소 대신 이 키를 믿습니다. 서비스가 디코더 빈을 직접 정의했으면 적용되지 않습니다.

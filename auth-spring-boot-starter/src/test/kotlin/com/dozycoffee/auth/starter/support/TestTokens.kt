@@ -32,10 +32,10 @@ object TestTokens {
         claims(
             "iss" to "$ISSUER_BASE/realms/internal",
             "sub" to "employee:$EMPLOYEE_ID",
-            "aud" to listOf("wms", "catalog"),
+            "aud" to listOf("sample", "other"),
             "principalType" to "employee",
             "principalId" to EMPLOYEE_ID.toString(),
-            "roles" to listOf("wms:inbound_manager", "catalog:menu_editor"),
+            "roles" to listOf("sample:item_manager", "other:item_editor"),
             "iat" to NOW.epochSecond,
             "exp" to NOW.plusSeconds(600).epochSecond,
             "jti" to "5f2b9c1e-8a4d-4c1e-9d3f-2b7a6e0c1d4f",

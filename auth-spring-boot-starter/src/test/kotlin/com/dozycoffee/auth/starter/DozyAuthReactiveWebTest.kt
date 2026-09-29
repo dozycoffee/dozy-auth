@@ -2,13 +2,13 @@ package com.dozycoffee.auth.starter
 
 import com.dozycoffee.auth.starter.reactivesample.ReactiveSampleApplication
 import com.dozycoffee.auth.starter.support.JwksServer
+import com.dozycoffee.auth.starter.support.TestKeys
 import com.dozycoffee.auth.starter.support.TestTokens.EMPLOYEE_ID
 import com.dozycoffee.auth.starter.support.TestTokens.FIXED_CLOCK
 import com.dozycoffee.auth.starter.support.TestTokens.ISSUER_BASE
 import com.dozycoffee.auth.starter.support.TestTokens.SESSION_ID
 import com.dozycoffee.auth.starter.support.TestTokens.employeeClaims
 import com.dozycoffee.auth.starter.support.TestTokens.sign
-import org.hamcrest.Matchers
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -24,7 +24,7 @@ import org.springframework.test.web.reactive.server.WebTestClient
 import java.time.Clock
 
 /**
- * WebFlux 서비스에 스타터를 붙였을 때의 동작 (starter.md §3~§5). 샘플 앱은 audience `wms`, realm `internal`입니다.
+ * WebFlux 서비스에 스타터를 붙였을 때의 동작 (starter.md §3~§5). 샘플 앱은 audience `sample`, realm `internal`입니다.
  *
  * 에러 응답의 필드 이름과 값은 api/conventions.md §4의 문자열을 그대로 기대값으로 씁니다.
  */
@@ -49,7 +49,7 @@ class DozyAuthReactiveWebTest {
 
     @Test
     fun `검증에 실패한 토큰은 401이고 실패 이유를 응답에 넣지 않음`() {
-        val wrongAudience = sign(employeeClaims("aud" to listOf("catalog")))
+        val wrongAudience = sign(employeeClaims("aud" to listOf("other")))
 
         client
             .get()
@@ -60,6 +60,27 @@ class DozyAuthReactiveWebTest {
             .expectBody()
             .jsonPath("$.detail")
             .doesNotExist()
+    }
+
+    @Test
+    fun `서명이 틀리거나 모르는 키로 서명한 토큰도 401`() {
+        val (header, _, signature) = sign(employeeClaims()).split(".")
+        val forgedBody = sign(employeeClaims("roles" to listOf("sample:admin"))).split(".")[1]
+
+        client
+            .get()
+            .uri("/me")
+            .bearer("$header.$forgedBody.$signature")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+        client
+            .get()
+            .uri("/me")
+            .bearer(sign(employeeClaims(), key = TestKeys.UNKNOWN))
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
     }
 
     @Test
@@ -103,7 +124,7 @@ class DozyAuthReactiveWebTest {
             .jsonPath("$.roles.length()")
             .isEqualTo(1)
             .jsonPath("$.roles[0]")
-            .isEqualTo("inbound_manager")
+            .isEqualTo("item_manager")
             .jsonPath("$.sid")
             .isEqualTo(SESSION_ID)
     }
@@ -112,7 +133,7 @@ class DozyAuthReactiveWebTest {
     fun `suspend 함수에서 자기 audience의 role이 있으면 PreAuthorize hasRole 통과`() {
         client
             .get()
-            .uri("/inbounds")
+            .uri("/items")
             .bearer(sign(employeeClaims()))
             .exchange()
             .expectStatus()
@@ -123,7 +144,7 @@ class DozyAuthReactiveWebTest {
     fun `suspend 함수에서 role이 없으면 403 Problem Details`() {
         client
             .get()
-            .uri("/stocks/admin")
+            .uri("/items/admin")
             .bearer(sign(employeeClaims()))
             .exchange()
             .expectProblem(status = 403, code = "FORBIDDEN", type = "forbidden", title = "Forbidden")
@@ -135,14 +156,14 @@ class DozyAuthReactiveWebTest {
 
         client
             .get()
-            .uri("/mono/inbounds")
+            .uri("/mono/items")
             .bearer(token)
             .exchange()
             .expectStatus()
             .isOk
         client
             .get()
-            .uri("/mono/stocks/admin")
+            .uri("/mono/items/admin")
             .bearer(token)
             .exchange()
             .expectStatus()
@@ -151,12 +172,12 @@ class DozyAuthReactiveWebTest {
 
     @Test
     fun `다른 audience의 role은 권한으로 쓰지 않음`() {
-        val onlyCatalogRole = sign(employeeClaims("roles" to listOf("catalog:inbound_manager")))
+        val onlyOtherAudienceRole = sign(employeeClaims("roles" to listOf("other:item_manager")))
 
         client
             .get()
-            .uri("/inbounds")
-            .bearer(onlyCatalogRole)
+            .uri("/items")
+            .bearer(onlyOtherAudienceRole)
             .exchange()
             .expectStatus()
             .isForbidden
@@ -205,7 +226,7 @@ class DozyAuthReactiveWebTest {
             .jsonPath("$.instance")
             .exists()
             .jsonPath("$.traceId")
-            .value(Matchers.notNullValue())
+            .exists()
         return this
     }
 
@@ -221,7 +242,7 @@ class DozyAuthReactiveWebTest {
         @JvmStatic
         @DynamicPropertySource
         fun properties(registry: DynamicPropertyRegistry) {
-            registry.add("dozy.auth.audience") { "wms" }
+            registry.add("dozy.auth.audience") { "sample" }
             registry.add("dozy.auth.accepted-realms") { "internal" }
             registry.add("dozy.auth.issuer-base-uri") { ISSUER_BASE }
             registry.add("dozy.auth.jwk-set-uri") { jwks.jwkSetUri }

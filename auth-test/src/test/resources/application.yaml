@@ -1,0 +1,6 @@
+# 샘플 앱(서비스 역할) 설정. 테스트 키를 쓰므로 JWKS 주소는 호출되지 않는다.
+dozy:
+  auth:
+    audience: sample
+    accepted-realms: [internal]
+    issuer-base-uri: https://auth.dozycoffee.com

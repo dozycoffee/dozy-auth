@@ -19,14 +19,14 @@ import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.PlainJWT
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
+import org.springframework.security.oauth2.jwt.BadJwtException
 import org.springframework.security.oauth2.jwt.Jwt
-import org.springframework.security.oauth2.jwt.JwtException
 import java.time.Duration
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 /**
- * token.md §6의 2~9. 검증에 실패하면 [JwtException]이고, 스타터는 이를 401로 응답합니다.
+ * token.md §6의 2~9. 토큰이 잘못되면 [BadJwtException]이고, 스타터는 이를 401로 응답합니다.
  *
  * Spring MVC용과 WebFlux용 디코더가 같은 규칙을 지키는지 두 하위 클래스에서 같은 테스트를 돌립니다.
  */
@@ -91,7 +91,7 @@ abstract class DozyJwtDecodersTest {
     @Test
     fun `본문을 바꾼 토큰은 서명 불일치로 거부`() {
         val (header, _, signature) = sign(employeeClaims()).split(".")
-        val forgedBody = sign(employeeClaims("roles" to listOf("wms:admin"))).split(".")[1]
+        val forgedBody = sign(employeeClaims("roles" to listOf("sample:admin"))).split(".")[1]
 
         assertRejected("$header.$forgedBody.$signature")
     }
@@ -114,7 +114,7 @@ abstract class DozyJwtDecodersTest {
         decoder.decode(sign(employeeClaims()))
         val fetchesAfterFirstLoad = jwks.fetchCount.get()
 
-        repeat(5) { assertFailsWith<JwtException> { decoder.decode(sign(employeeClaims(), key = TestKeys.UNKNOWN)) } }
+        repeat(5) { assertFailsWith<BadJwtException> { decoder.decode(sign(employeeClaims(), key = TestKeys.UNKNOWN)) } }
 
         assertEquals(fetchesAfterFirstLoad + 1, jwks.fetchCount.get())
     }
@@ -158,7 +158,7 @@ abstract class DozyJwtDecodersTest {
 
     @Test
     fun `허용하지 않은 realm의 issuer면 거부`() {
-        assertRejected(sign(partnerClaims("aud" to listOf("wms"))))
+        assertRejected(sign(partnerClaims("aud" to listOf("sample"))))
     }
 
     @Test
@@ -170,7 +170,7 @@ abstract class DozyJwtDecodersTest {
 
     @Test
     fun `aud에 이 서비스가 없으면 거부`() {
-        assertRejected(sign(employeeClaims("aud" to listOf("catalog"))))
+        assertRejected(sign(employeeClaims("aud" to listOf("other"))))
     }
 
     @Test
@@ -182,7 +182,7 @@ abstract class DozyJwtDecodersTest {
 
     @Test
     fun `DOM-01 realm이 받을 수 없는 principal type이면 거부`() {
-        val partnerInInternalRealm = partnerClaims("iss" to "$ISSUER_BASE/realms/internal", "aud" to listOf("wms"))
+        val partnerInInternalRealm = partnerClaims("iss" to "$ISSUER_BASE/realms/internal", "aud" to listOf("sample"))
 
         assertRejected(sign(partnerInInternalRealm))
     }
@@ -216,20 +216,21 @@ abstract class DozyJwtDecodersTest {
 
     @Test
     fun `roles가 목록이 아니면 거부`() {
-        assertRejected(sign(employeeClaims("roles" to "wms:inbound_manager")))
+        assertRejected(sign(employeeClaims("roles" to "sample:item_manager")))
     }
 
     @Test
     fun `roles에 형식이 틀린 role이 있으면 거부`() {
-        assertRejected(sign(employeeClaims("roles" to listOf("wms:Inbound-Manager"))))
+        assertRejected(sign(employeeClaims("roles" to listOf("sample:Item-Manager"))))
     }
 
     private fun assertRejected(token: String) {
-        assertFailsWith<JwtException> { decoder().decode(token) }
+        // 토큰이 잘못된 경우는 BadJwtException이어야 401이 됩니다 (JwtException만이면 서버 오류로 처리됨)
+        assertFailsWith<BadJwtException> { decoder().decode(token) }
     }
 
     private fun decoder(
-        audience: String = "wms",
+        audience: String = "sample",
         realms: Set<Realm> = setOf(Realm.INTERNAL),
         refetchMinInterval: Duration = DozyJwtDecoders.JWKS_REFETCH_MIN_INTERVAL,
     ): Decoder {
@@ -254,7 +255,14 @@ abstract class DozyJwtDecodersTest {
         override fun decoderFor(
             properties: DozyAuthProperties,
             refetchMinInterval: Duration,
-        ): (String) -> Jwt = DozyJwtDecoders.servlet(properties, FIXED_CLOCK, refetchMinInterval)::decode
+        ): (
+            String,
+        ) -> Jwt =
+            DozyJwtDecoders.create(
+                properties,
+                DozyJwtDecoders.remoteJwkSource(checkNotNull(properties.jwkSetUri), refetchMinInterval),
+                FIXED_CLOCK,
+            )::decode
     }
 
     class Reactive : DozyJwtDecodersTest() {
@@ -262,7 +270,12 @@ abstract class DozyJwtDecodersTest {
             properties: DozyAuthProperties,
             refetchMinInterval: Duration,
         ): (String) -> Jwt {
-            val decoder = DozyReactiveJwtDecoders.create(properties, FIXED_CLOCK, refetchMinInterval)
+            val decoder =
+                DozyReactiveJwtDecoders.create(
+                    properties,
+                    DozyJwtDecoders.remoteJwkSource(checkNotNull(properties.jwkSetUri), refetchMinInterval),
+                    FIXED_CLOCK,
+                )
             return { token -> checkNotNull(decoder.decode(token).block()) }
         }
     }

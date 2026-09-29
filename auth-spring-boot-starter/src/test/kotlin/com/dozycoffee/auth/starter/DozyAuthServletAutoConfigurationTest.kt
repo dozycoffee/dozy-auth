@@ -36,7 +36,7 @@ class DozyAuthServletAutoConfigurationTest {
 
     private val required =
         arrayOf(
-            "dozy.auth.audience=wms",
+            "dozy.auth.audience=sample",
             "dozy.auth.accepted-realms=internal",
             "dozy.auth.issuer-base-uri=https://auth.dozycoffee.com",
         )

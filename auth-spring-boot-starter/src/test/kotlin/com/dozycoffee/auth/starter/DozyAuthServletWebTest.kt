@@ -2,6 +2,7 @@ package com.dozycoffee.auth.starter
 
 import com.dozycoffee.auth.starter.sample.SampleApplication
 import com.dozycoffee.auth.starter.support.JwksServer
+import com.dozycoffee.auth.starter.support.TestKeys
 import com.dozycoffee.auth.starter.support.TestTokens.EMPLOYEE_ID
 import com.dozycoffee.auth.starter.support.TestTokens.FIXED_CLOCK
 import com.dozycoffee.auth.starter.support.TestTokens.ISSUER_BASE
@@ -27,7 +28,7 @@ import org.springframework.test.web.servlet.get
 import java.time.Clock
 
 /**
- * 서비스에 스타터를 붙였을 때의 동작 (starter.md §3~§5). 샘플 앱은 audience `wms`, realm `internal`입니다.
+ * 서비스에 스타터를 붙였을 때의 동작 (starter.md §3~§5). 샘플 앱은 audience `sample`, realm `internal`입니다.
  *
  * 에러 응답의 필드 이름과 값은 api/conventions.md §4의 문자열을 그대로 기대값으로 씁니다.
  */
@@ -47,7 +48,7 @@ class DozyAuthServletWebTest {
 
     @Test
     fun `검증에 실패한 토큰은 401이고 실패 이유를 응답에 넣지 않음`() {
-        val wrongAudience = sign(employeeClaims("aud" to listOf("catalog")))
+        val wrongAudience = sign(employeeClaims("aud" to listOf("other")))
 
         mockMvc
             .get("/me") {
@@ -55,6 +56,15 @@ class DozyAuthServletWebTest {
             }.andExpectProblem(status = 401, code = "UNAUTHENTICATED", type = "unauthenticated", title = "Unauthenticated") {
                 jsonPath("$.detail") { doesNotExist() }
             }
+    }
+
+    @Test
+    fun `서명이 틀리거나 모르는 키로 서명한 토큰도 401`() {
+        val (header, _, signature) = sign(employeeClaims()).split(".")
+        val forgedBody = sign(employeeClaims("roles" to listOf("sample:admin"))).split(".")[1]
+
+        mockMvc.get("/me") { bearer("$header.$forgedBody.$signature") }.andExpect { status { isUnauthorized() } }
+        mockMvc.get("/me") { bearer(sign(employeeClaims(), key = TestKeys.UNKNOWN)) }.andExpect { status { isUnauthorized() } }
     }
 
     @Test
@@ -84,28 +94,28 @@ class DozyAuthServletWebTest {
             jsonPath("$.sub") { value("employee:$EMPLOYEE_ID") }
             jsonPath("$.realm") { value("INTERNAL") }
             jsonPath("$.roles.length()") { value(1) }
-            jsonPath("$.roles[0]") { value("inbound_manager") }
+            jsonPath("$.roles[0]") { value("item_manager") }
             jsonPath("$.sid") { value(SESSION_ID) }
         }
     }
 
     @Test
     fun `자기 audience의 role이 있으면 PreAuthorize hasRole 통과`() {
-        mockMvc.get("/inbounds") { bearer(sign(employeeClaims())) }.andExpect { status { isOk() } }
+        mockMvc.get("/items") { bearer(sign(employeeClaims())) }.andExpect { status { isOk() } }
     }
 
     @Test
     fun `role이 없으면 403 Problem Details`() {
         mockMvc
-            .get("/stocks/admin") { bearer(sign(employeeClaims())) }
+            .get("/items/admin") { bearer(sign(employeeClaims())) }
             .andExpectProblem(status = 403, code = "FORBIDDEN", type = "forbidden", title = "Forbidden")
     }
 
     @Test
     fun `다른 audience의 role은 권한으로 쓰지 않음`() {
-        val onlyCatalogRole = sign(employeeClaims("roles" to listOf("catalog:inbound_manager")))
+        val onlyOtherAudienceRole = sign(employeeClaims("roles" to listOf("other:item_manager")))
 
-        mockMvc.get("/inbounds") { bearer(onlyCatalogRole) }.andExpect { status { isForbidden() } }
+        mockMvc.get("/items") { bearer(onlyOtherAudienceRole) }.andExpect { status { isForbidden() } }
     }
 
     @Test
@@ -151,7 +161,7 @@ class DozyAuthServletWebTest {
         @JvmStatic
         @DynamicPropertySource
         fun properties(registry: DynamicPropertyRegistry) {
-            registry.add("dozy.auth.audience") { "wms" }
+            registry.add("dozy.auth.audience") { "sample" }
             registry.add("dozy.auth.accepted-realms") { "internal" }
             registry.add("dozy.auth.issuer-base-uri") { ISSUER_BASE }
             registry.add("dozy.auth.jwk-set-uri") { jwks.jwkSetUri }
