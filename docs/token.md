@@ -128,7 +128,7 @@ Auth가 발급하는 토큰의 형식과 검증 규칙입니다. Auth(발급)와
 | 6 | `exp`, `iat` | 만료. `policy.clock-skew` 허용 |
 | 7 | `iss` | 허용한 realm의 issuer가 아님 |
 | 8 | `aud` | 자기 audience가 없음 |
-| 9 | `principalType`, `principalId`, `sub` | [DOM-01](domain.md#11-realm과-principal-type) 조합 위반, `principalId`가 UUID 형식이 아님, `sub` 불일치, 값 누락 |
+| 9 | `principalType`, `principalId`, `sub`, `roles` | [DOM-01](domain.md#11-realm과-principal-type) 조합 위반, `principalId`가 UUID 형식이 아님, `sub` 불일치, `roles`가 role 코드(`{audience}:{code}`, [DOM-03](domain.md#11-realm과-principal-type)) 목록이 아님, 값 누락 |
 
 검증을 통과한 뒤의 판단은 `403`입니다.
 
@@ -189,6 +189,7 @@ data class AuthenticatedPrincipal(
 ```
 
 - claim 이름 상수(`ClaimNames`), `sub` 파싱, role 코드 형식 검증([DOM-03](domain.md#11-realm과-principal-type))도 `auth-core`에 둡니다.
+- JWKS 경로와 캐시 시간(`Jwks`)도 `auth-core`에 둡니다. Auth의 응답 캐시 시간과 서비스의 캐시 유지 시간이 같아야 키 교체 순서(§7)가 성립하기 때문입니다.
 - JSON의 enum 값은 소문자(`employee`), Kotlin enum은 대문자입니다. 변환은 `auth-core`가 담당합니다.
 
 ## 11. 호환성
