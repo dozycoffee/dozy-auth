@@ -48,7 +48,7 @@ public class DozyAuthReactiveAutoConfiguration {
     public fun dozyReactiveJwtDecoder(
         properties: DozyAuthProperties,
         clock: ObjectProvider<Clock>,
-    ): ReactiveJwtDecoder = DozyReactiveJwtDecoders.create(properties, clock.getIfUnique { Clock.systemUTC() })
+    ): ReactiveJwtDecoder = DozyReactiveJwtDecoders.create(properties, clock = clock.getIfUnique { Clock.systemUTC() })
 
     @Bean
     @ConditionalOnMissingBean(name = ["dozyJwtAuthenticationConverter"])

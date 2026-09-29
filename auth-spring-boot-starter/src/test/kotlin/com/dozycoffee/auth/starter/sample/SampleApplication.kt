@@ -7,7 +7,7 @@ import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RestController
 
-/** 스타터를 쓰는 서비스 역할의 샘플 앱 (WMS를 흉내 냄). */
+/** 스타터를 쓰는 서비스 역할의 샘플 앱 (서비스 역할). */
 @SpringBootApplication
 class SampleApplication
 
@@ -21,13 +21,13 @@ class SampleController {
         @CurrentPrincipal principal: AuthenticatedPrincipal,
     ) = mapOf("sub" to principal.key.sub, "realm" to principal.realm.name, "roles" to principal.roles, "sid" to principal.sessionId)
 
-    @PreAuthorize("hasRole('inbound_manager')")
-    @GetMapping("/inbounds")
-    fun inbounds() = "inbounds"
+    @PreAuthorize("hasRole('item_manager')")
+    @GetMapping("/items")
+    fun items() = "items"
 
-    @PreAuthorize("hasRole('stock_admin')")
-    @GetMapping("/stocks/admin")
-    fun stockAdmin() = "stock admin"
+    @PreAuthorize("hasRole('item_admin')")
+    @GetMapping("/items/admin")
+    fun itemAdmin() = "item admin"
 
     @PreAuthorize("@dozyAuth.isType('EMPLOYEE')")
     @GetMapping("/employees-only")
