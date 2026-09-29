@@ -114,7 +114,7 @@ suspend fun myStores(@CurrentPrincipal principal: AuthenticatedPrincipal)
 
 ## 7. auth-test
 
-서비스의 `testImplementation`으로만 씁니다. 운영 classpath에 들어가면 테스트 키로 서명한 토큰이 통과합니다. Spring MVC(MockMvc)와 WebFlux(`WebTestClient`)를 모두 지원합니다.
+서비스의 `testImplementation`으로만 씁니다. 운영 classpath에 들어가면 스타터가 Auth의 공개키 대신 테스트 키를 믿게 되어, 실제 토큰이 모두 거부됩니다. 테스트 키는 기동 때 무작위로 만들어져 외부에서 서명할 수 없습니다. Spring MVC(MockMvc)와 WebFlux(`WebTestClient`)를 모두 지원합니다.
 
 ### 7.1 `@WithDozyPrincipal`
 

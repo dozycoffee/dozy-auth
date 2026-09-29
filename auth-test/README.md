@@ -69,7 +69,7 @@ src/main/resources/META-INF/spring/
 - `auth-core`, `auth-spring-boot-starter`에 의존합니다.
 - JVM 17 타깃, `explicitApi()`입니다.
 - 테스트용 서명 키는 이 모듈 안에서만 씁니다. 운영 키나 로컬 키와 섞지 않습니다.
-- 서비스의 `testImplementation`으로만 쓰이도록 안내합니다. 운영 classpath에 들어가면 테스트 키로 서명한 토큰이 통과할 수 있습니다.
+- 서비스의 `testImplementation`으로만 쓰이도록 안내합니다. 운영 classpath에 들어가면 스타터가 Auth의 공개키 대신 테스트 키를 믿게 되어, 실제 토큰이 모두 거부됩니다.
 
 ## 테스트
 
