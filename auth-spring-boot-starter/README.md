@@ -52,7 +52,7 @@ Spring MVC와 WebFlux를 모두 지원합니다 ([ADR-0030](../docs/adr/0030-sta
 src/main/kotlin/com/dozycoffee/auth/starter/
 ├─ 공통
 │  ├─ DozyAuthProperties             dozy.auth.* 설정과 필수 값 검사
-│  ├─ DozyJwtDecoders                서명 검증(RS256), JWKS 캐시·재조회 제한, Spring MVC용 디코더
+│  ├─ DozyJwtDecoders                서명 검증(RS256), JWKS 캐시·재조회 제한, Spring MVC용 디코더 (공개)
 │  ├─ DozyTokenValidators            token.md §6의 3, 6~9 검증기
 │  ├─ DozyJwtAuthenticationConverter role 변환, AuthenticatedPrincipal 생성
 │  ├─ DozyAuthenticationToken        인증 결과 (principal = AuthenticatedPrincipal)
@@ -64,13 +64,16 @@ src/main/kotlin/com/dozycoffee/auth/starter/
 │  └─ DozyProblemResponses           401·403 응답 쓰기
 └─ WebFlux
    ├─ DozyAuthReactiveAutoConfiguration
-   ├─ DozyReactiveJwtDecoders        서명 검증을 별도 스케줄러에서 실행
+   ├─ DozyReactiveJwtDecoders        서명 검증을 별도 스케줄러에서 실행 (공개)
    ├─ DozyReactiveAuth               dozyAuth SpEL 헬퍼 (Mono<Boolean>)
    └─ DozyReactiveProblemResponses   401·403 응답 쓰기
 src/main/resources/META-INF/
 ├─ spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports
+├─ spring/…WebFluxTest.imports, …WebMvcTest.imports   슬라이스 테스트에서도 자동 설정이 켜지도록 등록
 └─ spring-configuration-metadata.json   설정 자동완성 (직접 작성, 테스트로 설정 클래스와 비교)
 ```
+
+- `DozyJwtDecoders`, `DozyReactiveJwtDecoders`는 공개 API입니다. 자동 설정과 다른 키 출처(auth-test의 테스트 키 등)로 같은 검증 규칙의 디코더를 만들 때 씁니다.
 
 - Spring MVC 전용 클래스와 WebFlux 전용 클래스는 파일을 나눕니다. 서비스에는 둘 중 한쪽 라이브러리(servlet API 또는 Reactor)만 있을 수 있기 때문입니다.
 - 서비스 간 호출(`dozy.auth.client.*`, [starter.md §6](../docs/starter.md#6-서비스-간-호출))은 준비 중입니다.
