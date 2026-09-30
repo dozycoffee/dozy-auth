@@ -114,7 +114,7 @@ suspend fun myStores(@CurrentPrincipal principal: AuthenticatedPrincipal)
 
 ## 7. auth-test
 
-서비스의 `testImplementation`으로만 씁니다. 운영 classpath에 들어가면 스타터가 Auth의 공개키 대신 테스트 키를 믿게 되어, 실제 토큰이 모두 거부됩니다. 테스트 키는 기동 때 무작위로 만들어져 외부에서 서명할 수 없습니다. Spring MVC(MockMvc)와 WebFlux(`WebTestClient`)를 모두 지원합니다.
+서비스의 `testImplementation`으로 씁니다. 테스트 키 설정은 Spring 테스트가 만든 컨텍스트(`@SpringBootTest`, `@WebFluxTest`, `@WebMvcTest` 등)에만 적용되므로, 실수로 운영 classpath에 들어가도 운영의 토큰 검증은 바뀌지 않습니다. Spring MVC(MockMvc)와 WebFlux(`WebTestClient`)를 모두 지원합니다.
 
 ### 7.1 `@WithDozyPrincipal`
 
@@ -151,3 +151,4 @@ val token = tokens.issue(roles = listOf("wms:inbound_manager"))
 
 - 형식은 [token.md §3](token.md#3-claims)과 같습니다 (`typ=at+jwt`, RS256, `aud`는 배열).
 - 테스트 키는 테스트 JVM에서 한 번 만들어 메모리에만 둡니다. 테스트 컨텍스트에서는 스타터 디코더가 JWKS 주소 대신 이 키를 믿습니다. 서비스가 디코더 빈을 직접 정의했으면 적용되지 않습니다.
+- 테스트 키 설정은 Spring 테스트의 `ContextCustomizerFactory`로 등록합니다. 자동 설정이 아니므로 애플리케이션을 직접 실행한 컨텍스트에는 적용되지 않습니다.

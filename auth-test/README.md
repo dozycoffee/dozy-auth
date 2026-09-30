@@ -57,11 +57,10 @@ src/main/kotlin/com/dozycoffee/auth/test/
 ├─ WithDozyPrincipalSecurityContextFactory    claim만 채운 JWT를 스타터 변환기에 넣어 인증 정보 생성
 ├─ DozyTestTokens                             서명된 테스트 토큰 (빈)
 ├─ TestSigningKeys                            테스트 키 (JVM당 한 번 생성, 메모리에만)
-└─ DozyTestAutoConfiguration                  스타터 디코더가 테스트 키를 믿게 함, DozyTestTokens 빈
-src/main/resources/META-INF/spring/
-├─ org.springframework.boot.autoconfigure.AutoConfiguration.imports
-├─ org.springframework.boot.webflux.test.autoconfigure.WebFluxTest.imports    @WebFluxTest에서도 켜짐
-└─ org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest.imports      @WebMvcTest에서도 켜짐
+├─ DozyTestConfiguration                      스타터 디코더가 테스트 키를 믿게 함, DozyTestTokens 빈
+└─ DozyTestContextCustomizerFactory           위 설정을 Spring 테스트 컨텍스트에만 등록
+src/main/resources/META-INF/
+└─ spring.factories                           ContextCustomizerFactory 등록 (자동 설정이 아님)
 ```
 
 ## 제약
@@ -69,7 +68,7 @@ src/main/resources/META-INF/spring/
 - `auth-core`, `auth-spring-boot-starter`에 의존합니다.
 - JVM 17 타깃, `explicitApi()`입니다.
 - 테스트용 서명 키는 이 모듈 안에서만 씁니다. 운영 키나 로컬 키와 섞지 않습니다.
-- 서비스의 `testImplementation`으로만 쓰이도록 안내합니다. 운영 classpath에 들어가면 스타터가 Auth의 공개키 대신 테스트 키를 믿게 되어, 실제 토큰이 모두 거부됩니다.
+- 서비스의 `testImplementation`으로 쓰도록 안내합니다. 테스트 키 설정은 Spring 테스트 컨텍스트에만 등록되므로(자동 설정이 아님), 실수로 운영 classpath에 들어가도 운영의 토큰 검증은 바뀌지 않습니다.
 
 ## 테스트
 
@@ -79,3 +78,4 @@ src/main/resources/META-INF/spring/
 
 - 샘플 앱(`reactivesample`, `servletsample`)으로 두 도구를 확인합니다. WebFlux는 슬라이스(`@WebFluxTest`)와 통합(`@SpringBootTest`) 테스트, Spring MVC는 대표 경우만 둡니다.
 - `SamePrincipalTest`: 같은 type·id·role이면 애노테이션과 테스트 토큰이 같은 principal과 권한을 만드는지 확인합니다.
+- `NotInApplicationContextTest`: Spring 테스트가 아니라 애플리케이션을 직접 실행하면 테스트 키 설정이 켜지지 않는지 확인합니다 (운영 classpath에 들어간 경우).
