@@ -32,6 +32,9 @@ jobs:
       # ktlint 검사, 테스트(Testcontainers는 러너의 Docker 사용), Konsist 아키텍처 테스트
       - run: ./gradlew build -Porg.gradle.java.installations.fromEnv=JAVA_HOME_17_X64,JAVA_HOME_21_X64
 
+      # build-logic(included build)은 위 build에 포함되지 않아 따로 검사한다
+      - run: ./gradlew -p build-logic ktlintCheck
+
       - if: failure()
         uses: actions/upload-artifact@v7
         with:

@@ -8,7 +8,8 @@ plugins {
 val libs = the<VersionCatalogsExtension>().named("libs")
 
 group = "com.dozycoffee.auth"
-version = "0.0.1-SNAPSHOT"
+// 라이브러리 배포 때만 -PreleaseVersion=0.1.0 으로 넘긴다 (배포 워크플로가 태그에서 읽음). 평소 빌드는 SNAPSHOT
+version = providers.gradleProperty("releaseVersion").getOrElse("0.0.1-SNAPSHOT")
 
 kotlin {
     compilerOptions {

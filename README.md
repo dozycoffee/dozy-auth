@@ -89,11 +89,30 @@ curl -X POST http://localhost:8080/dev/tokens \
 ./gradlew :auth-server:test          # 모듈 하나만 테스트
 ./gradlew ktlintFormat               # 포맷 자동 수정
 ./gradlew ktlintCheck                # 포맷 검사만
-./gradlew publishToMavenLocal        # 라이브러리를 로컬 Maven에 배포 (준비 중: 배포 설정)
+./gradlew publishToMavenLocal        # 라이브러리를 로컬 Maven(~/.m2)에 올려 확인 (GitHub Packages 배포는 아래 절차로만)
 ```
 
 - 통합 테스트는 Testcontainers를 쓰므로 Docker가 켜져 있어야 합니다.
 - 의존성 버전은 `gradle/libs.versions.toml`, 공통 빌드 설정은 `build-logic/`에서만 바꿉니다.
+
+## 라이브러리 배포
+
+`auth-core`, `auth-spring-boot-starter`, `auth-test`를 GitHub Packages(`https://maven.pkg.github.com/dozycoffee/dozy-auth`)에 배포합니다. 세 모듈이 한 버전이며, 서버는 여기로 배포하지 않습니다.
+
+1. 배포할 변경이 모두 `main`에 병합되어 있는지 확인합니다.
+2. `main`의 최신 커밋에 태그를 붙여 push합니다. 태그는 `v{major}.{minor}.{patch}` 형식만 배포됩니다.
+
+   ```bash
+   git switch main && git pull
+   git tag -a v0.1.0 -m "0.1.0"
+   git push origin v0.1.0
+   ```
+
+3. 배포 워크플로(`.github/workflows/publish.yml`)가 실행됩니다. 태그 커밋이 `main`에 있는지 확인하고, 빌드(테스트, 배포 메타데이터 검사)를 통과하면 배포한 뒤 GitHub Release를 만듭니다. 진행은 Actions 탭, 결과는 Packages와 Releases에서 봅니다.
+
+- 로컬에서 `./gradlew publish`로는 배포되지 않습니다. 배포 워크플로에서만 배포합니다.
+- 같은 버전은 다시 올릴 수 없습니다. 배포가 도중에 실패해 일부 모듈만 올라갔으면, 올라간 패키지 버전을 지우고 Actions에서 다시 실행하거나 다음 patch 버전으로 다시 배포합니다.
+- 버전은 SemVer를 따르고, 토큰 계약의 major 변경은 major 버전입니다 ([starter.md §1](docs/starter.md#1-배포와-호환)).
 
 ## 문서
 
@@ -119,13 +138,13 @@ dozy-auth/
 ├─ auth-server/                  Auth 서버
 ├─ auth-spring-boot-starter/     서비스용 자동 설정
 ├─ auth-test/                    서비스 테스트 도구
-├─ build-logic/                  공통 Gradle 설정 (convention 플러그인)
+├─ build-logic/                  공통 Gradle 설정 (convention 플러그인, 라이브러리 배포 설정)
 ├─ gradle/libs.versions.toml     의존성 버전
 ├─ docs/                         명세와 ADR
 ├─ compose.yaml                  로컬 PostgreSQL, Mailpit
 ├─ AGENTS.md, CLAUDE.md          에이전트 작업 규칙
 ├─ CLAUDE.local.md.example       개인 로컬 지침 양식 (복사해서 CLAUDE.local.md로)
-└─ .github/                      PR·이슈 템플릿, 릴리스 노트 설정
+└─ .github/                      PR·이슈 템플릿, 릴리스 노트 설정, CI·배포 워크플로
 ```
 
 `CLAUDE.local.md`, `.context/`(개인 메모), `.local/`(로컬 서명 키)는 git에 올라가지 않습니다.
