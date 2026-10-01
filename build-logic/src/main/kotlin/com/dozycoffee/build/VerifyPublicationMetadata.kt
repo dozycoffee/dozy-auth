@@ -90,8 +90,7 @@ abstract class VerifyPublicationMetadata : DefaultTask() {
             else -> emptyList()
         }
 
-    private fun Element.text(tag: String): String? =
-        getElementsByTagName(tag).item(0)?.textContent?.trim()
+    private fun Element.text(tag: String): String? = getElementsByTagName(tag).item(0)?.textContent?.trim()
 
     private companion object {
         const val AUTH_GROUP = "com.dozycoffee.auth"

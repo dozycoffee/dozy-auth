@@ -77,6 +77,10 @@ konsist = { module = "com.lemonappdev:konsist", version.ref = "konsist" }
 testcontainers-junit-jupiter = { module = "org.testcontainers:testcontainers-junit-jupiter" }
 testcontainers-postgresql = { module = "org.testcontainers:testcontainers-postgresql" }
 
+[plugins]
+# build-logic 자체의 코드 검사용 (모듈에는 dozy.kotlin-base가 적용)
+ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint-gradle" }
+
 [bundles]
 exposed = ["exposed-core", "exposed-jdbc", "exposed-java-time", "exposed-json", "exposed-spring-boot4-starter"]
 testcontainers = ["spring-boot-testcontainers", "testcontainers-junit-jupiter", "testcontainers-postgresql"]
