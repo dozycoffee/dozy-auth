@@ -25,7 +25,7 @@ dependencies {
     implementation(libs.bundles.exposed)
     implementation(libs.spring.boot.starter.flyway)
     implementation(libs.flyway.postgresql)
-    runtimeOnly(libs.postgresql)
+    implementation(libs.postgresql) // inet 컬럼 타입이 PGobject를 씀
 
     // 메일
     implementation(libs.spring.boot.starter.mail)

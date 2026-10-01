@@ -12,6 +12,7 @@
 | 통합 | 여러 계층을 거치는 흐름 (예: 발급한 토큰을 JWKS API의 공개키로 검증) | `@SpringBootTest`, MockMvc, Testcontainers |
 | 아키텍처 | 계층 의존, 이름 규칙 ([architecture.md §6.3](architecture.md#63-아키텍처-테스트)) | Konsist |
 
+- 영속성 테스트는 `@PersistenceAdapterTest`를 붙입니다. 마이그레이션을 적용한 PostgreSQL 18(Testcontainers)과 Exposed만 올리고, 테스트마다 트랜잭션을 되돌립니다. 컨테이너는 테스트 JVM에서 하나를 공유합니다.
 - 테스트 대역은 MockK를 씁니다. 스프링 빈을 대체할 때는 springmockk를 씁니다.
 - 스프링 컨텍스트를 띄우는 테스트는 `test` 프로필을 씁니다 ([configuration.md §4](configuration.md#4-프로필)).
 

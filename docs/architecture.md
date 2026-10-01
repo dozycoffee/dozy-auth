@@ -206,7 +206,7 @@ com.dozycoffee.auth.server
 | 항목 | 규칙 | 이유 |
 |---|---|---|
 | DB 접근 | Exposed DSL만, `adapter/outbound/persistence` 안에서만 | 실행되는 SQL을 코드에 드러내기 위해 |
-| 트랜잭션 | `application/service`에만 `@Transactional`. 여러 테이블을 바꾸면 한 트랜잭션 | 중간 상태 방지 |
+| 트랜잭션 | `application/service`에만 `@Transactional`. 여러 테이블을 바꾸면 한 트랜잭션. 영속성 어댑터는 트랜잭션을 열지 않고 호출한 UseCase의 트랜잭션 안에서 실행됨 (Exposed `SpringTransactionManager`) | 중간 상태 방지 |
 | 메일 발송 | 트랜잭션 커밋 후 | 롤백된 작업의 메일 방지 |
 | 현재 시각 | `Clock` 주입. `Instant.now()` 직접 호출 금지 | 만료·유예 시간 테스트 |
 | 난수 | `SecureRandom`만 | 예측 방지 |
