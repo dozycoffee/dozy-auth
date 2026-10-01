@@ -207,6 +207,7 @@ com.dozycoffee.auth.server
 |---|---|---|
 | DB 접근 | Exposed DSL만, `adapter/outbound/persistence` 안에서만 | 실행되는 SQL을 코드에 드러내기 위해 |
 | 트랜잭션 | `application/service`에만 `@Transactional`. 여러 테이블을 바꾸면 한 트랜잭션. 영속성 어댑터는 트랜잭션을 열지 않고 호출한 UseCase의 트랜잭션 안에서 실행됨 (Exposed `SpringTransactionManager`) | 중간 상태 방지 |
+| 감사 로그 | 업무와 같은 트랜잭션에서 기록. 에러로 끝나도 남아야 하는 기록은 [§9.2](#92-감사-기록과-트랜잭션) | 업무와 기록이 함께 반영되거나 함께 사라지게 |
 | 메일 발송 | 트랜잭션 커밋 후 | 롤백된 작업의 메일 방지 |
 | 현재 시각 | `Clock` 주입. `Instant.now()` 직접 호출 금지 | 만료·유예 시간 테스트 |
 | 난수 | `SecureRandom`만 | 예측 방지 |
@@ -227,3 +228,14 @@ com.dozycoffee.auth.server
 abstract class AuthException(val code: String, val status: Int, message: String) : RuntimeException(message)
 class ProtectedAccountException : AuthException("PROTECTED_ACCOUNT", 403, "보호된 계정은 변경할 수 없습니다.")
 ```
+
+### 9.2 감사 기록과 트랜잭션
+
+감사 로그(`RecordAuditLogPort`)는 호출한 UseCase의 트랜잭션 안에서 기록합니다. 업무가 롤백되면 기록도 사라지므로, 일어나지 않은 일이 기록되지 않습니다.
+
+`LOGIN_FAILED`, `ACCOUNT_LOCKED`처럼 요청이 에러 응답으로 끝나도 남아야 하는 기록은 그 에러와 함께 바뀐 상태(예: `failed_login_count`, `locked_until`)도 남아야 합니다. 그래서 별도 트랜잭션으로 기록만 따로 커밋하지 않고, 업무 트랜잭션 전체를 커밋합니다.
+
+- 그 에러를 던지는 UseCase 메서드의 `@Transactional`에 `noRollbackFor`로 그 예외를 지정합니다. 예: 로그인은 `@Transactional(noRollbackFor = [InvalidCredentialsException::class])`
+- 지정한 예외는 상태 변경과 감사 기록을 모두 마친 뒤 마지막에 던집니다. 그 예외로 끝나는 경로에는 커밋돼도 되는 변경만 둡니다.
+- 지정하지 않은 예외(예상하지 못한 오류)는 기존대로 전부 롤백되고 기록도 남지 않습니다. 이 동작은 `AuditRecordTransactionTest`가 확인합니다.
+- 기록만 `REQUIRES_NEW`로 따로 커밋하지 않습니다. 업무가 롤백돼도 기록이 남아 상태와 기록이 어긋나고, 요청 하나가 연결을 두 개 씁니다.
