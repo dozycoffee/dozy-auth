@@ -219,10 +219,11 @@ com.dozycoffee.auth.server
 
 - 규칙 위반은 도메인 예외로 던집니다. 예외는 에러 code와 HTTP 상태(숫자)를 가집니다. 도메인은 Spring에 의존하지 않으므로 `HttpStatus`를 쓰지 않습니다.
 - `adapter/inbound/web/error`에서 모든 예외를 Problem Details로 변환합니다 ([api/conventions.md §4](api/conventions.md#4-에러-응답)).
+- `message`는 응답의 `detail`이 되므로 민감정보를 넣지 않습니다. 예외 처리기(`GlobalExceptionHandler`)는 도메인 예외, 검증 오류, Spring Security의 401·403(`AuthenticationEntryPoint`, `AccessDeniedHandler`가 처리기로 넘김), 그 밖의 예외(500, 내부 정보 비노출)를 같은 형식으로 응답하고, `TraceIdFilter`가 `X-Trace-Id`를 정합니다.
 - 에러 code는 [api/conventions.md §11](api/conventions.md#11-에러-코드)의 목록과 같은 이름을 씁니다.
 - 결과가 여러 갈래인 정상 흐름(예: 토큰 갱신 판정)은 예외 대신 sealed class로 반환하고, UseCase에서 응답이나 예외로 바꿉니다.
 
 ```kotlin
-abstract class AuthException(val code: String, val status: Int) : RuntimeException()
-class ProtectedAccountException : AuthException("PROTECTED_ACCOUNT", 403)
+abstract class AuthException(val code: String, val status: Int, message: String) : RuntimeException(message)
+class ProtectedAccountException : AuthException("PROTECTED_ACCOUNT", 403, "보호된 계정은 변경할 수 없습니다.")
 ```
