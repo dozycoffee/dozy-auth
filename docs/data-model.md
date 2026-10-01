@@ -152,7 +152,7 @@ erDiagram
 | `principal_id` | uuid | | PK, FK → principal |
 | `role_id` | bigint | | PK, FK → role |
 | `granted_by` | uuid | ✅ | FK → principal. 부트스트랩·수동 복구는 NULL |
-| `granted_at` | timestamptz | | |
+| `granted_at` | timestamptz | | 부여 시각. DB 기본값은 `now()`이지만 애플리케이션이 `Clock` 값을 넣음 |
 
 - 회수는 행 삭제이며, 이력은 감사 로그에 남깁니다.
 - owner 유일성([GOV-10](domain.md#8-관리-권한-규칙-gov)): seed에서 `auth:owner` role의 id를 고정하고, `CREATE UNIQUE INDEX ... ON principal_role (role_id) WHERE role_id = {owner role id}`로 보장합니다.

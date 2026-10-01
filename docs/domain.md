@@ -212,7 +212,7 @@ stateDiagram-v2
   - 대상이 **본인으로 로그인한 상태에서** 수락해야 합니다. 링크만 가로챈 사람이 owner가 되는 것을 막기 위해서입니다.
   - 수락하면 한 트랜잭션에서 기존 owner의 `auth:owner` 회수, 대상에게 부여, 감사 로그 기록, 기존 owner의 모든 세션 폐기(`OWNER_TRANSFERRED`)를 처리합니다.
   - 기존 owner는 role 없는 직원이 됩니다. 현재 owner는 수락 전까지 취소할 수 있습니다.
-- **GOV-10** owner는 DB 부분 UNIQUE 인덱스로 한 명만 존재하도록 보장합니다. owner가 없어지는 상황(비활성화, 회수)은 허용하지 않습니다.
+- **GOV-10** owner는 DB 부분 UNIQUE 인덱스로 한 명만 존재하도록 보장합니다. owner가 없어지는 상황(비활성화, 회수)은 허용하지 않습니다. 이미 owner가 있는데 `auth:owner`를 부여하려 하면 `INVALID_STATE`입니다 (동시 부트스트랩, 기존 owner를 회수하지 않은 양도).
 - **GOV-11** 부트스트랩: Auth가 기동할 때 owner가 없으면 `BOOTSTRAP_OWNER_EMAIL`로 직원(`PENDING`)을 만들고 `auth:owner`를 부여한 뒤 초대를 보냅니다.
   - owner가 `PENDING`이고 초대가 만료됐으면 재기동할 때 다시 발급합니다.
   - owner가 `ACTIVE`이면 설정값을 무시합니다. 설정값으로 owner를 교체할 수 없습니다.
