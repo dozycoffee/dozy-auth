@@ -89,8 +89,8 @@ class TokenIssuingIntegrationTest {
     }
 
     @Test
-    fun `아직 열지 않은 경로는 막혀 있음`() {
-        mockMvc.get("/realms/internal/me").andExpect { status { isForbidden() } }
+    fun `아직 열지 않은 경로는 인증 없이는 401`() {
+        mockMvc.get("/realms/internal/me").andExpect { status { isUnauthorized() } }
     }
 
     private fun issue(

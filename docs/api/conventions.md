@@ -90,8 +90,11 @@ RFC 9457 Problem Details 형식이며 `Content-Type: application/problem+json`�
 | 401 | 인증 실패 (토큰 없음·만료·위조, 로그인 실패, 세션 만료). `WWW-Authenticate` 헤더 포함 |
 | 403 | 권한 없음, 계정 상태로 인한 거부, 허용되지 않은 `Origin` |
 | 404 | 대상 없음 |
+| 405 | 허용하지 않는 HTTP 메서드 |
+| 406 | 지원하지 않는 응답 형식 (`Accept`) |
 | 409 | 현재 상태와 충돌 (중복, 동시 갱신, 상태 전이 불가) |
 | 410 | 만료, 사용, 무효화된 1회용 토큰 |
+| 415 | 지원하지 않는 요청 본문 형식 (`Content-Type`) |
 | 429 | 요청 제한 초과. `Retry-After` 헤더 포함 |
 | 500 | 서버 오류 |
 
@@ -160,6 +163,8 @@ RFC 9457 Problem Details 형식이며 `Content-Type: application/problem+json`�
 | `EMAIL_NOT_VERIFIED` | 403 | 이메일 인증 전 파트너의 로그인 |
 | `ACCOUNT_SUSPENDED` | 403 | 정지된 계정의 로그인 |
 | `NOT_FOUND` | 404 | 대상 없음 |
+| `METHOD_NOT_ALLOWED` | 405 | 허용하지 않는 HTTP 메서드 |
+| `NOT_ACCEPTABLE` | 406 | 지원하지 않는 응답 형식 |
 | `DUPLICATE_EMAIL` | 409 | 이미 사용 중인 이메일 |
 | `ROLE_CODE_DUPLICATED` | 409 | 같은 audience에 같은 role code |
 | `AUDIENCE_CODE_DUPLICATED` | 409 | 같은 audience code |
@@ -168,7 +173,9 @@ RFC 9457 Problem Details 형식이며 `Content-Type: application/problem+json`�
 | `INVALID_STATE` | 409 | 현재 상태에서 허용되지 않는 작업 ([ACC-01](../domain.md#3-계정-상태-규칙-acc)) |
 | `TOKEN_ROTATED` | 409 | 교체 직후 직전 refresh token 사용 ([SES-03](../domain.md#6-세션-규칙-ses)) |
 | `VERIFICATION_EXPIRED` | 410 | 만료, 사용, 무효화된 1회용 토큰 ([VER-04](../domain.md#7-verification-규칙-ver)) |
+| `UNSUPPORTED_MEDIA_TYPE` | 415 | 지원하지 않는 요청 본문 형식 |
 | `TOO_MANY_ATTEMPTS` | 429 | 요청 제한 초과, 계정 잠금 |
+| `INTERNAL_ERROR` | 500 | 처리하지 못한 서버 오류 (내부 정보 비노출) |
 
 새 코드를 추가할 때는 이 표에 먼저 넣고, 코드의 에러 enum과 이름을 맞춥니다.
 
