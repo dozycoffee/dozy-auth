@@ -46,7 +46,7 @@ Dozy Coffee의 인증 서비스 저장소입니다. WMS, Catalog, Store 서비�
 | scope | `core`, `server`, `starter`, `test`, `docs`, `build`. 여러 모듈이면 생략 |
 | 언어 | type·scope는 영어, 설명은 한국어 |
 | PR 본문 | [`.github/pull_request_template.md`](.github/pull_request_template.md) |
-| 버전 | 라이브러리 세 모듈이 한 버전, `v*` 태그로 배포. 서버는 커밋 SHA |
+| 버전 | 라이브러리 세 모듈이 한 버전. `main`의 커밋에 `v{major}.{minor}.{patch}` 태그를 push하면 배포 워크플로가 배포 (README 라이브러리 배포 절). 서버는 커밋 SHA |
 
 ### 라벨
 

@@ -12,7 +12,7 @@
 
 ## 사용 방법
 
-(준비 중: GitHub Packages 배포 설정)
+GitHub Packages에서 받습니다. 읽을 때도 인증이 필요하므로 `read:packages` 권한의 개인 토큰을 `~/.gradle/gradle.properties`에 `gpr.user`, `gpr.token`으로 넣습니다. 버전은 저장소의 Releases에서 확인합니다.
 
 ```kotlin
 // build.gradle.kts
