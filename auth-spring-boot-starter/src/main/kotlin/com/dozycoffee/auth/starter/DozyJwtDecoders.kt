@@ -26,6 +26,7 @@ import java.time.Duration
  *   Spring의 `withJwkSetUri` 빌더는 재조회 간격 제한을 끄므로 JWK source를 직접 만듭니다.
  *
  * 자동 설정이 만드는 디코더와 다른 키 출처가 필요할 때(테스트 키, Auth 서버의 메모리 키) 직접 호출합니다.
+ * `aud`를 검사하지 않는 Auth 서버 경로는 [createWithoutAudienceCheck]를 씁니다.
  */
 public object DozyJwtDecoders {
     /**
@@ -45,7 +46,32 @@ public object DozyJwtDecoders {
         properties: DozyAuthProperties,
         jwkSource: JWKSource<SecurityContext> = remoteJwkSource(properties.resolvedJwkSetUri),
         clock: Clock = Clock.systemUTC(),
-    ): JwtDecoder = NimbusJwtDecoder(processor(jwkSource)).apply { setJwtValidator(DozyTokenValidators.create(properties, clock)) }
+    ): JwtDecoder = decoder(properties, jwkSource, clock, checkAudience = true)
+
+    /**
+     * token.md §6의 8(`aud`)만 빼고 [create]와 같은 규칙으로 검증하는 디코더를 만듭니다. `aud` claim은 없거나 비어 있거나 다른 서비스만 담고 있어도 거부하지 않습니다.
+     *
+     * Auth 서버의 `/realms/{realm}` 아래의 본인 API와 owner 양도 수락처럼 `aud`를 검사하지 않는 경로용입니다 (api/conventions.md §2).
+     * **서비스는 쓰지 않습니다.** 서비스는 자동 설정의 디코더나 [create]를 씁니다.
+     *
+     * [DozyAuthProperties.audience]는 이 디코더에서는 쓰이지 않지만, 권한 변환기가 자기 audience의 role만 권한으로 바꾸는 데 씁니다.
+     * 인자의 뜻은 [create]와 같습니다.
+     */
+    public fun createWithoutAudienceCheck(
+        properties: DozyAuthProperties,
+        jwkSource: JWKSource<SecurityContext> = remoteJwkSource(properties.resolvedJwkSetUri),
+        clock: Clock = Clock.systemUTC(),
+    ): JwtDecoder = decoder(properties, jwkSource, clock, checkAudience = false)
+
+    private fun decoder(
+        properties: DozyAuthProperties,
+        jwkSource: JWKSource<SecurityContext>,
+        clock: Clock,
+        checkAudience: Boolean,
+    ): JwtDecoder =
+        NimbusJwtDecoder(processor(jwkSource)).apply {
+            setJwtValidator(DozyTokenValidators.create(properties, clock, checkAudience))
+        }
 
     internal fun processor(jwkSource: JWKSource<SecurityContext>): JWTProcessor<SecurityContext> =
         DefaultJWTProcessor<SecurityContext>().apply {

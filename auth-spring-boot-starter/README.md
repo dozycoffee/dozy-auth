@@ -73,7 +73,7 @@ src/main/resources/META-INF/
 └─ spring-configuration-metadata.json   설정 자동완성 (직접 작성, 테스트로 설정 클래스와 비교)
 ```
 
-- `DozyJwtDecoders`, `DozyReactiveJwtDecoders`는 공개 API입니다. 자동 설정과 다른 키 출처(auth-test의 테스트 키 등)로 같은 검증 규칙의 디코더를 만들 때 씁니다.
+- `DozyJwtDecoders`, `DozyReactiveJwtDecoders`는 공개 API입니다. 자동 설정과 다른 키 출처(auth-test의 테스트 키 등)로 같은 검증 규칙의 디코더를 만들 때 씁니다. `aud`를 검사하지 않는 `createWithoutAudienceCheck`는 Auth 서버용이며 서비스는 쓰지 않습니다 ([starter.md §3](../docs/starter.md#3-제공하는-빈)).
 
 - Spring MVC 전용 클래스와 WebFlux 전용 클래스는 파일을 나눕니다. 서비스에는 둘 중 한쪽 라이브러리(servlet API 또는 Reactor)만 있을 수 있기 때문입니다.
 - 서비스 간 호출(`dozy.auth.client.*`, [starter.md §6](../docs/starter.md#6-서비스-간-호출))은 준비 중입니다.
@@ -122,7 +122,7 @@ fun securityWebFilterChain(
 ./gradlew :auth-spring-boot-starter:test
 ```
 
-- `DozyJwtDecodersTest`: 검증 실패 경우(`alg`, `typ`, 서명, `kid`, 만료, `iss`, `aud`, realm과 principal type 불일치 등)마다 거부, JWKS 재조회와 재조회 제한. Spring MVC용(`Servlet`)과 WebFlux용(`Reactive`) 디코더에 같은 테스트를 돌립니다.
+- `DozyJwtDecodersTest`: 검증 실패 경우(`alg`, `typ`, 서명, `kid`, 만료, `iss`, `aud`, realm과 principal type 불일치 등)마다 거부, JWKS 재조회와 재조회 제한. Spring MVC용(`Servlet`)과 WebFlux용(`Reactive`) 디코더에 같은 테스트를 돌리고, `aud`를 검사하지 않는 디코더(`ServletWithoutAudienceCheck`, `ReactiveWithoutAudienceCheck`)에는 `aud`를 뺀 같은 거부 테스트와 `aud` 통과 테스트를 돌립니다.
 - `DozyAuthServletWebTest`, `DozyAuthReactiveWebTest`: 샘플 앱(`sample`, `reactivesample`)으로 401·403 응답 형식, `@PreAuthorize`, `@CurrentPrincipal`, `dozyAuth`. WebFlux는 `suspend` 컨트롤러와 `Mono` 컨트롤러를 모두 확인합니다.
 - `DozyAuthServletAutoConfigurationTest`, `DozyAuthReactiveAutoConfigurationTest`: 필수 설정 누락 시 기동 실패, 앱 종류에 맞는 빈만 등록, 서비스가 빈을 정의하면 스타터 빈이 빠짐
 - JWKS는 테스트 안에서 JDK `HttpServer`로 띄웁니다 (`support/JwksServer`).

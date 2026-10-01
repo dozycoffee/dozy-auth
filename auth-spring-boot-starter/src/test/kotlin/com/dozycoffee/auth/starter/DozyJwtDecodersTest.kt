@@ -28,7 +28,11 @@ import kotlin.test.assertFailsWith
 /**
  * token.md §6의 2~9. 토큰이 잘못되면 [BadJwtException]이고, 스타터는 이를 401로 응답합니다.
  *
- * Spring MVC용과 WebFlux용 디코더가 같은 규칙을 지키는지 두 하위 클래스에서 같은 테스트를 돌립니다.
+ * 8(`aud`)을 뺀 공통 규칙은 이 클래스에 두고, 네 디코더에서 같은 테스트를 돌립니다.
+ *
+ * - `aud`를 검사하는 `create`: [Servlet], [Reactive] ([AudienceChecked]의 `aud` 거부 테스트를 더 돌림)
+ * - `aud`를 검사하지 않는 `createWithoutAudienceCheck` (api/conventions.md §2): [ServletWithoutAudienceCheck],
+ *   [ReactiveWithoutAudienceCheck] ([AudienceUnchecked]의 `aud` 통과 테스트를 더 돌림)
  */
 abstract class DozyJwtDecodersTest {
     /** 디코더를 만들어 토큰을 해독하는 함수를 돌려줍니다. */
@@ -166,18 +170,6 @@ abstract class DozyJwtDecodersTest {
         assertRejected(sign(employeeClaims("iss" to "https://evil.example.com/realms/internal")))
     }
 
-    // 8. aud
-
-    @Test
-    fun `aud에 이 서비스가 없으면 거부`() {
-        assertRejected(sign(employeeClaims("aud" to listOf("other"))))
-    }
-
-    @Test
-    fun `aud가 비어 있으면 거부`() {
-        assertRejected(sign(employeeClaims("aud" to emptyList<String>())))
-    }
-
     // 9. principalType, principalId, sub, roles
 
     @Test
@@ -224,12 +216,12 @@ abstract class DozyJwtDecodersTest {
         assertRejected(sign(employeeClaims("roles" to listOf("sample:Item-Manager"))))
     }
 
-    private fun assertRejected(token: String) {
+    protected fun assertRejected(token: String) {
         // 토큰이 잘못된 경우는 BadJwtException이어야 401이 됩니다 (JwtException만이면 서버 오류로 처리됨)
         assertFailsWith<BadJwtException> { decoder().decode(token) }
     }
 
-    private fun decoder(
+    protected fun decoder(
         audience: String = "sample",
         realms: Set<Realm> = setOf(Realm.INTERNAL),
         refetchMinInterval: Duration = DozyJwtDecoders.JWKS_REFETCH_MIN_INTERVAL,
@@ -251,7 +243,48 @@ abstract class DozyJwtDecodersTest {
         fun decode(token: String): Jwt = decode.invoke(token)
     }
 
-    class Servlet : DozyJwtDecodersTest() {
+    /** 8. `aud`를 검사하는 디코더 */
+    abstract class AudienceChecked : DozyJwtDecodersTest() {
+        @Test
+        fun `aud에 이 서비스가 없으면 거부`() {
+            assertRejected(sign(employeeClaims("aud" to listOf("other"))))
+        }
+
+        @Test
+        fun `aud가 비어 있으면 거부`() {
+            assertRejected(sign(employeeClaims("aud" to emptyList<String>())))
+        }
+
+        @Test
+        fun `aud가 없으면 거부`() {
+            assertRejected(sign(employeeClaims("aud" to null)))
+        }
+    }
+
+    /** 8. `aud`를 검사하지 않는 디코더. `aud` 외의 규칙은 위의 공통 테스트로 확인합니다. */
+    abstract class AudienceUnchecked : DozyJwtDecodersTest() {
+        @Test
+        fun `role이 없어 aud가 빈 직원 토큰을 받음`() {
+            decoder().decode(sign(employeeClaims("aud" to emptyList<String>(), "roles" to emptyList<String>())))
+        }
+
+        @Test
+        fun `aud에 이 서비스가 없는 토큰을 받음`() {
+            decoder().decode(sign(employeeClaims("aud" to listOf("other"), "roles" to listOf("other:item_editor"))))
+        }
+
+        @Test
+        fun `aud가 다른 서비스로 고정된 파트너 토큰을 받음`() {
+            decoder(realms = setOf(Realm.INTERNAL, Realm.PARTNER)).decode(sign(partnerClaims()))
+        }
+
+        @Test
+        fun `aud가 없는 토큰을 받음`() {
+            decoder().decode(sign(employeeClaims("aud" to null)))
+        }
+    }
+
+    class Servlet : AudienceChecked() {
         override fun decoderFor(
             properties: DozyAuthProperties,
             refetchMinInterval: Duration,
@@ -265,13 +298,40 @@ abstract class DozyJwtDecodersTest {
             )::decode
     }
 
-    class Reactive : DozyJwtDecodersTest() {
+    class Reactive : AudienceChecked() {
         override fun decoderFor(
             properties: DozyAuthProperties,
             refetchMinInterval: Duration,
         ): (String) -> Jwt {
             val decoder =
                 DozyReactiveJwtDecoders.create(
+                    properties,
+                    DozyJwtDecoders.remoteJwkSource(checkNotNull(properties.jwkSetUri), refetchMinInterval),
+                    FIXED_CLOCK,
+                )
+            return { token -> checkNotNull(decoder.decode(token).block()) }
+        }
+    }
+
+    class ServletWithoutAudienceCheck : AudienceUnchecked() {
+        override fun decoderFor(
+            properties: DozyAuthProperties,
+            refetchMinInterval: Duration,
+        ): (String) -> Jwt =
+            DozyJwtDecoders.createWithoutAudienceCheck(
+                properties,
+                DozyJwtDecoders.remoteJwkSource(checkNotNull(properties.jwkSetUri), refetchMinInterval),
+                FIXED_CLOCK,
+            )::decode
+    }
+
+    class ReactiveWithoutAudienceCheck : AudienceUnchecked() {
+        override fun decoderFor(
+            properties: DozyAuthProperties,
+            refetchMinInterval: Duration,
+        ): (String) -> Jwt {
+            val decoder =
+                DozyReactiveJwtDecoders.createWithoutAudienceCheck(
                     properties,
                     DozyJwtDecoders.remoteJwkSource(checkNotNull(properties.jwkSetUri), refetchMinInterval),
                     FIXED_CLOCK,

@@ -23,6 +23,23 @@ public object DozyReactiveJwtDecoders {
         properties: DozyAuthProperties,
         jwkSource: JWKSource<SecurityContext> = DozyJwtDecoders.remoteJwkSource(properties.resolvedJwkSetUri),
         clock: Clock = Clock.systemUTC(),
+    ): ReactiveJwtDecoder = decoder(properties, jwkSource, clock, checkAudience = true)
+
+    /**
+     * token.md §6의 8(`aud`)만 빼고 [create]와 같은 규칙으로 검증하는 디코더를 만듭니다.
+     * 쓰는 곳과 인자의 뜻은 [DozyJwtDecoders.createWithoutAudienceCheck]와 같습니다. **서비스는 쓰지 않습니다.**
+     */
+    public fun createWithoutAudienceCheck(
+        properties: DozyAuthProperties,
+        jwkSource: JWKSource<SecurityContext> = DozyJwtDecoders.remoteJwkSource(properties.resolvedJwkSetUri),
+        clock: Clock = Clock.systemUTC(),
+    ): ReactiveJwtDecoder = decoder(properties, jwkSource, clock, checkAudience = false)
+
+    private fun decoder(
+        properties: DozyAuthProperties,
+        jwkSource: JWKSource<SecurityContext>,
+        clock: Clock,
+        checkAudience: Boolean,
     ): ReactiveJwtDecoder {
         val processor = DozyJwtDecoders.processor(jwkSource)
         return NimbusReactiveJwtDecoder { jwt ->
@@ -30,7 +47,7 @@ public object DozyReactiveJwtDecoders {
                 .fromCallable { processor.process(jwt, null) }
                 .subscribeOn(Schedulers.boundedElastic())
                 .onErrorMap(::toJwtException)
-        }.apply { setJwtValidator(DozyTokenValidators.create(properties, clock)) }
+        }.apply { setJwtValidator(DozyTokenValidators.create(properties, clock, checkAudience)) }
     }
 
     /**

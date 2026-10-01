@@ -22,12 +22,17 @@ import java.time.Duration
  * 실패 이유는 [OAuth2Error.description]에만 담고 응답에는 넣지 않습니다 (starter.md §5).
  */
 internal object DozyTokenValidators {
+    /**
+     * @param checkAudience `false`면 8(`aud`)을 빼고 나머지는 그대로 검증합니다. `aud` claim은 없거나 비어 있어도 보지 않습니다.
+     *   Auth 서버의 `aud`를 검사하지 않는 경로용입니다 (api/conventions.md §2).
+     */
     fun create(
         properties: DozyAuthProperties,
         clock: Clock,
+        checkAudience: Boolean = true,
     ): OAuth2TokenValidator<Jwt> =
         DelegatingOAuth2TokenValidator(
-            listOf(
+            listOfNotNull(
                 // 3. typ
                 JwtTypeValidator(AccessTokenFormat.TYPE),
                 // 6. exp, iat
@@ -39,8 +44,12 @@ internal object DozyTokenValidators {
                 // 7. iss
                 OAuth2TokenValidator { jwt -> check(jwt.issuer?.toString() in properties.acceptedIssuers) { "iss is not accepted" } },
                 // 8. aud
-                OAuth2TokenValidator { jwt ->
-                    check(properties.audience in jwt.audience.orEmpty()) { "aud does not contain this service" }
+                if (checkAudience) {
+                    OAuth2TokenValidator { jwt ->
+                        check(properties.audience in jwt.audience.orEmpty()) { "aud does not contain this service" }
+                    }
+                } else {
+                    null
                 },
                 // 9. principalType, principalId, sub, realm 조합(DOM-01), roles 형식
                 OAuth2TokenValidator { jwt -> principalError(jwt, properties).let { error -> check(error == null) { error.orEmpty() } } },

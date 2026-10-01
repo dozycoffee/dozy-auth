@@ -52,6 +52,7 @@
 - 필터 체인만 교체할 때는 위 빈(디코더, 변환기, 401·403 핸들러)을 주입받아 쓰면 토큰 검증 규칙이 그대로 유지됩니다. stateless, CSRF, `public-paths`는 교체한 쪽이 다시 설정합니다.
 - 슬라이스 테스트(`@WebFluxTest`, `@WebMvcTest`)에서도 자동 설정이 켜집니다.
 - 자동 설정과 다른 키 출처가 필요하면(테스트 키, Auth 서버의 메모리 키) `DozyJwtDecoders.create(properties, jwkSource, clock)`(Spring MVC), `DozyReactiveJwtDecoders.create(...)`(WebFlux)로 같은 검증 규칙의 디코더를 만듭니다. `jwkSource`를 생략하면 JWKS 주소에서 받습니다.
+- **Auth 서버용** `DozyJwtDecoders.createWithoutAudienceCheck(...)`, `DozyReactiveJwtDecoders.createWithoutAudienceCheck(...)`: 인자는 `create`와 같고, [token.md §6](token.md#6-검증-규칙)의 8(`aud`)만 빼고 같은 규칙으로 검증합니다. `aud` claim은 없거나 비어 있거나 다른 audience만 있어도 거부하지 않습니다. Auth의 `aud`를 검사하지 않는 경로([api/conventions.md §2](api/conventions.md#2-인증-방식))에 씁니다. 서비스는 쓰지 않으며, 자동 설정의 디코더나 `create`를 씁니다. `dozy.auth.audience`는 이때도 필수이고, 권한 변환기가 그 audience의 role만 권한으로 바꾸는 데 씁니다.
 - 토큰이 잘못된 경우(서명 불일치, 모르는 `kid`, 재조회 제한에 걸린 `kid`, 검증기 실패)는 401입니다. JWKS를 받지 못한 경우만 서버 오류입니다.
 - `Clock` 빈이 하나 있으면 `exp`·`iat` 검증에 그 시계를 씁니다 (테스트의 고정 시계 등). 없거나 여러 개면 UTC 시스템 시계를 씁니다. 서비스가 `Clock` 빈을 만들 필요는 없습니다.
 
