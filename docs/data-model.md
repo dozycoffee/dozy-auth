@@ -34,6 +34,7 @@ erDiagram
 ```
 
 - principal 하나는 타입에 맞는 profile 하나만 가집니다.
+- `V1__init_schema.sql`은 직원 범위(`employee_profile`, `system_client` 포함)만 만듭니다. `partner_profile`(§3.3)은 파트너 realm을 도입할 때, `customer_profile`·`external_identity`(§3.12)는 고객 realm을 도입할 때 새 버전으로 추가합니다.
 - `audit_log`는 FK가 없습니다 ([AUD-06](domain.md#11-감사와-알림-aud)).
 
 ## 3. 테이블
@@ -228,7 +229,7 @@ Flyway 마이그레이션으로 넣습니다.
 | 테이블 | 데이터 |
 |---|---|
 | `audience` | `wms`, `catalog`, `store`, `auth` |
-| `role` | `auth:owner`, `auth:admin` (`is_system = true`, id 고정) |
+| `role` | `auth:owner`(id 1), `auth:admin`(id 2). `is_system = true`. 일반 role의 id는 3부터 |
 
 - owner 계정은 seed로 만들지 않습니다 ([GOV-11](domain.md#8-관리-권한-규칙-gov)).
 - `auth:partner_reader` 같은 일반 role과 system client는 운영 중 관리 API로 등록합니다.
