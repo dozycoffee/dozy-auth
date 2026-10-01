@@ -153,7 +153,7 @@ com.dozycoffee.auth.server
 |---|---|
 | 다른 도메인의 동작 호출, 다른 도메인 객체를 필드로 보유 | ❌ |
 | 다른 도메인을 ID로 참조 (`principalId: UUID`) | ✅ |
-| `domain` 바로 아래(하위 패키지 밖)의 공통 타입 사용 (예: `AuthException`, §9.1) | ✅ |
+| `domain` 바로 아래(하위 패키지 밖)의 공통 타입 사용 (예: `AuthException`(§9.1), `AuthPolicy`, `Email`, `OpaqueSecret`) | ✅ |
 | `auth-core` 타입 사용 | ✅ |
 | 도메인 간 순환 참조 | ❌ |
 
