@@ -58,7 +58,7 @@ PR과 이슈에 붙입니다. 릴리스 노트는 `.github/release.yml`이 이 �
 | 모듈 | `module: core`, `module: server`, `module: starter`, `module: test` | PR 제목의 scope와 같은 모듈 |
 | 상태 | `needs-triage`, `blocked` | 확인 전, 다른 일에 막힘 |
 | 우선순위 | `high-priority` | 먼저 처리할 것만 표시 |
-| 특수 | `breaking-change`, `security`, `dependencies` | 라이브러리 호환성 변경(major), 보안, 의존성 업데이트 |
+| 특수 | `breaking-change`, `security`, `dependencies`, `release` | 라이브러리 호환성 변경(major), 보안, 의존성 업데이트, 패키지 배포 작업(종류 라벨 없이 단독으로 붙임) |
 | 닫을 때 | `duplicate`, `wontfix`, `question` | 중복, 하지 않음, 질문 |
 
 - 이슈 템플릿이 종류 라벨과 `needs-triage`를 자동으로 붙입니다.

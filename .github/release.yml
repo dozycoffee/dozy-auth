@@ -3,6 +3,7 @@ changelog:
     labels:
       - duplicate
       - wontfix
+      - release
   categories:
     - title: 호환성 변경
       labels:
