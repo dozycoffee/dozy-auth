@@ -5,3 +5,7 @@ dozy:
     signing:
       keys-dir: build/test-signing-keys
       auto-generate: true
+    # 테스트 속도를 위해 가벼운 argon2id 파라미터를 씁니다 (configuration.md §6). 운영 기본값은 Argon2Properties
+    password-hash:
+      memory-kib: 1024
+      iterations: 1

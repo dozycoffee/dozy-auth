@@ -68,7 +68,7 @@ auth-server가 읽는 설정과 프로필별 동작입니다. 비밀값(DB 비�
 | `local` | 개발자 PC | Docker Compose 지원으로 PostgreSQL·Mailpit 자동 기동. 서명 키가 없으면 `.local/signing-keys/`에 생성해 재사용. `/dev/**` 활성. 부트스트랩 이메일 기본값 `owner@dozycoffee.local` |
 | `dev` | 공용 개발 서버 | `/dev/**` 활성. 서명 키는 설정으로 주입 (자동 생성 없음) |
 | `prod` | 운영 | [§2](#2-기동-시-검사) 검사. `/dev/**` 비활성. JSON 로그 |
-| `test` | 자동 테스트 | Testcontainers PostgreSQL. 서명 키는 `auth-server/build/test-signing-keys/`에 자동 생성. 메일은 테스트 대역 |
+| `test` | 자동 테스트 | Testcontainers PostgreSQL. 서명 키는 `auth-server/build/test-signing-keys/`에 자동 생성. 메일은 테스트 대역. 비밀번호 해시는 가벼운 파라미터 ([§6](#6-비밀번호-해시)) |
 
 - 개발용 API는 `@Profile("local", "dev")`로만 등록합니다.
 - `.local/`은 git에 올리지 않습니다.
@@ -87,3 +87,20 @@ auth-server가 읽는 설정과 프로필별 동작입니다. 비밀값(DB 비�
 - DB 접속 정보는 Docker Compose 지원이 `compose.yaml`에서 가져오므로 `AUTH_DB_*`가 필요 없습니다. `dev`·`prod`는 `AUTH_DB_*`가 없으면 기동에 실패합니다.
 
 - 브라우저는 `localhost`를 예외로 취급해 `Secure` 쿠키를 HTTP에서도 보냅니다. 포트가 달라도 같은 사이트라 쿠키가 전달됩니다.
+
+## 6. 비밀번호 해시
+
+새 비밀번호를 해시할 때 쓰는 argon2id 파라미터입니다 ([PWD-04](domain.md#4-비밀번호-규칙-pwd), [ADR-0027](adr/0027-argon2id-password-hash.md)). 파라미터는 해시 인코딩 문자열에 들어가므로, 값을 바꿔도 기존 해시는 만들 때의 파라미터로 검증됩니다. 바꾼 값은 새로 해시하는 비밀번호(가입, 초대 수락, 변경, 재설정)부터 적용됩니다.
+
+| 속성 | 기본값 | 설명 |
+|---|---|---|
+| `dozy.auth.password-hash.memory-kib` | `19456` (19 MiB) | 메모리 비용. `parallelism`의 8배 이상 |
+| `dozy.auth.password-hash.iterations` | `5` | 반복 횟수. 1 이상 |
+| `dozy.auth.password-hash.parallelism` | `1` | 병렬도 (lane 수) |
+| `dozy.auth.password-hash.salt-length` | `16` | salt 바이트 수. 16 이상 |
+| `dozy.auth.password-hash.hash-length` | `32` | 해시 출력 바이트 수. 16 이상 |
+
+- 기본값은 해시·검증 한 번이 100~300ms가 되도록 측정해 정했습니다. 운영 서버에서 이 범위를 벗어나면 `iterations`로 조정합니다.
+- 해시 한 번이 `memory-kib`만큼 JVM 힙을 씁니다. 동시 로그인 수만큼 곱해지므로 `memory-kib`를 키울 때는 힙 크기를 함께 봅니다.
+- 범위를 벗어난 값이면 기동에 실패합니다.
+- `test` 프로필은 테스트 속도를 위해 `memory-kib: 1024`, `iterations: 1`을 씁니다. 운영 프로필에서는 이 값을 쓰지 않습니다.
