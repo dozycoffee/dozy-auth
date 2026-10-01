@@ -58,7 +58,7 @@ Auth의 용어, 정책 수치, 규칙, 감사·알림을 정의합니다. 다른
 | `policy.signup-verification-ttl` | 24시간 | `SIGNUP_VERIFICATION` |
 | `policy.password-reset-ttl` | 30분 | `PASSWORD_RESET` |
 | `policy.owner-transfer-ttl` | 72시간 | `OWNER_TRANSFER` |
-| `policy.secret-bytes` | 32바이트 | refresh token, verification 토큰, client secret의 난수 길이 |
+| `policy.secret-bytes` | 32바이트 | refresh token, verification 토큰, client secret의 난수 길이. 원문은 패딩 없는 base64url |
 | `policy.signing-key-size` | RSA 3072비트 | 서명 키 |
 | `policy.jwks-cache-max-age` | 300초 | JWKS 응답의 `Cache-Control: max-age`. 서비스의 JWKS 캐시 유지 시간도 같음 |
 | `policy.jwks-refetch-min-interval` | 30초 | 서비스가 모르는 `kid` 때문에 JWKS를 다시 받는 최소 간격 |
