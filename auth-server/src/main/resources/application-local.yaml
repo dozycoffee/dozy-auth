@@ -20,6 +20,9 @@ dozy:
       # 없으면 만들어 저장하고 다음 기동부터 재사용합니다 (.local/은 git에 올리지 않음)
       keys-dir: .local/signing-keys
       auto-generate: true
+    # 처음 기동하면 이 주소로 owner 초대 메일이 Mailpit에 옵니다 (README 첫 owner 계정 만들기)
+    bootstrap:
+      owner-email: ${BOOTSTRAP_OWNER_EMAIL:owner@dozycoffee.local}
 
 logging:
   level:

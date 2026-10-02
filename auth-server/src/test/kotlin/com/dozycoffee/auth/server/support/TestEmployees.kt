@@ -17,12 +17,14 @@ import com.dozycoffee.auth.server.application.port.outbound.account.LoadAccountP
 import com.dozycoffee.auth.server.application.port.outbound.authorization.CreateRolePort
 import com.dozycoffee.auth.server.application.port.outbound.authorization.GrantRolePort
 import com.dozycoffee.auth.server.application.port.outbound.authorization.LoadAudiencePort
+import com.dozycoffee.auth.server.application.port.outbound.authorization.LoadRolePort
 import com.dozycoffee.auth.server.application.port.outbound.crypto.HashPasswordPort
 import com.dozycoffee.auth.server.application.port.outbound.verification.IssueVerificationPort
 import com.dozycoffee.auth.server.domain.Email
 import com.dozycoffee.auth.server.domain.account.Account
 import com.dozycoffee.auth.server.domain.account.AccountStatus
 import com.dozycoffee.auth.server.domain.authorization.RoleGrant
+import com.dozycoffee.auth.server.domain.authorization.SystemRoles
 import com.dozycoffee.auth.server.domain.credential.RawPassword
 import com.dozycoffee.auth.server.domain.verification.NewVerification
 import com.dozycoffee.auth.server.domain.verification.VerificationPurpose
@@ -57,6 +59,7 @@ class TestEmployees(
     @Autowired private val createRole: CreateRolePort,
     @Autowired private val grantRole: GrantRolePort,
     @Autowired private val issueVerification: IssueVerificationPort,
+    @Autowired private val loadRole: LoadRolePort,
 ) {
     private val createdPrincipals = mutableListOf<UUID>()
     private val createdRoles = mutableListOf<Long>()
@@ -106,6 +109,19 @@ class TestEmployees(
             issueVerification.issue(issued.verification)
             issued.token.value
         }
+
+    /** [employee]에게 seed의 `auth:owner`를 부여합니다. 다른 owner가 있으면 실패합니다 (GOV-10). */
+    fun makeOwner(employee: CreatedEmployee) {
+        inTransaction {
+            val owner = checkNotNull(loadRole.findRoleByCode(SystemRoles.OWNER))
+            grantRole.grant(RoleGrant(employee.id, owner.id, null, NOW))
+        }
+    }
+
+    /** 이 fixture 밖에서(예: owner 부트스트랩) 만든 principal도 [cleanUp]에서 지우도록 등록합니다. */
+    fun track(principalId: UUID) {
+        createdPrincipals += principalId
+    }
 
     /** 새 role code. 테스트마다 다른 code를 써서 role 정의가 겹치지 않게 합니다. */
     fun newRoleCode(audience: String): RoleCode = RoleCode(audience, "role_${UUID.randomUUID().toString().replace("-", "")}")

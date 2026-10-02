@@ -56,11 +56,11 @@ AUTH_LOCAL_DB_PORT=15432 ./gradlew :auth-server:bootRun --args='--spring.profile
 
 - 서명 키가 없으면 `.local/signing-keys/`에 자동으로 만들고 다음 기동부터 재사용합니다. 키를 바꾸고 싶으면 파일을 지우고 다시 실행합니다.
 
-### 첫 owner 계정 만들기 (준비 중: owner 부트스트랩)
+### 첫 owner 계정 만들기
 
-처음 기동하면 owner가 없으므로 부트스트랩 이메일(`owner@dozycoffee.local`)로 초대 메일이 갑니다. 관리 콘솔 없이 API로 수락하고 로그인할 수 있습니다.
+처음 기동하면 owner가 없으므로 부트스트랩 이메일(`owner@dozycoffee.local`, `BOOTSTRAP_OWNER_EMAIL`로 바꿀 수 있음)로 초대 메일이 갑니다. 관리 콘솔 없이 API로 수락하고 로그인할 수 있습니다. 동작은 [GOV-11](docs/domain.md#8-관리-권한-규칙-gov)을 따릅니다.
 
-1. Mailpit에서 초대 메일을 열고 링크의 `token` 값을 복사합니다.
+1. Mailpit(http://localhost:8025)에서 초대 메일을 열고 링크의 `token` 값을 복사합니다.
 2. 초대를 수락하고 로그인합니다.
 
 ```bash
@@ -72,6 +72,8 @@ curl -i -X POST http://localhost:8080/realms/internal/login \
   -H 'Content-Type: application/json' \
   -d '{"email": "owner@dozycoffee.local", "password": "local-owner-password"}'
 ```
+
+- 초대가 만료됐으면 서버를 다시 실행하면 새 초대 메일이 갑니다. owner를 처음부터 다시 만들려면 `docker compose down -v`로 DB를 지웁니다.
 
 ### 개발용 토큰 (준비 중: 개발용 토큰 API)
 

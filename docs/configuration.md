@@ -18,7 +18,7 @@ auth-server가 읽는 설정과 프로필별 동작입니다. 비밀값(DB 비�
 | `AUTH_MAIL_SMTP_HOST`, `_PORT`, `_USERNAME`, `_PASSWORD` | smtp일 때 | `smtp.example.com`, `587` | `HOST`가 없으면 기동 실패. `PORT` 기본값 `587`. dev·prod는 SMTP 인증과 STARTTLS를 요구 |
 | `AUTH_MAIL_FROM` | ✅ | `no-reply@dozycoffee.com` | 보내는 주소. 이메일 형식이 아니면 기동 실패 |
 | `AUTH_TRUSTED_PROXIES` | dev·prod ✅ | `10.0.1.0/24` | `X-Forwarded-For`를 믿을 앞단 프록시(로드 밸런서) 주소. CIDR 쉼표 구분. 빈 값이면 어떤 프록시도 믿지 않음 ([§9](#9-클라이언트-주소와-프록시)) |
-| `BOOTSTRAP_OWNER_EMAIL` | owner가 없을 때 | `owner@dozycoffee.com` | [GOV-11](domain.md#8-관리-권한-규칙-gov). 비밀번호는 설정에 두지 않음 |
+| `BOOTSTRAP_OWNER_EMAIL` | owner가 없을 때 | `owner@dozycoffee.com` | [GOV-11](domain.md#8-관리-권한-규칙-gov). 비밀번호는 설정에 두지 않음. 속성 `dozy.auth.bootstrap.owner-email`, local 기본값 `owner@dozycoffee.local`. 이메일 형식이 아니면 기동 실패 |
 
 - 정책 수치([domain.md §2](domain.md#2-정책-값))는 코드 기본값(`domain.AuthPolicy`)으로 두고, 바꿀 필요가 생기면 `dozy.auth.policy.*` 속성으로 노출합니다. 속성 이름은 정책 이름에서 `policy.`를 뗀 것입니다 (예: `dozy.auth.policy.access-token-ttl`).
 - 환경 변수와 Spring 속성의 연결은 `application.yaml`에서 `${AUTH_...}`로 합니다.
@@ -34,6 +34,15 @@ auth-server가 읽는 설정과 프로필별 동작입니다. 비밀값(DB 비�
 - 개발용 토큰 API(`local`·`dev` 전용)나 서명 키 자동 생성(`local`·`test` 전용)이 활성화됨
 
 CORS 허용 origin이 비어 있거나 와일드카드·origin 형식이 아닌 값이 있으면 **모든 프로필에서** 기동에 실패합니다. 쿠키를 허용하는 CORS에는 와일드카드를 쓸 수 없기 때문입니다.
+
+owner가 없는데 `BOOTSTRAP_OWNER_EMAIL`이 없으면 **모든 프로필에서** 기동에 실패합니다 ([GOV-11](domain.md#8-관리-권한-규칙-gov)). 관리할 사람이 없는 상태로 서버가 뜨는 것을 막기 위해서입니다. owner가 있으면 이 값이 없어도 됩니다.
+
+**owner 부트스트랩 속성**
+
+| 속성 | 환경 변수 | 설명 |
+|---|---|---|
+| `dozy.auth.bootstrap.owner-email` | `BOOTSTRAP_OWNER_EMAIL` | [§1](#1-환경-변수) |
+| `dozy.auth.bootstrap.enabled` | - | 기동할 때 부트스트랩을 실행할지. 기본값 `true`이고 `test` 프로필만 `false`([§4](#4-프로필)) |
 
 ## 3. 서명 키
 
@@ -71,7 +80,7 @@ CORS 허용 origin이 비어 있거나 와일드카드·origin 형식이 아닌 
 | `local` | 개발자 PC | Docker Compose 지원으로 PostgreSQL·Mailpit 자동 기동. 서명 키가 없으면 `.local/signing-keys/`에 생성해 재사용. `/dev/**` 활성. 부트스트랩 이메일 기본값 `owner@dozycoffee.local` |
 | `dev` | 공용 개발 서버 | `/dev/**` 활성. 서명 키는 설정으로 주입 (자동 생성 없음) |
 | `prod` | 운영 | [§2](#2-기동-시-검사) 검사. `/dev/**` 비활성. JSON 로그 |
-| `test` | 자동 테스트 | Testcontainers PostgreSQL. 서명 키는 `auth-server/build/test-signing-keys/`에 자동 생성. 메일은 `console`(링크의 토큰은 가림)이고, 보낸 메일을 확인하는 테스트는 기록용 테스트 대역을 씀. 비밀번호 해시는 가벼운 파라미터 ([§6](#6-비밀번호-해시)) |
+| `test` | 자동 테스트 | Testcontainers PostgreSQL. 서명 키는 `auth-server/build/test-signing-keys/`에 자동 생성. 메일은 `console`(링크의 토큰은 가림)이고, 보낸 메일을 확인하는 테스트는 기록용 테스트 대역을 씀. 비밀번호 해시는 가벼운 파라미터 ([§6](#6-비밀번호-해시)). 테스트끼리 DB를 함께 쓰므로 owner 부트스트랩을 끄고, 부트스트랩 테스트에서만 켬 |
 
 - 개발용 API는 `@Profile("local", "dev")`로만 등록합니다.
 - `.local/`은 git에 올리지 않습니다.

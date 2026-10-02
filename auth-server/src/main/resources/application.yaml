@@ -17,6 +17,9 @@ dozy:
   auth:
     audience: auth
     accepted-realms: [internal]
+    # owner 부트스트랩 (docs/configuration.md §1, GOV-11). owner가 없을 때 필수이며, owner가 있으면 무시합니다
+    bootstrap:
+      owner-email: ${BOOTSTRAP_OWNER_EMAIL:}
 
 ---
 # 공용 서버(dev, prod)는 환경 변수로 DB를 받습니다. 변수 목록은 docs/configuration.md §1
