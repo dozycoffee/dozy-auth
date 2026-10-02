@@ -69,7 +69,7 @@ src/test/kotlin/com/dozycoffee/auth/server/    테스트
 
 - 테스트 종류와 작성 규칙은 [docs/testing.md](../docs/testing.md)를 따릅니다.
 - 아키텍처 테스트만 돌리려면 `./gradlew :auth-server:test --tests '*ArchitectureTest*'`. 규칙 목록은 [architecture.md §6.3](../docs/architecture.md#63-아키텍처-테스트)에 있습니다.
-- 공용 fixture(`TokenFixtures`, `TestSigningKeys`)는 `src/test/kotlin/com/dozycoffee/auth/server/support/`에 있습니다.
+- 공용 fixture(`TokenFixtures`, `TestSigningKeys`)는 `src/test/kotlin/com/dozycoffee/auth/server/support/`에 있습니다. API 테스트는 `TestEmployees`(실제 DB에 직원·비밀번호·role 생성)와 `TestAccessTokens`(서버 서명 키로 토큰 발급)를 `@Import`해 씁니다. 예시는 `adapter/inbound/web/auth/LoginApiTest`입니다.
 - Testcontainers를 쓰는 테스트는 Docker가 필요합니다.
 - 영속성 어댑터 테스트는 `@PersistenceAdapterTest`(`support/`)를 붙이면 Flyway가 적용된 PostgreSQL에서 테이블 객체(`*Table`)로 바로 insert·select할 수 있습니다. 예시는 `adapter/outbound/persistence/PrincipalTableTest`입니다.
 - 로컬에서 컨테이너를 실행 사이에도 남기려면 `~/.testcontainers.properties`에 `testcontainers.reuse.enable=true`를 둡니다. CI에서는 쓰지 않습니다.

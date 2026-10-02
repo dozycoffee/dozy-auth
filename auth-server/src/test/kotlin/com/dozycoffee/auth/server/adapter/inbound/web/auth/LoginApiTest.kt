@@ -18,6 +18,7 @@ import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -53,6 +54,9 @@ class LoginApiTest {
 
     @Autowired
     lateinit var employees: TestEmployees
+
+    @AfterEach
+    fun cleanUp() = employees.cleanUp()
 
     private val jsonMapper = JsonMapper.builder().build()
 
@@ -334,7 +338,14 @@ class LoginApiTest {
     private fun serviceDecoder(audience: String) =
         DozyJwtDecoders.create(
             DozyAuthProperties(audience = audience, acceptedRealms = setOf(Realm.INTERNAL), issuerBaseUri = "http://localhost:8080"),
-            ImmutableJWKSet(JWKSet.parse(mockMvc.get("/.well-known/jwks.json").andReturn().response.contentAsString)),
+            ImmutableJWKSet(
+                JWKSet.parse(
+                    mockMvc
+                        .get("/.well-known/jwks.json")
+                        .andReturn()
+                        .response.contentAsString,
+                ),
+            ),
         )
 
     private fun unknownAccountFailures(): Long =

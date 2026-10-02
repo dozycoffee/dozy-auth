@@ -38,6 +38,7 @@
 | [0028](0028-uuidv7-principal-id.md) | principal id는 UUIDv7이고 토큰에는 type과 id를 함께 싣는다 | 채택 | `uuid DEFAULT uuidv7()`, `sub="{type}:{uuid}"` + `principalType`/`principalId`(UUID 문자열). ADR-0002 대체 |
 | [0029](0029-inbound-outbound-packages.md) | 방향을 나타내는 계층 패키지는 inbound·outbound로 쓴다 | 채택 | `in`이 Kotlin 예약어라 `port/inbound`·`port/outbound`, `adapter/inbound`·`adapter/outbound` |
 | [0030](0030-starter-supports-mvc-and-webflux.md) | 스타터는 Spring MVC와 WebFlux를 모두 지원한다 | 채택 | 서비스는 WebFlux+코루틴, Auth 서버는 MVC. 검증 규칙은 공유하고 연결만 스택별 |
+| [0031](0031-server-uses-starter-verification.md) | Auth 서버의 토큰 검증은 스타터를 쓰고, 에러 응답은 서버가 만든다 | 채택 | 서버는 스타터 디코더(`create`, `createWithoutAudienceCheck`)와 메모리 공개키로 검증. 경로별 필터 체인과 401·403은 서버 |
 
 ## 양식
 

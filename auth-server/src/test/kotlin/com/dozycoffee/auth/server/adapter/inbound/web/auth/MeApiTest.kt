@@ -10,6 +10,7 @@ import com.dozycoffee.auth.server.support.TestEmployees
 import com.dozycoffee.auth.server.support.TestEmployees.Companion.PASSWORD
 import com.dozycoffee.auth.server.support.TokenFixtures.PARTNER
 import com.dozycoffee.auth.server.support.TokenFixtures.SYSTEM
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -39,6 +40,9 @@ class MeApiTest {
 
     @Autowired
     lateinit var employees: TestEmployees
+
+    @AfterEach
+    fun cleanUp() = employees.cleanUp()
 
     @Autowired
     lateinit var tokens: TestAccessTokens

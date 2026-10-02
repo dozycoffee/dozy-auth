@@ -7,6 +7,7 @@ import com.dozycoffee.auth.server.support.TestAccessTokens
 import com.dozycoffee.auth.server.support.TestEmployees
 import com.dozycoffee.auth.server.support.TokenFixtures.SYSTEM
 import com.dozycoffee.auth.starter.DozyAuthServletAutoConfiguration
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.AutoConfigurations
@@ -60,6 +61,9 @@ class TokenVerificationIntegrationTest {
 
     @Autowired
     lateinit var employees: TestEmployees
+
+    @AfterEach
+    fun cleanUp() = employees.cleanUp()
 
     @Autowired
     lateinit var tokens: TestAccessTokens
@@ -125,7 +129,15 @@ class TokenVerificationIntegrationTest {
     @Test
     fun `401 본문의 필드는 서비스(스타터)와 서버가 같음`() {
         val server = mockMvc.get("/realms/internal/me").andReturn().response
-        val service = starterResponse { entryPoint, _, request, response -> entryPoint.commence(request, response, BadCredentialsException("x")) }
+        val service =
+            starterResponse {
+                entryPoint,
+                _,
+                request,
+                response,
+                ->
+                entryPoint.commence(request, response, BadCredentialsException("x"))
+            }
 
         assertSameProblem(service, server)
     }

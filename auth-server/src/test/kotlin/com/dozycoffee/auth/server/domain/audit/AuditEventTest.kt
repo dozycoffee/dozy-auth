@@ -87,7 +87,17 @@ class AuditEventTest {
         val actor = AuditActor(principalId, PrincipalType.EMPLOYEE)
 
         val event =
-            AuditEvent.login(NOW, AuditAction.LOGIN_FAILED, actor, Realm.INTERNAL, "203.0.113.10", "Mozilla/5.0", mapOf("reason" to "ACCOUNT_SUSPENDED"))
+            AuditEvent.login(
+                NOW,
+                AuditAction.LOGIN_FAILED,
+                actor,
+                Realm.INTERNAL,
+                "203.0.113.10",
+                "Mozilla/5.0",
+                mapOf(
+                    "reason" to "ACCOUNT_SUSPENDED",
+                ),
+            )
 
         assertEquals(actor, event.actor)
         assertEquals(AuditTarget(AuditTargetType.PRINCIPAL, "0199a3d0-0000-7000-8000-000000000001"), event.target)

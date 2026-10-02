@@ -113,6 +113,7 @@ stateDiagram-v2
 
 - **LGN-01** 검증 순서
   1. IP 요청 제한, 계정 잠금(`locked_until`) 확인 → `TOO_MANY_ATTEMPTS`
+     - 계정 잠금은 2번에서 찾은 계정으로 판단합니다. 잠겨 있으면 비밀번호를 검증하지 않고, 실패 횟수와 감사 로그도 남기지 않습니다.
   2. realm에 맞는 profile에서 이메일로 조회 (internal → `employee_profile`, partner → `partner_profile`)
   3. 비밀번호 검증. 실패하면 `failed_login_count` 증가, `policy.login-lock-threshold`에 도달하면 `policy.login-lock-duration` 동안 잠금 → `INVALID_CREDENTIALS`
      - 잠글 때 `failed_login_count`를 0으로 되돌립니다. 잠금이 풀린 뒤에는 다시 `policy.login-lock-threshold`번 실패해야 잠깁니다.
@@ -131,6 +132,8 @@ stateDiagram-v2
   | `PENDING` | `EMAIL_NOT_VERIFIED` (파트너 이메일 미인증) |
   | `SUSPENDED` | `ACCOUNT_SUSPENDED` |
   | `DEACTIVATED` | `INVALID_CREDENTIALS` (없는 계정과 같게) |
+
+  - 비밀번호가 맞았으므로 상태로 거부해도 `failed_login_count`를 늘리지 않습니다. `LOGIN_FAILED`는 남깁니다 ([AUD-08](#11-감사와-알림-aud)).
 
 - **LGN-04** 가입, 가입 인증 메일 재발송, 비밀번호 찾기도 계정 존재 여부와 관계없이 같은 응답을 줍니다. 이미 가입된 이메일로 가입하면 "이미 가입된 계정" 안내 메일을 보냅니다.
 
@@ -268,6 +271,10 @@ stateDiagram-v2
   - 요청 하나에 action 하나를 기본으로 합니다. 여러 role을 한 번에 부여하면 `ROLE_GRANTED` 한 건에 `detail.roles`로 담습니다.
   - `SESSION_REVOKED`는 로그아웃과 재사용 탐지에만 남깁니다. 정지·비활성화·비밀번호 변경·양도로 함께 폐기된 세션은 그 작업의 action에 `detail.revokedSessions`(개수)로 남깁니다.
   - `LOGIN_FAILED`에서 계정을 찾지 못하면 `actor_id`, `target_id`는 `NULL`이고 `detail`에는 realm(`detail.realm`, 경로 값 예: `internal`)만 남깁니다. 입력한 이메일은 남기지 않습니다.
+  - 계정을 찾은 로그인 기록(`LOGIN_SUCCEEDED`, `LOGIN_FAILED`, `ACCOUNT_LOCKED`)은 행위자와 대상이 모두 그 계정이고, `detail.realm`을 남깁니다. `LOGIN_SUCCEEDED`는 `detail.sessionId`(새 refresh 세션), `LOGIN_FAILED`는 `detail.reason`(응답한 에러 코드: `INVALID_CREDENTIALS`, `EMAIL_NOT_VERIFIED`, `ACCOUNT_SUSPENDED`)을 더합니다.
+  - 비밀번호가 맞았지만 계정 상태로 거부한 로그인([LGN-03](#5-로그인-규칙-lgn))도 `LOGIN_FAILED`입니다.
+  - 이번 실패로 잠기면 `LOGIN_FAILED`와 `ACCOUNT_LOCKED`를 함께 남깁니다.
+  - 잠긴 계정이나 IP 요청 제한으로 거부한 요청([LGN-01](#5-로그인-규칙-lgn) 1번)은 남기지 않습니다.
 - **AUD-03** 즉시 알림은 발생하는 대로 메일을 보내고, 일일 요약은 하루 한 번 모아서 보냅니다. 받는 사람은 owner입니다. owner 양도가 완료되면 이전 owner에게도 완료 메일을 보냅니다.
 - **AUD-04** 감사 로그는 owner만 조회합니다. 최신순이며 조회 기간은 `policy.audit-query-max-range` 이하입니다.
 - **AUD-05** 정리 배치(`policy.cleanup-schedule`)

@@ -87,7 +87,7 @@ flowchart LR
 | 모듈 | 역할 | 의존 | JVM | 배포 |
 |---|---|---|---|---|
 | `auth-core` | 공유 타입과 상수 ([token.md §10](token.md#10-공유-타입-auth-core)) | 없음 (Kotlin 표준 라이브러리만) | 17 | GitHub Packages |
-| `auth-server` | Auth 서버 | `auth-core` | 21 | 컨테이너 이미지 |
+| `auth-server` | Auth 서버 | `auth-core`, `auth-spring-boot-starter` (받는 토큰의 검증, [ADR-0031](adr/0031-server-uses-starter-verification.md)) | 21 | 컨테이너 이미지 |
 | `auth-spring-boot-starter` | 서비스용 자동 설정 ([starter.md](starter.md)) | `auth-core` | 17 | GitHub Packages |
 | `auth-test` | 서비스 테스트 도구 ([starter.md §7](starter.md#7-auth-test)) | `auth-core`, `auth-spring-boot-starter` | 17 | GitHub Packages |
 
@@ -95,6 +95,7 @@ flowchart LR
 - 의존성 버전은 `gradle/libs.versions.toml`이 기준입니다.
 - 라이브러리 모듈은 `explicitApi()`이며, Spring Boot BOM을 배포 메타데이터에 싣지 않습니다.
 - 스타터·test는 `auth-server` 코드를 참조하지 않습니다.
+- `auth-server`는 스타터의 검증기(디코더, 권한 변환기, `@CurrentPrincipal`)만 씁니다. 필터 체인과 401·403 응답은 서버가 직접 구성합니다 ([ADR-0031](adr/0031-server-uses-starter-verification.md)).
 
 ## 5. auth-server 구조
 

@@ -6,12 +6,12 @@ auth-server가 읽는 설정과 프로필별 동작입니다. 비밀값(DB 비�
 
 | 변수 | 필수 | 예시 | 설명 |
 |---|---|---|---|
-| `AUTH_ISSUER_BASE_URL` | ✅ | `https://auth.dozycoffee.com` | issuer 기준 주소. 뒤에 `/realms/{realm}`이 붙음. 속성 `dozy.auth.issuer-base-url`, local·test 기본값 `http://localhost:8080` |
+| `AUTH_ISSUER_BASE_URL` | ✅ | `https://auth.dozycoffee.com` | issuer 기준 주소. 뒤에 `/realms/{realm}`이 붙음. 속성 `dozy.auth.issuer-base-uri`(발급과 검증이 같은 속성, [§7](#7-토큰-검증)), local·test 기본값 `http://localhost:8080` |
 | `AUTH_DB_URL` | ✅ | `jdbc:postgresql://db:5432/auth` | local은 Docker Compose 지원이 대신 설정 |
 | `AUTH_DB_USERNAME`, `AUTH_DB_PASSWORD` | ✅ | | |
 | `AUTH_SIGNING_KEYS_DIR` | ✅ | `/secrets/signing-keys` | 서명 키 폴더 ([§3](#3-서명-키)) |
 | `AUTH_SIGNING_ACTIVE_KID` | ✅ | `dozy-2026-09` | 서명에 쓸 키 |
-| `AUTH_CORS_ALLOWED_ORIGINS` | ✅ | `https://admin.dozycoffee.com,https://partner.dozycoffee.com` | 쉼표 구분, 와일드카드 금지 |
+| `AUTH_CORS_ALLOWED_ORIGINS` | ✅ | `https://admin.dozycoffee.com,https://partner.dozycoffee.com` | CORS 허용 origin ([api/conventions.md §7](api/conventions.md#7-cors와-csrf)). 쉼표 구분, `scheme://host[:port]` 형식, 와일드카드 금지. 속성 `dozy.auth.cors.allowed-origins`, local 기본값 `http://localhost:3000`, test는 `https://admin.dozycoffee.test` |
 | `AUTH_APP_URL_INTERNAL` | ✅ | `https://admin.dozycoffee.com` | internal realm 메일 링크 기준 주소 |
 | `AUTH_APP_URL_PARTNER` | ✅ | `https://partner.dozycoffee.com` | partner realm 메일 링크 기준 주소 |
 | `AUTH_MAIL_SENDER` | ✅ | `smtp` / `console` | `console`은 메일 내용을 로그로 출력 (local·dev 전용) |
@@ -31,6 +31,8 @@ auth-server가 읽는 설정과 프로필별 동작입니다. 비밀값(DB 비�
 - 키가 `policy.signing-key-size`보다 작음
 - `AUTH_CORS_ALLOWED_ORIGINS`에 `*`가 있음
 - 개발용 토큰 API(`local`·`dev` 전용)나 서명 키 자동 생성(`local`·`test` 전용)이 활성화됨
+
+CORS 허용 origin이 비어 있거나 와일드카드·origin 형식이 아닌 값이 있으면 **모든 프로필에서** 기동에 실패합니다. 쿠키를 허용하는 CORS에는 와일드카드를 쓸 수 없기 때문입니다.
 
 ## 3. 서명 키
 
@@ -104,3 +106,16 @@ auth-server가 읽는 설정과 프로필별 동작입니다. 비밀값(DB 비�
 - 해시 한 번이 `memory-kib`만큼 JVM 힙을 씁니다. 동시 로그인 수만큼 곱해지므로 `memory-kib`를 키울 때는 힙 크기를 함께 봅니다.
 - 범위를 벗어난 값이면 기동에 실패합니다.
 - `test` 프로필은 테스트 속도를 위해 `memory-kib: 1024`, `iterations: 1`을 씁니다. 운영 프로필에서는 이 값을 쓰지 않습니다.
+
+## 7. 토큰 검증
+
+Auth 서버가 받는 토큰(`/realms/{realm}` 아래 본인 API, `/admin/**`, `/internal/**`)은 서비스와 같은 스타터 검증기로 검증합니다 ([ADR-0031](adr/0031-server-uses-starter-verification.md)). 설정은 스타터 속성([starter.md §2](starter.md#2-설정))을 그대로 쓰며, 서버에서는 아래 값으로 고정합니다 (`application.yaml`).
+
+| 속성 | 값 | 설명 |
+|---|---|---|
+| `dozy.auth.audience` | `auth` | `/admin/**`, `/internal/**`는 `aud`에 이 값이 있어야 함. 권한 변환기는 `auth` audience의 role만 권한으로 바꿈 |
+| `dozy.auth.accepted-realms` | `[internal]` | 받는 토큰의 realm. 파트너 본인 API를 만들 때 `partner`를 더함 |
+| `dozy.auth.issuer-base-uri` | `AUTH_ISSUER_BASE_URL` | 발급하는 `iss`의 기준 주소와 같은 속성 하나 |
+
+- 공개키는 HTTP로 받지 않고 서버가 JWKS에 게시하는 메모리 키를 씁니다. `dozy.auth.jwk-set-uri`는 쓰지 않습니다.
+- 경로별 `aud` 검사와 필터 체인은 [api/conventions.md §2](api/conventions.md#2-인증-방식)를 따릅니다. 스타터의 `public-paths`와 기본 필터 체인은 쓰지 않습니다.
