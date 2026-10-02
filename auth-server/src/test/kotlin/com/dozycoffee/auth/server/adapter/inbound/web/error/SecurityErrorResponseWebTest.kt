@@ -1,5 +1,7 @@
 package com.dozycoffee.auth.server.adapter.inbound.web.error
 
+import com.dozycoffee.auth.server.adapter.outbound.ratelimit.RateLimitBucket4jAdapter
+import com.dozycoffee.auth.server.application.service.RateLimitService
 import com.dozycoffee.auth.server.config.ClockConfig
 import com.dozycoffee.auth.server.config.JwtConfig
 import com.dozycoffee.auth.server.config.SecurityConfig
@@ -25,6 +27,9 @@ import org.springframework.test.web.servlet.get
         TraceIdFilter::class,
         ProblemAuthenticationEntryPoint::class,
         ProblemAccessDeniedHandler::class,
+        // 인증 없는 경로 체인의 IP 요청 제한
+        RateLimitService::class,
+        RateLimitBucket4jAdapter::class,
     ],
 )
 @ActiveProfiles("test")

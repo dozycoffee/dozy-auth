@@ -120,12 +120,13 @@ RFC 9457 Problem Details 형식이며 `Content-Type: application/problem+json`�
 
 ## 8. 요청 제한
 
-- 인증 방식이 "없음"인 API는 IP 단위로 제한합니다. 한도는 `policy.rate-limit`입니다. JWKS는 제외합니다.
-- 메일을 보내는 API(가입, 인증 메일 재발송, 비밀번호 찾기)는 같은 이메일에 대한 반복 요청도 제한합니다. 제한에 걸려도 계정 존재 여부가 드러나지 않게 같은 `202`로 응답하고 메일만 보내지 않습니다.
+- 인증 방식이 "없음"인 API는 IP 단위로 제한합니다. 한도는 `policy.rate-limit-ip`입니다. JWKS와 개발용 API(`/dev/**`, `local`·`dev` 전용으로 비밀값을 확인하지 않음)는 제외합니다. CORS preflight(`OPTIONS`)는 세지 않습니다.
+- IP는 서버가 정한 클라이언트 주소입니다. 프록시 뒤에서는 신뢰할 프록시가 전달한 `X-Forwarded-For`만 반영합니다 ([configuration.md §9](../configuration.md#9-클라이언트-주소와-프록시)).
+- 메일을 보내는 API(가입, 인증 메일 재발송, 비밀번호 찾기)는 같은 이메일에 대한 반복 요청도 제한합니다. 한도는 `policy.rate-limit-email`이고 이메일은 대소문자를 구분하지 않습니다. 제한에 걸려도 계정 존재 여부가 드러나지 않게 같은 `202`로 응답하고 메일만 보내지 않습니다.
 - 서비스 토큰 발급은 요청 제한 대상이 아닙니다. client secret은 난수라 대입 공격이 의미 없고, 실패는 `invalid_client`로만 응답합니다.
 - 로그인은 추가로 계정 단위 잠금이 있습니다 ([LGN-01](../domain.md#5-로그인-규칙-lgn)).
-- 본인 확인용 비밀번호를 받는 API(비밀번호 변경, 파트너 탈퇴)는 principal 단위로도 제한합니다.
-- 초과하면 `429 TOO_MANY_ATTEMPTS`와 `Retry-After`로 응답합니다.
+- 본인 확인용 비밀번호를 받는 API(비밀번호 변경, 파트너 탈퇴)는 principal 단위로도 제한합니다. 한도는 `policy.rate-limit-password-confirm`이며, 비밀번호를 확인하기 전에 셉니다.
+- 초과하면 `429 TOO_MANY_ATTEMPTS`와 `Retry-After`(초)로 응답합니다. IP 단위 제한은 컨트롤러보다 먼저 거부하므로 비밀번호 검증이나 감사 기록이 일어나지 않습니다.
 - 카운터는 인스턴스 메모리에 있습니다 ([ADR-0024](../adr/0024-in-memory-rate-limit-and-scheduler.md)).
 
 ## 9. 추적과 로그
