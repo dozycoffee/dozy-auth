@@ -2,6 +2,7 @@ package com.dozycoffee.auth.server.config
 
 import com.dozycoffee.auth.core.AuthenticatedPrincipal
 import com.dozycoffee.auth.core.PrincipalType
+import com.dozycoffee.auth.server.adapter.inbound.web.account.InvitationController
 import com.dozycoffee.auth.server.adapter.inbound.web.auth.SessionController
 import com.dozycoffee.auth.server.adapter.inbound.web.error.ProblemAccessDeniedHandler
 import com.dozycoffee.auth.server.adapter.inbound.web.error.ProblemAuthenticationEntryPoint
@@ -37,7 +38,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
  *
  * | 순서 | 경로 | 인증 |
  * |---|---|---|
- * | 1 | [PUBLIC_PATHS] (로그인, 서비스 토큰 발급, JWKS, 상태 확인) | 없음 (서비스 토큰 발급의 client 인증은 컨트롤러) |
+ * | 1 | [PUBLIC_PATHS] (로그인, 초대 조회·수락, 서비스 토큰 발급, JWKS, 상태 확인) | 없음 (서비스 토큰 발급의 client 인증은 컨트롤러) |
  * | 2 | `/realms/...` | 사용자 access token. `aud`는 보지 않고 `iss`의 realm이 경로와 같아야 함. system token은 403 |
  * | 3 | `/admin/...`, `/internal/...` | access token(관리)·system token. `aud`에 `auth` 포함 |
  * | 4 | 그 밖의 모든 경로 | 거부 |
@@ -185,6 +186,8 @@ class SecurityConfig {
                 JwksController.PATH,
                 "/actuator/health",
                 SessionController.LOGIN_PATH,
+                InvitationController.VERIFY_PATH,
+                InvitationController.ACCEPT_PATH,
                 // client 인증(`Authorization: Basic`)과 OAuth 에러 응답은 컨트롤러가 함 (api/internal.md)
                 SystemTokenController.PATH,
             )

@@ -10,6 +10,7 @@ import com.dozycoffee.auth.server.adapter.outbound.persistence.PrincipalRoleTabl
 import com.dozycoffee.auth.server.adapter.outbound.persistence.PrincipalTable
 import com.dozycoffee.auth.server.adapter.outbound.persistence.RefreshSessionTable
 import com.dozycoffee.auth.server.adapter.outbound.persistence.RoleTable
+import com.dozycoffee.auth.server.adapter.outbound.persistence.VerificationTable
 import com.dozycoffee.auth.server.application.port.outbound.account.ChangeAccountStatusPort
 import com.dozycoffee.auth.server.application.port.outbound.account.CreateEmployeePort
 import com.dozycoffee.auth.server.application.port.outbound.account.LoadAccountPort
@@ -17,11 +18,14 @@ import com.dozycoffee.auth.server.application.port.outbound.authorization.Create
 import com.dozycoffee.auth.server.application.port.outbound.authorization.GrantRolePort
 import com.dozycoffee.auth.server.application.port.outbound.authorization.LoadAudiencePort
 import com.dozycoffee.auth.server.application.port.outbound.crypto.HashPasswordPort
+import com.dozycoffee.auth.server.application.port.outbound.verification.IssueVerificationPort
 import com.dozycoffee.auth.server.domain.Email
 import com.dozycoffee.auth.server.domain.account.Account
 import com.dozycoffee.auth.server.domain.account.AccountStatus
 import com.dozycoffee.auth.server.domain.authorization.RoleGrant
 import com.dozycoffee.auth.server.domain.credential.RawPassword
+import com.dozycoffee.auth.server.domain.verification.NewVerification
+import com.dozycoffee.auth.server.domain.verification.VerificationPurpose
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.deleteAll
@@ -52,6 +56,7 @@ class TestEmployees(
     @Autowired private val loadAudience: LoadAudiencePort,
     @Autowired private val createRole: CreateRolePort,
     @Autowired private val grantRole: GrantRolePort,
+    @Autowired private val issueVerification: IssueVerificationPort,
 ) {
     private val createdPrincipals = mutableListOf<UUID>()
     private val createdRoles = mutableListOf<Long>()
@@ -67,10 +72,11 @@ class TestEmployees(
         password: String? = PASSWORD,
         roles: List<RoleCode> = emptyList(),
         name: String = "김도윤",
+        phone: String? = null,
     ): CreatedEmployee =
         inTransaction {
             val email = Email("employee-${UUID.randomUUID()}@dozycoffee.test")
-            val employee = createEmployee.createEmployee(email, name, null, null, NOW)
+            val employee = createEmployee.createEmployee(email, name, phone, null, NOW)
             val id = employee.account.id
             createdPrincipals += id
             if (password != null) {
@@ -85,6 +91,20 @@ class TestEmployees(
             }
             roles.forEach { code -> grantRole.grant(RoleGrant(id, roleId(code), null, NOW)) }
             CreatedEmployee(PrincipalKey(PrincipalType.EMPLOYEE, id), email.value, name)
+        }
+
+    /**
+     * [employee]에게 [issuedAt]에 발급한 직원 초대(`EMPLOYEE_INVITATION`)를 저장하고 토큰 원문을 돌려줍니다.
+     * 같은 직원의 이전 초대는 무효화됩니다 (VER-03).
+     */
+    fun issueInvitation(
+        employee: CreatedEmployee,
+        issuedAt: Instant,
+    ): String =
+        inTransaction {
+            val issued = NewVerification.issue(employee.id, VerificationPurpose.EMPLOYEE_INVITATION, Email(employee.email), issuedAt)
+            issueVerification.issue(issued.verification)
+            issued.token.value
         }
 
     /** 새 role code. 테스트마다 다른 code를 써서 role 정의가 겹치지 않게 합니다. */
@@ -131,6 +151,7 @@ class TestEmployees(
             AuditLogTable.deleteAll()
             if (createdPrincipals.isNotEmpty()) {
                 RefreshSessionTable.deleteWhere { RefreshSessionTable.principalId inList createdPrincipals }
+                VerificationTable.deleteWhere { VerificationTable.principalId inList createdPrincipals }
                 PrincipalRoleTable.deleteWhere { PrincipalRoleTable.principalId inList createdPrincipals }
                 PasswordCredentialTable.deleteWhere { PasswordCredentialTable.principalId inList createdPrincipals }
                 EmployeeProfileTable.deleteWhere { EmployeeProfileTable.principalId inList createdPrincipals }
