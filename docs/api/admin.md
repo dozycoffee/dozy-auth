@@ -814,7 +814,7 @@ sequenceDiagram
 
 | 이름 | 설명 |
 |---|---|
-| `from`, `to` | 기간 (ISO 8601). 기본은 최근 `policy.audit-query-default-range` |
+| `from`, `to` | 기간 (ISO 8601). `from` 이상 `to` 미만. 기본은 최근 `policy.audit-query-default-range` |
 | `actorId` | 행위자 principal id |
 | `targetType`, `targetId` | 대상 |
 | `action` | action. 여러 개는 쉼표로 구분 |

@@ -267,7 +267,7 @@ stateDiagram-v2
 - **AUD-08** 기록 단위
   - 요청 하나에 action 하나를 기본으로 합니다. 여러 role을 한 번에 부여하면 `ROLE_GRANTED` 한 건에 `detail.roles`로 담습니다.
   - `SESSION_REVOKED`는 로그아웃과 재사용 탐지에만 남깁니다. 정지·비활성화·비밀번호 변경·양도로 함께 폐기된 세션은 그 작업의 action에 `detail.revokedSessions`(개수)로 남깁니다.
-  - `LOGIN_FAILED`에서 계정을 찾지 못하면 `actor_id`, `target_id`는 `NULL`이고 `detail`에는 realm만 남깁니다. 입력한 이메일은 남기지 않습니다.
+  - `LOGIN_FAILED`에서 계정을 찾지 못하면 `actor_id`, `target_id`는 `NULL`이고 `detail`에는 realm(`detail.realm`, 경로 값 예: `internal`)만 남깁니다. 입력한 이메일은 남기지 않습니다.
 - **AUD-03** 즉시 알림은 발생하는 대로 메일을 보내고, 일일 요약은 하루 한 번 모아서 보냅니다. 받는 사람은 owner입니다. owner 양도가 완료되면 이전 owner에게도 완료 메일을 보냅니다.
 - **AUD-04** 감사 로그는 owner만 조회합니다. 최신순이며 조회 기간은 `policy.audit-query-max-range` 이하입니다.
 - **AUD-05** 정리 배치(`policy.cleanup-schedule`)
