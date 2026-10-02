@@ -70,6 +70,8 @@ bouncycastle-bcprov = { module = "org.bouncycastle:bcprov-jdk18on", version.ref 
 # 스타터의 system token 클라이언트 (client credentials). Spring Boot의 OAuth2 Client 자동 설정은 쓰지 않음
 spring-security-oauth2-client = { module = "org.springframework.security:spring-security-oauth2-client" }
 bucket4j-core = { module = "com.bucket4j:bucket4j_jdk17-core", version.ref = "bucket4j" }
+# 요청 제한 버킷의 유휴 만료 (버전은 Spring Boot BOM이 관리)
+caffeine = { module = "com.github.ben-manes.caffeine:caffeine" }
 
 # 운영
 micrometer-prometheus = { module = "io.micrometer:micrometer-registry-prometheus" }

@@ -43,6 +43,8 @@ Auth의 용어, 정책 수치, 규칙, 감사·알림을 정의합니다. 다른
 
 코드는 이 이름을 설정 키나 상수 이름의 기준으로 씁니다.
 
+- 요청 제한(`policy.rate-limit-*`)의 "N분에 M회"는 한 번에 M회까지 쓸 수 있고, 쓴 횟수가 N분에 걸쳐 고르게 다시 채워진다는 뜻입니다 (예: 1분에 20회면 3초마다 1회). 카운터는 인스턴스마다 따로 있습니다 ([ADR-0024](adr/0024-in-memory-rate-limit-and-scheduler.md)).
+
 | 이름 | 값 | 설명 |
 |---|---|---|
 | `policy.access-token-ttl` | 10분 | access token, system token 공통 |
@@ -68,7 +70,9 @@ Auth의 용어, 정책 수치, 규칙, 감사·알림을 정의합니다. 다른
 | `policy.audit-query-max-range` | 90일 | 감사 로그 한 번 조회 기간 상한 |
 | `policy.audit-query-default-range` | 7일 | 기간을 주지 않았을 때 |
 | `policy.cleanup-schedule` | 매일 04:00 KST | 정리 배치 ([AUD-05](#11-감사와-알림-aud)) |
-| `policy.rate-limit` | 결정 필요 | 인증 없이 호출하는 API의 IP 단위 요청 제한 한도 |
+| `policy.rate-limit-ip` | 1분에 20회 | 인증 없이 호출하는 API의 클라이언트 IP 단위 요청 제한 ([api/conventions.md §8](api/conventions.md#8-요청-제한)) |
+| `policy.rate-limit-email` | 10분에 3회 | 메일을 보내는 API의 받는 이메일 단위 요청 제한. 넘으면 응답은 같고 메일만 보내지 않음 |
+| `policy.rate-limit-password-confirm` | 결정 필요 | 본인 확인용 비밀번호를 받는 API의 principal 단위 요청 제한. 비밀번호 변경·파트너 탈퇴 작업 전에 정함 |
 
 ## 3. 계정 상태 규칙 (ACC)
 

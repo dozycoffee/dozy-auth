@@ -9,7 +9,8 @@ import java.time.Duration
  * 값을 바꿀 일이 생기면 `dozy.auth.policy.*` 속성으로 노출합니다 (configuration.md §1).
  *
  * 서비스만 쓰는 값(`policy.clock-skew`, `policy.jwks-refetch-min-interval`)은 스타터에 있고,
- * 아직 정하지 않은 `policy.rate-limit`과 배치 일정인 `policy.cleanup-schedule`은 해당 작업에서 추가합니다.
+ * 배치 일정인 `policy.cleanup-schedule`은 해당 작업에서, 아직 정하지 않은 `policy.rate-limit-password-confirm`은
+ * 비밀번호 변경·파트너 탈퇴 작업에서 추가합니다.
  */
 object AuthPolicy {
     /** `policy.access-token-ttl`. access token, system token 공통. */
@@ -71,4 +72,16 @@ object AuthPolicy {
 
     /** `policy.audit-query-default-range`. 감사 로그 조회 기간을 주지 않았을 때의 기간. */
     val AUDIT_QUERY_DEFAULT_RANGE: Duration = Duration.ofDays(7)
+
+    /**
+     * `policy.rate-limit-ip`. 인증 없이 호출하는 API의 클라이언트 IP 단위 한도 (api/conventions.md §8).
+     * 카운터는 인스턴스 메모리에 있어 인스턴스마다 따로 셉니다 (ADR-0024).
+     */
+    val RATE_LIMIT_IP: RateLimit = RateLimit(capacity = 20, period = Duration.ofMinutes(1))
+
+    /**
+     * `policy.rate-limit-email`. 메일을 보내는 API(가입, 인증 메일 재발송, 비밀번호 찾기)의 받는 이메일 단위 한도.
+     * 넘으면 같은 `202`로 응답하고 메일만 보내지 않습니다 (api/conventions.md §8). 인스턴스 단위입니다 (ADR-0024).
+     */
+    val RATE_LIMIT_EMAIL: RateLimit = RateLimit(capacity = 3, period = Duration.ofMinutes(10))
 }
