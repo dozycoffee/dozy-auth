@@ -65,13 +65,24 @@ Content-Type: application/x-www-form-urlencoded
 grant_type=client_credentials
 ```
 
+- client 인증은 `client_secret_basic`만 받습니다. Basic 값을 디코드한 뒤 client_id와 secret을 각각 URL 디코드합니다 (RFC 6749 §2.3.1). OAuth 클라이언트 라이브러리는 둘을 URL 인코딩해서 보냅니다.
+- `scope`는 쓰지 않으며 보내도 무시합니다.
+
 **응답** `200 OK`
+
+```http
+Content-Type: application/json
+Cache-Control: no-store
+Pragma: no-cache
+```
 
 ```json
 { "access_token": "eyJhbGciOiJSUzI1NiIs...", "token_type": "Bearer", "expires_in": 600 }
 ```
 
-**에러** OAuth 2.0 표준 형식입니다 ([conventions.md §4](conventions.md#4-에러-응답)의 예외).
+- `expires_in`은 `policy.access-token-ttl`(초)입니다. refresh token은 없습니다 ([CLI-05](../domain.md#9-system-client-규칙-cli)).
+
+**에러** OAuth 2.0 표준 형식입니다 ([conventions.md §4](conventions.md#4-에러-응답)의 예외). 에러 응답도 `Cache-Control: no-store`, `Pragma: no-cache`입니다.
 
 ```json
 { "error": "invalid_client", "error_description": "Client authentication failed" }
@@ -79,13 +90,17 @@ grant_type=client_credentials
 
 | error | status | 조건 |
 |---|---|---|
-| `invalid_client` | 401 | client_id 또는 secret 불일치, `ACTIVE`가 아닌 client |
-| `invalid_request` | 400 | 필수 파라미터 누락 |
+| `invalid_request` | 400 | `grant_type` 누락(form이 아닌 본문 포함), 파라미터 중복, Basic 헤더와 본문 `client_secret`을 함께 보냄 |
 | `unsupported_grant_type` | 400 | `client_credentials`가 아님 |
+| `invalid_client` | 401 | Basic 헤더 없음·형식 오류, 본문 `client_secret`으로만 인증, client_id 또는 secret 불일치, `ACTIVE`가 아닌 client. `WWW-Authenticate: Basic realm="internal"` 포함 |
 
-**규칙** [CLI-03](../domain.md#9-system-client-규칙-cli), [CLI-05](../domain.md#9-system-client-규칙-cli), [token.md §8](../token.md#8-system-token-발급)
+- 위 표의 순서로 검사합니다. 요청 형식이 틀리면 client를 조회하지 않습니다.
+- `invalid_client`는 원인을 구분하지 않습니다. 없는 client에도 secret 해시 비교를 한 번 합니다 ([SEC-05](../domain.md#12-민감정보-sec)).
+
+**규칙** [CLI-01](../domain.md#9-system-client-규칙-cli), [CLI-03](../domain.md#9-system-client-규칙-cli), [CLI-05](../domain.md#9-system-client-규칙-cli), [ACC-04](../domain.md#3-계정-상태-규칙-acc), [token.md §8](../token.md#8-system-token-발급)
 
 - 요청 제한 대상이 아닙니다 ([conventions.md §8](conventions.md#8-요청-제한)).
+- 감사 로그를 남기지 않습니다 ([AUD-01](../domain.md#11-감사와-알림-aud)에 없음).
 
 ### JWKS
 

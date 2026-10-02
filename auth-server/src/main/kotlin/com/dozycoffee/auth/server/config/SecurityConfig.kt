@@ -3,6 +3,7 @@ package com.dozycoffee.auth.server.config
 import com.dozycoffee.auth.server.adapter.inbound.web.error.ProblemAccessDeniedHandler
 import com.dozycoffee.auth.server.adapter.inbound.web.error.ProblemAuthenticationEntryPoint
 import com.dozycoffee.auth.server.adapter.inbound.web.internal.JwksController
+import com.dozycoffee.auth.server.adapter.inbound.web.internal.SystemTokenController
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
@@ -28,6 +29,7 @@ class SecurityConfig {
         http {
             authorizeHttpRequests {
                 authorize(JwksController.PATH, permitAll)
+                authorize(SystemTokenController.PATH, permitAll) // client 인증은 컨트롤러가 함 (api/internal.md)
                 authorize("/actuator/health", permitAll)
                 authorize(anyRequest, denyAll)
             }
