@@ -115,6 +115,8 @@ stateDiagram-v2
   1. IP 요청 제한, 계정 잠금(`locked_until`) 확인 → `TOO_MANY_ATTEMPTS`
   2. realm에 맞는 profile에서 이메일로 조회 (internal → `employee_profile`, partner → `partner_profile`)
   3. 비밀번호 검증. 실패하면 `failed_login_count` 증가, `policy.login-lock-threshold`에 도달하면 `policy.login-lock-duration` 동안 잠금 → `INVALID_CREDENTIALS`
+     - 잠글 때 `failed_login_count`를 0으로 되돌립니다. 잠금이 풀린 뒤에는 다시 `policy.login-lock-threshold`번 실패해야 잠깁니다.
+     - 같은 계정의 실패가 동시에 와도 횟수를 잃지 않게 원자적으로 기록합니다.
   4. 계정 상태 확인 ([LGN-03](#5-로그인-규칙-lgn))
   5. `failed_login_count` 초기화, refresh 세션 생성, 토큰 발급
 - **LGN-02** 계정 존재 여부를 드러내지 않습니다.
