@@ -4,6 +4,11 @@
       "name": "dozy.auth",
       "type": "com.dozycoffee.auth.starter.DozyAuthProperties",
       "sourceType": "com.dozycoffee.auth.starter.DozyAuthProperties"
+    },
+    {
+      "name": "dozy.auth.client",
+      "type": "com.dozycoffee.auth.starter.DozyAuthClientProperties",
+      "sourceType": "com.dozycoffee.auth.starter.DozyAuthClientProperties"
     }
   ],
   "properties": [
@@ -50,6 +55,25 @@
       "description": "@PreAuthorize 활성화.",
       "sourceType": "com.dozycoffee.auth.starter.DozyAuthProperties",
       "defaultValue": true
+    },
+    {
+      "name": "dozy.auth.client.enabled",
+      "type": "java.lang.Boolean",
+      "description": "system token 클라이언트(dozySystemRestClient, dozySystemWebClient) 사용.",
+      "sourceType": "com.dozycoffee.auth.starter.DozyAuthClientProperties",
+      "defaultValue": false
+    },
+    {
+      "name": "dozy.auth.client.client-id",
+      "type": "java.lang.String",
+      "description": "system client id (svc-{서비스명}). 클라이언트 사용 시 필수.",
+      "sourceType": "com.dozycoffee.auth.starter.DozyAuthClientProperties"
+    },
+    {
+      "name": "dozy.auth.client.client-secret",
+      "type": "java.lang.String",
+      "description": "system client secret. 클라이언트 사용 시 필수. 비밀 관리 도구에서 주입.",
+      "sourceType": "com.dozycoffee.auth.starter.DozyAuthClientProperties"
     }
   ],
   "hints": [

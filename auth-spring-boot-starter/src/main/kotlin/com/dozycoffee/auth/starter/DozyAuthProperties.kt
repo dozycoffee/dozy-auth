@@ -11,7 +11,7 @@ import java.time.Duration
  * 생성자 바인딩으로 만들어 실행 중에 바뀌지 않습니다. Spring은 `kotlin-reflect`로 Kotlin 주 생성자를 찾아 기본값을 쓰므로
  * 스타터가 `kotlin-reflect`를 함께 가져갑니다. 모든 인자에 기본값이 있어 Kotlin이 인자 없는 생성자도 만들기 때문에
  * `@ConstructorBinding`은 붙이지 않습니다 (붙이면 그 생성자에도 복사되어 기동이 실패함).
- * 서비스 간 호출 설정(`dozy.auth.client.*`)은 아직 제공하지 않습니다.
+ * 서비스 간 호출 설정(`dozy.auth.client.*`)은 [DozyAuthClientProperties]에 있습니다.
  */
 @ConfigurationProperties(prefix = "dozy.auth")
 public data class DozyAuthProperties(
