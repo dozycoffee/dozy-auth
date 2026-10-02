@@ -56,7 +56,7 @@ AUTH_LOCAL_DB_PORT=15432 ./gradlew :auth-server:bootRun --args='--spring.profile
 
 - 서명 키가 없으면 `.local/signing-keys/`에 자동으로 만들고 다음 기동부터 재사용합니다. 키를 바꾸고 싶으면 파일을 지우고 다시 실행합니다.
 
-### 첫 owner 계정 만들기 (준비 중: 초대 API)
+### 첫 owner 계정 만들기 (준비 중: owner 부트스트랩)
 
 처음 기동하면 owner가 없으므로 부트스트랩 이메일(`owner@dozycoffee.local`)로 초대 메일이 갑니다. 관리 콘솔 없이 API로 수락하고 로그인할 수 있습니다.
 

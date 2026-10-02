@@ -185,15 +185,17 @@ sequenceDiagram
 }
 ```
 
-- `maskedPhone`은 전화번호가 없으면 `null`입니다.
+- `maskedEmail`은 계정의 로그인 이메일, `maskedPhone`은 계정의 전화번호를 마스킹한 값이며, 전화번호가 없으면 `null`입니다.
 
 **에러**
 
 | code | 조건 |
 |---|---|
-| `VERIFICATION_EXPIRED` | 만료, 사용, 무효화된 초대 |
+| `VERIFICATION_EXPIRED` | 만료, 사용, 무효화된 초대. 초대받은 계정이 `PENDING` 직원이 아님 |
 
-**규칙** [VER-05](../domain.md#7-verification-규칙-ver), [VER-06](../domain.md#7-verification-규칙-ver)
+**규칙** [VER-05](../domain.md#7-verification-규칙-ver), [VER-06](../domain.md#7-verification-규칙-ver), [SEC-02](../domain.md#12-민감정보-sec)
+
+- 계정 상태를 드러내지 않도록 계정이 `PENDING`이 아닌 경우도 만료된 초대와 같은 응답입니다. 정상 흐름에서는 수락하면 초대가 소비되고 비활성화하면 무효화되므로([ACC-04](../domain.md#3-계정-상태-규칙-acc)) 생기지 않습니다.
 
 ### 초대 수락
 
@@ -216,11 +218,13 @@ sequenceDiagram
 
 | code | 조건 |
 |---|---|
-| `VERIFICATION_EXPIRED` | 만료, 사용, 무효화된 초대 |
+| `VERIFICATION_EXPIRED` | 만료, 사용, 무효화된 초대. 초대받은 계정이 `PENDING` 직원이 아님 ([초대 조회](#초대-조회)와 같음) |
 
 **규칙** [VER-01](../domain.md#7-verification-규칙-ver) (`EMPLOYEE_INVITATION`)
 
+- 토큰을 먼저 확인하고 비밀번호 규칙을 검사합니다. 규칙 위반(`VALIDATION_FAILED`)이면 초대를 소비하지 않으므로 같은 링크로 다시 시도할 수 있습니다.
 - credential 생성, `ACTIVE` 전환, verification 소비를 한 트랜잭션에서 처리합니다.
+- 같은 초대를 동시에 수락하면 하나만 성공하고 나머지는 `VERIFICATION_EXPIRED`입니다.
 - 자동 로그인하지 않습니다. 앱은 로그인 화면으로 보냅니다.
 - 감사 로그: `INVITATION_ACCEPTED`
 

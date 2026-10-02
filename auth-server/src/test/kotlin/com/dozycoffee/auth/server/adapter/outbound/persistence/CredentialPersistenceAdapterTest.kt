@@ -3,13 +3,15 @@ package com.dozycoffee.auth.server.adapter.outbound.persistence
 import com.dozycoffee.auth.server.domain.Email
 import com.dozycoffee.auth.server.domain.credential.PasswordHash
 import com.dozycoffee.auth.server.support.PersistenceAdapterTest
+import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.junit.jupiter.api.Test
 import java.time.Instant
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
-/** 비밀번호 credential 조회 (docs/data-model.md §3.5). */
+/** 비밀번호 credential 조회·생성 (docs/data-model.md §3.5). */
 @PersistenceAdapterTest
 class CredentialPersistenceAdapterTest {
     private val adapter = CredentialPersistenceAdapter()
@@ -31,6 +33,19 @@ class CredentialPersistenceAdapterTest {
         val id = accounts.createEmployee(Email("kim@dozycoffee.com"), "김도윤", null, null, NOW).account.id
 
         assertNull(adapter.findPasswordHash(id))
+    }
+
+    @Test
+    fun `비밀번호를 만들면 해시와 넘긴 시각을 변경·생성 시각으로 저장함`() {
+        val id = accounts.createEmployee(Email("kim@dozycoffee.com"), "김도윤", null, null, NOW).account.id
+        val createdAt = Instant.parse("2026-09-26T01:02:03Z")
+
+        adapter.createPasswordCredential(id, PasswordHash(HASH), createdAt)
+
+        assertEquals(PasswordHash(HASH), adapter.findPasswordHash(id))
+        val row = PasswordCredentialTable.selectAll().where { PasswordCredentialTable.principalId eq id }.single()
+        assertEquals(createdAt, row[PasswordCredentialTable.changedAt])
+        assertEquals(createdAt, row[PasswordCredentialTable.createdAt])
     }
 
     private companion object {
