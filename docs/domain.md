@@ -231,7 +231,7 @@ stateDiagram-v2
 
 ## 9. system client 규칙 (CLI)
 
-- **CLI-01** `client_id`는 `svc-{서비스명}` 형식입니다.
+- **CLI-01** `client_id`는 `svc-{서비스명}` 형식입니다. 서비스명은 소문자로 시작하는 소문자·숫자이며 하이픈으로 단어를 나눌 수 있습니다 (`^svc-[a-z][a-z0-9]*(-[a-z0-9]+)*$`, 길이는 [data-model.md §3.4](data-model.md#34-system_client)의 컬럼 길이 이하). 예: `svc-store`, `svc-store-sync`
 - **CLI-02** secret은 `policy.secret-bytes` 난수이며, 등록·재발급 응답에서 **한 번만** 내려주고 이후에는 SHA-256 해시만 남깁니다. 난수라서 느린 해시가 필요 없습니다.
 - **CLI-03** secret을 재발급하면 기존 secret은 즉시 무효입니다. 이미 발급된 system token은 `policy.access-token-ttl`까지 유효합니다.
 - **CLI-04** system client는 등록 즉시 `ACTIVE`입니다. 폐기는 계정 비활성화로 합니다.
