@@ -117,18 +117,49 @@ suspend fun myStores(@CurrentPrincipal principal: AuthenticatedPrincipal)
 
 ## 6. 서비스 간 호출
 
-`dozy.auth.client.enabled=true`이면 system token을 자동으로 붙이는 클라이언트를 제공합니다.
+`dozy.auth.client.enabled=true`이면 system token을 자동으로 붙이는 클라이언트 builder를 제공합니다. 앱 종류(Spring MVC, WebFlux)에 맞는 쪽만 등록되며, 동작은 같습니다 ([ADR-0030](adr/0030-starter-supports-mvc-and-webflux.md)).
+
+| 앱 | 빈 이름 (qualifier) | 타입 |
+|---|---|---|
+| Spring MVC | `dozySystemRestClient` | `RestClient.Builder` |
+| WebFlux | `dozySystemWebClient` | `WebClient.Builder` |
+
+```kotlin
+@Component
+class StoreClient(@Qualifier("dozySystemWebClient") builder: WebClient.Builder) {
+    private val client = builder.baseUrl("https://store.internal").build()
+}
+```
 
 | 항목 | 내용 |
 |---|---|
-| 빈 | `@Qualifier("dozySystemRestClient")` `RestClient.Builder` |
-| 토큰 발급 | `{issuer-base-uri}/realms/internal/token`, client credentials, `client_secret_basic` |
-| 캐시 | 만료 직전까지 재사용하고 만료 전에 새로 발급 |
+| 토큰 발급 | `{issuer-base-uri}/realms/internal/token`, client credentials, `client_secret_basic` ([api/internal.md](api/internal.md#서비스-토큰-발급)) |
+| 캐시 | 앱 하나에 토큰 하나를 두고 모든 builder가 함께 씁니다. 만료 60초 전까지 재사용하고, 그 뒤 첫 호출에서 새로 발급합니다 |
+| 발급 제한 시간 | 토큰 엔드포인트 연결·응답 5초 |
 | 구현 | Spring Security OAuth2 Client의 client credentials 흐름 |
 
-사용자 토큰을 다른 서비스로 전달하는 기능은 제공하지 않습니다.
+- `enabled=true`인데 `client-id`나 `client-secret`이 없으면 기동에 실패합니다. 실패 메시지에 secret 값을 넣지 않습니다.
+- 사용자 토큰을 다른 서비스로 전달하는 기능은 제공하지 않습니다.
 
-> WebFlux 서비스용 클라이언트(`WebClient`)는 이 기능을 구현하는 작업에서 정합니다 ([ADR-0030](adr/0030-starter-supports-mvc-and-webflux.md)).
+**builder**
+
+- 주입할 때마다 새 builder입니다 (prototype). `baseUrl` 등을 바꿔도 다른 주입에는 영향이 없습니다.
+- Spring Boot가 만든 기본 builder(`RestClient.Builder`, `WebClient.Builder` 빈)가 하나 있으면 복제해서 시작하므로 서비스의 메시지 변환기·codec·관측(trace 전파) 설정이 그대로 적용됩니다. 원본 builder는 바꾸지 않습니다. 없으면 Spring 기본 builder로 시작합니다.
+- 토큰을 붙이는 interceptor(Spring MVC)와 filter(WebFlux)는 builder의 마지막에 더합니다. 서비스가 builder에 더한 것보다 나중에 실행되며, `Authorization` 헤더를 system token으로 덮어씁니다.
+- 타입만으로는 주입되지 않습니다 (`@Bean(defaultCandidate = false)`). qualifier 없이 `RestClient.Builder`·`WebClient.Builder`를 주입받는 곳은 Spring Boot의 기본 builder를 그대로 받으므로 system token이 의도하지 않은 곳으로 나가지 않습니다.
+- 같은 이름의 빈을 정의하면 스타터 빈이 빠집니다.
+
+**서비스의 OAuth2 Client 설정과의 관계**
+
+- 스타터는 `spring-security-oauth2-client`를 runtime 의존성으로 가져갑니다. Spring Boot의 OAuth2 Client 자동 설정 모듈은 가져가지 않으므로 클라이언트를 쓰지 않는 서비스의 설정은 바뀌지 않습니다. 스타터의 공개 API에는 OAuth2 Client 타입이 없습니다.
+- 스타터는 `ClientRegistrationRepository`, `OAuth2AuthorizedClientService`, `OAuth2AuthorizedClientManager`(reactive 포함)를 빈으로 등록하지 않고 클라이언트 안에만 둡니다. registration id는 `dozy-auth`이며 서비스의 저장소에는 들어가지 않습니다. 서비스가 다른 API용 OAuth2 Client 설정을 가지고 있어도 서로 바꾸거나 주입을 모호하게 만들지 않습니다.
+
+**발급 실패**
+
+- 토큰을 발급받지 못하면(`invalid_client`, Auth 연결 실패·제한 시간 초과 등) 호출을 보내지 않고 `DozySystemTokenException`으로 실패합니다. Spring MVC는 호출에서 예외를 던지고, WebFlux는 오류 신호를 보냅니다.
+- `DozySystemTokenException.error`는 토큰 엔드포인트의 OAuth 오류 코드입니다. 응답을 받지 못했으면 원인 예외의 이름입니다. 원인 예외는 `cause`에 있습니다.
+- `com.dozycoffee.auth.starter` 로거에 warn 로그를 남깁니다. client id와 오류 코드만 쓰고, client secret, 토큰 원문, `Authorization` 헤더는 로그와 예외 메시지에 남기지 않습니다 ([SEC-03](domain.md#12-민감정보-sec)).
+- 실패는 캐시하지 않습니다. 다음 호출에서 다시 발급을 시도합니다.
 
 ## 7. auth-test
 

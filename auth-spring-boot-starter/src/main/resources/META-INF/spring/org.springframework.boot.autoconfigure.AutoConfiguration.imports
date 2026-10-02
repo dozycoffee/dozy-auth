@@ -1,2 +1,4 @@
 com.dozycoffee.auth.starter.DozyAuthServletAutoConfiguration
 com.dozycoffee.auth.starter.DozyAuthReactiveAutoConfiguration
+com.dozycoffee.auth.starter.DozySystemClientServletAutoConfiguration
+com.dozycoffee.auth.starter.DozySystemClientReactiveAutoConfiguration

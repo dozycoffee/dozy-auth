@@ -44,6 +44,17 @@ dozy:
     issuer-base-uri: https://auth.dozycoffee.com
 ```
 
+다른 서비스를 system token으로 호출하려면 클라이언트를 켜고 `dozySystemWebClient`(WebFlux) 또는 `dozySystemRestClient`(Spring MVC) builder를 qualifier로 주입받습니다 ([starter.md §6](../docs/starter.md#6-서비스-간-호출)). secret은 저장소에 두지 않고 환경 변수 등으로 주입합니다.
+
+```yaml
+dozy:
+  auth:
+    client:
+      enabled: true
+      client-id: svc-catalog
+      client-secret: ${DOZY_AUTH_CLIENT_SECRET}
+```
+
 ## 구조
 
 Spring MVC와 WebFlux를 모두 지원합니다 ([ADR-0030](../docs/adr/0030-starter-supports-mvc-and-webflux.md)). 앱 종류에 맞는 자동 설정만 켜지고, 검증 규칙과 권한 변환은 같은 코드를 씁니다.
@@ -57,16 +68,21 @@ src/main/kotlin/com/dozycoffee/auth/starter/
 │  ├─ DozyJwtAuthenticationConverter role 변환, AuthenticatedPrincipal 생성
 │  ├─ DozyAuthenticationToken        인증 결과 (principal = AuthenticatedPrincipal)
 │  ├─ CurrentPrincipal               컨트롤러 인자
-│  └─ DozyProblems                   401·403 본문(ProblemDetail, 변환기가 없을 때의 JSON), traceId 순서
+│  ├─ DozyProblems                   401·403 본문(ProblemDetail, 변환기가 없을 때의 JSON), traceId 순서
+│  ├─ DozyAuthClientProperties       dozy.auth.client.* 설정 (secret은 toString·기동 실패 메시지에 남기지 않음)
+│  ├─ DozySystemClients              system token 클라이언트 공통: 스타터 전용 ClientRegistration, 발급 실패 처리
+│  └─ DozySystemTokenException       system token 발급 실패 (공개)
 ├─ Spring MVC
 │  ├─ DozyAuthServletAutoConfiguration
 │  ├─ DozyAuth                       dozyAuth SpEL 헬퍼
-│  └─ DozyProblemResponses           401·403 응답 쓰기 (서비스의 HttpMessageConverter)
+│  ├─ DozyProblemResponses           401·403 응답 쓰기 (서비스의 HttpMessageConverter)
+│  └─ DozySystemClientServletAutoConfiguration   dozySystemRestClient (RestClient.Builder)
 └─ WebFlux
    ├─ DozyAuthReactiveAutoConfiguration
    ├─ DozyReactiveJwtDecoders        서명 검증을 별도 스케줄러에서 실행 (공개)
    ├─ DozyReactiveAuth               dozyAuth SpEL 헬퍼 (Mono<Boolean>)
-   └─ DozyReactiveProblemResponses   401·403 응답 쓰기 (서비스의 서버 codec)
+   ├─ DozyReactiveProblemResponses   401·403 응답 쓰기 (서비스의 서버 codec)
+   └─ DozySystemClientReactiveAutoConfiguration  dozySystemWebClient (WebClient.Builder)
 src/main/resources/META-INF/
 ├─ spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports
 ├─ spring/…WebFluxTest.imports, …WebMvcTest.imports   슬라이스 테스트에서도 자동 설정이 켜지도록 등록
@@ -76,7 +92,7 @@ src/main/resources/META-INF/
 - `DozyJwtDecoders`, `DozyReactiveJwtDecoders`는 공개 API입니다. 자동 설정과 다른 키 출처(auth-test의 테스트 키 등)로 같은 검증 규칙의 디코더를 만들 때 씁니다. `aud`를 검사하지 않는 `createWithoutAudienceCheck`는 Auth 서버용이며 서비스는 쓰지 않습니다 ([starter.md §3](../docs/starter.md#3-제공하는-빈)).
 
 - Spring MVC 전용 클래스와 WebFlux 전용 클래스는 파일을 나눕니다. 서비스에는 둘 중 한쪽 라이브러리(servlet API 또는 Reactor)만 있을 수 있기 때문입니다.
-- 서비스 간 호출(`dozy.auth.client.*`, [starter.md §6](../docs/starter.md#6-서비스-간-호출))은 준비 중입니다.
+- 서비스 간 호출(`dozy.auth.client.*`)은 [starter.md §6](../docs/starter.md#6-서비스-간-호출)에 있습니다. `spring-security-oauth2-client`는 `implementation`이라 서비스의 컴파일 classpath에 실리지 않고, OAuth2 Client 객체는 빈으로 등록하지 않습니다.
 
 ### 필터 체인을 바꾸고 싶을 때
 
@@ -127,4 +143,5 @@ fun securityWebFilterChain(
 - `DozyServletProblemWriterTest`, `DozyReactiveProblemWriterTest`: Jackson 3·Jackson 2 변환기(codec)로 쓴 본문과 변환기가 없을 때 직접 쓴 본문이 같은 필드와 값인지
 - `DozyTraceIdsTest`: trace id를 정하는 순서
 - `DozyAuthServletAutoConfigurationTest`, `DozyAuthReactiveAutoConfigurationTest`: 필수 설정 누락 시 기동 실패, 앱 종류에 맞는 빈만 등록, 서비스가 빈을 정의하면 스타터 빈이 빠짐
-- JWKS는 테스트 안에서 JDK `HttpServer`로 띄웁니다 (`support/JwksServer`).
+- `DozySystemClientTest`: system token 클라이언트. Spring MVC(`Servlet`)와 WebFlux(`Reactive`)에 같은 테스트를 돌립니다. 기본은 꺼짐, 필수 설정, Bearer 첨부, 발급 요청 형식(`client_secret_basic`, form), 캐시 재사용과 만료 전 재발급(테스트 시계), `invalid_client`·연결 실패, 로그에 secret 없음, 서비스의 기본 builder·OAuth2 Client 설정과 함께 쓰기
+- JWKS와 토큰 엔드포인트는 테스트 안에서 JDK `HttpServer`로 띄웁니다 (`support/JwksServer`, `support/AuthTokenServer`).
