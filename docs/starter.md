@@ -94,9 +94,26 @@ suspend fun myStores(@CurrentPrincipal principal: AuthenticatedPrincipal)
 | 토큰 없음·검증 실패 (허용되지 않은 realm·audience 포함) | 401 | `UNAUTHENTICATED` |
 | role 또는 `dozyAuth` 조건 불만족 | 403 | `FORBIDDEN` |
 
+- 본문 필드는 `type`, `title`, `status`, `instance`(요청 경로), `code`, `traceId`이고 `detail`은 없습니다. `Content-Type`은 `application/problem+json`입니다.
 - `401`에는 `WWW-Authenticate: Bearer` 헤더를 넣습니다.
 - `detail`에 검증 실패 이유를 넣지 않습니다. 실패 이유는 `com.dozycoffee.auth.starter` 로거의 debug 로그에만 남깁니다.
-- `traceId`와 응답 헤더 `X-Trace-Id`는 같은 값입니다. Micrometer Tracing의 현재 trace id → 요청의 `X-Trace-Id`(영문·숫자·하이픈 64자 이내만) → 새로 만든 값 순서로 정합니다.
+- `traceId`와 응답 헤더 `X-Trace-Id`는 같은 값입니다. 아래 순서로 처음 있는 값을 씁니다.
+  1. Micrometer Tracing의 현재 trace id
+  2. 서비스의 필터가 이미 응답에 붙인 `X-Trace-Id` (서비스가 정한 값이므로 그대로 씀)
+  3. 요청의 `X-Trace-Id` (영문·숫자·하이픈 64자 이내만)
+  4. 새로 만든 값 (16바이트 난수의 hex)
+
+**본문 직렬화**
+
+- 본문은 Spring `ProblemDetail`로 만들고 서비스의 변환기로 씁니다. 서비스가 직렬화 설정을 바꿔도 서비스 자신의 에러 응답과 같은 방식으로 쓰기 위해서입니다. `code`와 `traceId`는 `ProblemDetail`의 `properties`이며 변환기가 최상위 필드로 펼칩니다.
+
+| 앱 | 쓰는 변환기 |
+|---|---|
+| Spring MVC | `RequestMappingHandlerAdapter`의 `HttpMessageConverter` 중 `ProblemDetail`을 `application/problem+json`으로 쓸 수 있는 첫 번째 |
+| WebFlux | `ServerCodecConfigurer` 빈의 `HttpMessageWriter` 중 `ProblemDetail`을 `application/problem+json`으로 쓸 수 있는 첫 번째 |
+
+- Spring Boot가 만드는 Jackson 3(`JsonMapper`)·Jackson 2(`Jackson2ObjectMapperBuilder`) 변환기와 Spring의 기본 Jackson 변환기는 `ProblemDetail`의 `properties`를 펼칩니다. 서비스가 이 설정을 거치지 않고 `JsonMapper`·`ObjectMapper`를 직접 만들어 변환기에 넣었다면 `ProblemDetailJacksonMixin`을 등록해야 합니다 (서비스 자신의 `ProblemDetail` 응답에도 필요).
+- 쓸 수 있는 변환기가 없으면(Jackson이 없는 서비스, Spring MVC가 아닌 servlet 앱 등) 같은 필드와 값의 JSON을 스타터가 직접 씁니다. 처음 한 번 warn 로그를 남깁니다. 기동은 실패시키지 않습니다. 401·403은 변환기 없이도 쓸 수 있는 고정 형식이라, 기동을 막으면 Jackson을 쓰지 않는 서비스가 스타터를 쓸 수 없게 되기 때문입니다.
 
 ## 6. 서비스 간 호출
 

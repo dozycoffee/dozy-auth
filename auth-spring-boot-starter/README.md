@@ -57,16 +57,16 @@ src/main/kotlin/com/dozycoffee/auth/starter/
 │  ├─ DozyJwtAuthenticationConverter role 변환, AuthenticatedPrincipal 생성
 │  ├─ DozyAuthenticationToken        인증 결과 (principal = AuthenticatedPrincipal)
 │  ├─ CurrentPrincipal               컨트롤러 인자
-│  └─ DozyProblems                   401·403 본문, traceId
+│  └─ DozyProblems                   401·403 본문(ProblemDetail, 변환기가 없을 때의 JSON), traceId 순서
 ├─ Spring MVC
 │  ├─ DozyAuthServletAutoConfiguration
 │  ├─ DozyAuth                       dozyAuth SpEL 헬퍼
-│  └─ DozyProblemResponses           401·403 응답 쓰기
+│  └─ DozyProblemResponses           401·403 응답 쓰기 (서비스의 HttpMessageConverter)
 └─ WebFlux
    ├─ DozyAuthReactiveAutoConfiguration
    ├─ DozyReactiveJwtDecoders        서명 검증을 별도 스케줄러에서 실행 (공개)
    ├─ DozyReactiveAuth               dozyAuth SpEL 헬퍼 (Mono<Boolean>)
-   └─ DozyReactiveProblemResponses   401·403 응답 쓰기
+   └─ DozyReactiveProblemResponses   401·403 응답 쓰기 (서비스의 서버 codec)
 src/main/resources/META-INF/
 ├─ spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports
 ├─ spring/…WebFluxTest.imports, …WebMvcTest.imports   슬라이스 테스트에서도 자동 설정이 켜지도록 등록
@@ -123,6 +123,8 @@ fun securityWebFilterChain(
 ```
 
 - `DozyJwtDecodersTest`: 검증 실패 경우(`alg`, `typ`, 서명, `kid`, 만료, `iss`, `aud`, realm과 principal type 불일치 등)마다 거부, JWKS 재조회와 재조회 제한. Spring MVC용(`Servlet`)과 WebFlux용(`Reactive`) 디코더에 같은 테스트를 돌리고, `aud`를 검사하지 않는 디코더(`ServletWithoutAudienceCheck`, `ReactiveWithoutAudienceCheck`)에는 `aud`를 뺀 같은 거부 테스트와 `aud` 통과 테스트를 돌립니다.
-- `DozyAuthServletWebTest`, `DozyAuthReactiveWebTest`: 샘플 앱(`sample`, `reactivesample`)으로 401·403 응답 형식, `@PreAuthorize`, `@CurrentPrincipal`, `dozyAuth`. WebFlux는 `suspend` 컨트롤러와 `Mono` 컨트롤러를 모두 확인합니다.
+- `DozyAuthServletWebTest`, `DozyAuthReactiveWebTest`: 샘플 앱(`sample`, `reactivesample`)으로 401·403 응답 형식(필드 목록까지), 서비스의 Jackson 설정 적용, 서비스 trace 필터가 붙인 `X-Trace-Id` 유지, 서비스가 정의한 401·403 핸들러로 교체, `@PreAuthorize`, `@CurrentPrincipal`, `dozyAuth`. WebFlux는 `suspend` 컨트롤러와 `Mono` 컨트롤러를 모두 확인합니다.
+- `DozyServletProblemWriterTest`, `DozyReactiveProblemWriterTest`: Jackson 3·Jackson 2 변환기(codec)로 쓴 본문과 변환기가 없을 때 직접 쓴 본문이 같은 필드와 값인지
+- `DozyTraceIdsTest`: trace id를 정하는 순서
 - `DozyAuthServletAutoConfigurationTest`, `DozyAuthReactiveAutoConfigurationTest`: 필수 설정 누락 시 기동 실패, 앱 종류에 맞는 빈만 등록, 서비스가 빈을 정의하면 스타터 빈이 빠짐
 - JWKS는 테스트 안에서 JDK `HttpServer`로 띄웁니다 (`support/JwksServer`).

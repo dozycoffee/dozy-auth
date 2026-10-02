@@ -23,4 +23,6 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.reactor)
     testImplementation(libs.spring.boot.starter.security.test)
     testImplementation(libs.micrometer.tracing)
+    // 서비스가 Jackson 2를 쓸 때의 401·403 본문 확인 (Boot 4 기본은 Jackson 3)
+    testImplementation(libs.jackson2.databind)
 }

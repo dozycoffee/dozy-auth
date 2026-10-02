@@ -57,11 +57,12 @@ public class DozyAuthServletAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     public fun dozyAuthenticationEntryPoint(beanFactory: BeanFactory): AuthenticationEntryPoint =
-        DozyAuthenticationEntryPoint(DozyTraceIds(beanFactory))
+        DozyAuthenticationEntryPoint(DozyServletProblemWriter.create(beanFactory))
 
     @Bean
     @ConditionalOnMissingBean
-    public fun dozyAccessDeniedHandler(beanFactory: BeanFactory): AccessDeniedHandler = DozyAccessDeniedHandler(DozyTraceIds(beanFactory))
+    public fun dozyAccessDeniedHandler(beanFactory: BeanFactory): AccessDeniedHandler =
+        DozyAccessDeniedHandler(DozyServletProblemWriter.create(beanFactory))
 
     @Bean(DozyAuth.BEAN_NAME)
     @ConditionalOnMissingBean
