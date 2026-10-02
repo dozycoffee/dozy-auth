@@ -18,7 +18,7 @@ Auth 서버는 토큰을 발급하면서, 본인 API(`/realms/{realm}` 아래), 
   - 관리·내부 API: `create` (token.md §6 전부)
   - 본인 API: `createWithoutAudienceCheck` (8번 `aud`만 제외). `iss`의 realm과 경로 realm 비교, system token 거부는 서버의 필터 체인이 합니다.
   - 공개키는 HTTP로 받지 않고 서버가 JWKS에 게시하는 메모리 키를 `JWKSource`로 넘깁니다.
-  - 설정은 스타터 속성(`dozy.auth.audience: auth`, `accepted-realms: [internal]`, `issuer-base-uri`)이고, `issuer-base-uri`는 발급하는 `iss`에도 같은 속성을 씁니다 ([configuration.md §7](../configuration.md#7-토큰-검증)).
+  - 설정은 스타터 속성(`dozy.auth.audience: auth`, `accepted-realms: [internal]`, `issuer-base-uri`)이고, `issuer-base-uri`는 발급하는 `iss`에도 같은 속성을 씁니다 ([configuration.md §8](../configuration.md#8-토큰-검증)).
 - **필터 체인과 에러 응답은 서버가 만듭니다.** 경로별 `SecurityFilterChain`을 서버가 구성하고, 401·403은 서버의 처리기가 응답합니다. 서버가 이 빈들을 정의하므로 스타터의 기본 디코더, 필터 체인, 401·403 처리기는 만들어지지 않습니다.
 - 서비스(스타터)와 서버의 401·403 본문은 필드가 같아야 하며, 테스트로 비교합니다.
 
@@ -33,4 +33,4 @@ Auth 서버는 토큰을 발급하면서, 본인 API(`/realms/{realm}` 아래), 
 - 검증 규칙을 바꾸면 스타터 한 곳만 고치고, 서버와 서비스에 함께 적용됩니다. 스타터의 공개 API를 바꾸면 서버도 컴파일 대상이 됩니다.
 - 서버의 토큰 발급 통합 테스트는 서비스와 같은 스타터 검증기로 확인합니다.
 - owner 양도 수락(`POST /admin/owner/transfer/accept`)은 `/admin/**` 아래지만 `aud`를 검사하지 않는 예외라, owner 양도 작업에서 관리 API 체인보다 앞선 체인에 연결합니다.
-- 관련 문서: [architecture.md §4](../architecture.md#4-모듈), [configuration.md §7](../configuration.md#7-토큰-검증)
+- 관련 문서: [architecture.md §4](../architecture.md#4-모듈), [configuration.md §8](../configuration.md#8-토큰-검증)

@@ -289,6 +289,6 @@ stateDiagram-v2
 
 - **SEC-01** 해시로만 저장: 비밀번호(argon2id), refresh token·verification 토큰·client secret(SHA-256). 원문은 어디에도 저장하지 않습니다.
 - **SEC-02** 응답 마스킹: 초대 조회와 파트너 조회 응답의 이메일·전화번호. 예: `ki***@dozycoffee.com`, `010-****-5678`
-- **SEC-03** 로그 금지: 비밀번호, 모든 토큰 원문, 쿠키 값, `Authorization` 헤더. 목록 조회의 검색어 `q`도 접근 로그에서 가립니다.
+- **SEC-03** 로그 금지: 비밀번호, 모든 토큰 원문, 쿠키 값, `Authorization` 헤더. 목록 조회의 검색어 `q`도 접근 로그에서 가립니다. 예외는 `local` 프로필의 콘솔 메일 발송 하나이며, 메일 링크를 토큰째 출력합니다 ([configuration.md §7](configuration.md#7-메일)).
 - **SEC-04** 토큰에 이름, 이메일 같은 개인정보를 넣지 않습니다. payload는 누구나 디코딩할 수 있습니다.
 - **SEC-05** 토큰·해시 비교는 상수 시간으로 합니다. 난수는 `SecureRandom`만 씁니다.

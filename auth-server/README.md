@@ -37,7 +37,7 @@ src/main/resources/
 src/test/kotlin/com/dozycoffee/auth/server/    테스트
 ```
 
-(`templates/mail/`은 준비 중입니다. 프로필별 설정 파일은 `local`, `dev`, `prod`가 있습니다.)
+(프로필별 설정 파일은 `local`, `dev`, `prod`가 있습니다. 메일 템플릿은 종류마다 텍스트(`.txt`)와 HTML(`.html`) 한 쌍입니다.)
 
 ## 무엇을 어디에 추가하나
 

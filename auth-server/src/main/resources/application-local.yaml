@@ -25,3 +25,14 @@ logging:
   level:
     com.dozycoffee.auth: debug
     Exposed: debug # 실행되는 SQL
+
+---
+# 메일은 Mailpit(compose.yaml)으로 보냅니다. 메일함은 http://localhost:8025 (docs/configuration.md §5, §7)
+dozy:
+  auth:
+    mail:
+      sender: ${AUTH_MAIL_SENDER:smtp}
+      from: ${AUTH_MAIL_FROM:no-reply@dozycoffee.local}
+      app-url:
+        internal: ${AUTH_APP_URL_INTERNAL:http://localhost:3000}
+        partner: ${AUTH_APP_URL_PARTNER:http://localhost:3001}
