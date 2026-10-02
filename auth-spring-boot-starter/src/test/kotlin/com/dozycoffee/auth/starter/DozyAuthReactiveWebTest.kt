@@ -10,18 +10,27 @@ import com.dozycoffee.auth.starter.support.TestTokens.SESSION_ID
 import com.dozycoffee.auth.starter.support.TestTokens.employeeClaims
 import com.dozycoffee.auth.starter.support.TestTokens.sign
 import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient
+import org.springframework.context.ApplicationContext
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
+import org.springframework.security.web.server.ServerAuthenticationEntryPoint
+import org.springframework.security.web.server.authorization.ServerAccessDeniedHandler
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.web.reactive.server.WebTestClient
+import reactor.core.publisher.Mono
+import tools.jackson.databind.json.JsonMapper
 import java.time.Clock
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /**
  * WebFlux 서비스에 스타터를 붙였을 때의 동작 (starter.md §3~§5). 샘플 앱은 audience `sample`, realm `internal`입니다.
@@ -45,6 +54,24 @@ class DozyAuthReactiveWebTest {
             .expectProblem(status = 401, code = "UNAUTHENTICATED", type = "unauthenticated", title = "Unauthenticated")
             .expectHeader()
             .valueEquals("WWW-Authenticate", "Bearer")
+    }
+
+    @Test
+    fun `401 본문은 서비스의 codec으로 씀`() {
+        val body =
+            String(
+                checkNotNull(
+                    client
+                        .get()
+                        .uri("/me")
+                        .exchange()
+                        .expectBody()
+                        .returnResult()
+                        .responseBody,
+                ),
+            )
+
+        assertTrue(body.contains("\n"), "샘플 앱의 Jackson 설정(들여쓰기)이 적용되어야 함: $body")
     }
 
     @Test
@@ -98,6 +125,33 @@ class DozyAuthReactiveWebTest {
     }
 
     @Test
+    fun `X-Trace-Id 형식이 올바르지 않으면 새 값을 만듦`() {
+        client
+            .get()
+            .uri("/me")
+            .header("X-Trace-Id", "<script>alert(1)</script>")
+            .exchange()
+            .expectBody()
+            .jsonPath("$.traceId")
+            .value<String> { assertTrue(Regex("[0-9a-f]{32}").matches(it)) }
+    }
+
+    @Test
+    fun `서비스 필터가 응답에 붙인 X-Trace-Id를 요청의 X-Trace-Id보다 먼저 쓰고 덮어쓰지 않음`() {
+        client
+            .get()
+            .uri("/me")
+            .header("X-Sample-Trace-Id", "filter-trace-id")
+            .header("X-Trace-Id", "4bf92f3577b34da6a3ce929d0e0e4736")
+            .exchange()
+            .expectHeader()
+            .values("X-Trace-Id") { assertEquals(listOf("filter-trace-id"), it) }
+            .expectBody()
+            .jsonPath("$.traceId")
+            .isEqualTo("filter-trace-id")
+    }
+
+    @Test
     fun `공개 경로는 토큰 없이 호출 가능`() {
         client
             .get()
@@ -147,7 +201,7 @@ class DozyAuthReactiveWebTest {
             .uri("/items/admin")
             .bearer(sign(employeeClaims()))
             .exchange()
-            .expectProblem(status = 403, code = "FORBIDDEN", type = "forbidden", title = "Forbidden")
+            .expectProblem(status = 403, code = "FORBIDDEN", type = "forbidden", title = "Forbidden", instance = "/items/admin")
     }
 
     @Test
@@ -210,10 +264,10 @@ class DozyAuthReactiveWebTest {
         code: String,
         type: String,
         title: String,
+        instance: String = "/me",
     ): WebTestClient.ResponseSpec {
         expectStatus().isEqualTo(status)
         expectHeader().contentTypeCompatibleWith(MediaType.parseMediaType("application/problem+json"))
-        expectHeader().exists("X-Trace-Id")
         expectBody()
             .jsonPath("$.type")
             .isEqualTo("https://docs.dozycoffee.com/errors/$type")
@@ -224,10 +278,70 @@ class DozyAuthReactiveWebTest {
             .jsonPath("$.code")
             .isEqualTo(code)
             .jsonPath("$.instance")
-            .exists()
-            .jsonPath("$.traceId")
-            .exists()
+            .isEqualTo(instance)
+        val result = expectBody().returnResult()
+        val body = JsonMapper().readTree(result.responseBody)
+        assertEquals(setOf("type", "title", "status", "instance", "code", "traceId"), body.propertyNames().toSet())
+        assertEquals(listOf(body["traceId"].asString()), result.responseHeaders.get("X-Trace-Id"))
         return this
+    }
+
+    /** 서비스가 401·403 핸들러 빈을 직접 정의한 경우 (starter.md §3). */
+    @Nested
+    @Import(ServiceHandlers::class)
+    inner class ServiceDefinedHandlers {
+        @Autowired
+        lateinit var context: ApplicationContext
+
+        @Test
+        fun `서비스가 ServerAuthenticationEntryPoint를 정의하면 스타터 것은 빠지고 401에 서비스 것을 씀`() {
+            assertEquals(setOf("serviceEntryPoint"), context.getBeansOfType(ServerAuthenticationEntryPoint::class.java).keys)
+
+            client
+                .get()
+                .uri("/me")
+                .exchange()
+                .expectStatus()
+                .isUnauthorized
+                .expectHeader()
+                .valueEquals("X-Handler", "service-entry-point")
+        }
+
+        @Test
+        fun `서비스가 ServerAccessDeniedHandler를 정의하면 스타터 것은 빠지고 403에 서비스 것을 씀`() {
+            assertEquals(setOf("serviceAccessDeniedHandler"), context.getBeansOfType(ServerAccessDeniedHandler::class.java).keys)
+
+            client
+                .get()
+                .uri("/items/admin")
+                .bearer(sign(employeeClaims()))
+                .exchange()
+                .expectStatus()
+                .isForbidden
+                .expectHeader()
+                .valueEquals("X-Handler", "service-access-denied-handler")
+        }
+    }
+
+    @TestConfiguration
+    class ServiceHandlers {
+        @Bean
+        fun serviceEntryPoint() =
+            ServerAuthenticationEntryPoint { exchange, _ ->
+                Mono.fromRunnable {
+                    exchange.response.statusCode = HttpStatus.UNAUTHORIZED
+                    exchange.response.headers.set("X-Handler", "service-entry-point")
+                }
+            }
+
+        @Bean
+        fun serviceAccessDeniedHandler() =
+            ServerAccessDeniedHandler { exchange, _ ->
+                Mono.fromRunnable {
+                    exchange.response.statusCode = HttpStatus.FORBIDDEN
+                    exchange.response.headers.set("X-Handler", "service-access-denied-handler")
+                }
+            }
     }
 
     @TestConfiguration

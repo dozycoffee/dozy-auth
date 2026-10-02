@@ -11,13 +11,17 @@ import com.dozycoffee.auth.starter.support.TestTokens.employeeClaims
 import com.dozycoffee.auth.starter.support.TestTokens.sign
 import org.hamcrest.Matchers
 import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
+import org.springframework.context.ApplicationContext
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
+import org.springframework.security.web.AuthenticationEntryPoint
+import org.springframework.security.web.access.AccessDeniedHandler
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.web.servlet.MockHttpServletRequestDsl
@@ -25,7 +29,10 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.MockMvcResultMatchersDsl
 import org.springframework.test.web.servlet.ResultActionsDsl
 import org.springframework.test.web.servlet.get
+import tools.jackson.databind.json.JsonMapper
 import java.time.Clock
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /**
  * 서비스에 스타터를 붙였을 때의 동작 (starter.md §3~§5). 샘플 앱은 audience `sample`, realm `internal`입니다.
@@ -44,6 +51,17 @@ class DozyAuthServletWebTest {
         mockMvc.get("/me").andExpectProblem(status = 401, code = "UNAUTHENTICATED", type = "unauthenticated", title = "Unauthenticated") {
             header { string("WWW-Authenticate", "Bearer") }
         }
+    }
+
+    @Test
+    fun `401 본문은 서비스의 메시지 변환기로 씀`() {
+        val body =
+            mockMvc
+                .get("/me")
+                .andReturn()
+                .response.contentAsString
+
+        assertTrue(body.contains("\n"), "샘플 앱의 Jackson 설정(들여쓰기)이 적용되어야 함: $body")
     }
 
     @Test
@@ -83,6 +101,18 @@ class DozyAuthServletWebTest {
     }
 
     @Test
+    fun `서비스 필터가 응답에 붙인 X-Trace-Id를 요청의 X-Trace-Id보다 먼저 쓰고 덮어쓰지 않음`() {
+        mockMvc
+            .get("/me") {
+                header("X-Sample-Trace-Id", "filter-trace-id")
+                header("X-Trace-Id", "4bf92f3577b34da6a3ce929d0e0e4736")
+            }.andExpect {
+                header { stringValues("X-Trace-Id", "filter-trace-id") }
+                jsonPath("$.traceId") { value("filter-trace-id") }
+            }
+    }
+
+    @Test
     fun `공개 경로는 토큰 없이 호출 가능`() {
         mockMvc.get("/public/ping").andExpect { status { isOk() } }
     }
@@ -108,7 +138,7 @@ class DozyAuthServletWebTest {
     fun `role이 없으면 403 Problem Details`() {
         mockMvc
             .get("/items/admin") { bearer(sign(employeeClaims())) }
-            .andExpectProblem(status = 403, code = "FORBIDDEN", type = "forbidden", title = "Forbidden")
+            .andExpectProblem(status = 403, code = "FORBIDDEN", type = "forbidden", title = "Forbidden", instance = "/items/admin")
     }
 
     @Test
@@ -135,18 +165,69 @@ class DozyAuthServletWebTest {
         code: String,
         type: String,
         title: String,
+        instance: String = "/me",
         more: MockMvcResultMatchersDsl.() -> Unit = {},
-    ) = andExpect {
-        status { isEqualTo(status) }
-        content { contentTypeCompatibleWith("application/problem+json") }
-        header { exists("X-Trace-Id") }
-        jsonPath("$.type") { value("https://docs.dozycoffee.com/errors/$type") }
-        jsonPath("$.title") { value(title) }
-        jsonPath("$.status") { value(status) }
-        jsonPath("$.code") { value(code) }
-        jsonPath("$.instance") { exists() }
-        jsonPath("$.traceId") { exists() }
-        more()
+    ): ResultActionsDsl {
+        andExpect {
+            status { isEqualTo(status) }
+            content { contentTypeCompatibleWith("application/problem+json") }
+            jsonPath("$.type") { value("https://docs.dozycoffee.com/errors/$type") }
+            jsonPath("$.title") { value(title) }
+            jsonPath("$.status") { value(status) }
+            jsonPath("$.code") { value(code) }
+            jsonPath("$.instance") { value(instance) }
+            more()
+        }
+        val response = andReturn().response
+        val body = JsonMapper().readTree(response.contentAsByteArray)
+        assertEquals(setOf("type", "title", "status", "instance", "code", "traceId"), body.propertyNames().toSet())
+        assertEquals(listOf(body["traceId"].asString()), response.getHeaders("X-Trace-Id"))
+        return this
+    }
+
+    /** 서비스가 401·403 핸들러 빈을 직접 정의한 경우 (starter.md §3). */
+    @Nested
+    @Import(ServiceHandlers::class)
+    inner class ServiceDefinedHandlers {
+        @Autowired
+        lateinit var context: ApplicationContext
+
+        @Test
+        fun `서비스가 AuthenticationEntryPoint를 정의하면 스타터 것은 빠지고 401에 서비스 것을 씀`() {
+            assertTrue(context.getBeansOfType(AuthenticationEntryPoint::class.java).keys == setOf("serviceEntryPoint"))
+
+            mockMvc.get("/me").andExpect {
+                status { isUnauthorized() }
+                header { string("X-Handler", "service-entry-point") }
+            }
+        }
+
+        @Test
+        fun `서비스가 AccessDeniedHandler를 정의하면 스타터 것은 빠지고 403에 서비스 것을 씀`() {
+            assertTrue(context.getBeansOfType(AccessDeniedHandler::class.java).keys == setOf("serviceAccessDeniedHandler"))
+
+            mockMvc.get("/items/admin") { bearer(sign(employeeClaims())) }.andExpect {
+                status { isForbidden() }
+                header { string("X-Handler", "service-access-denied-handler") }
+            }
+        }
+    }
+
+    @TestConfiguration
+    class ServiceHandlers {
+        @Bean
+        fun serviceEntryPoint() =
+            AuthenticationEntryPoint { _, response, _ ->
+                response.status = 401
+                response.setHeader("X-Handler", "service-entry-point")
+            }
+
+        @Bean
+        fun serviceAccessDeniedHandler() =
+            AccessDeniedHandler { _, response, _ ->
+                response.status = 403
+                response.setHeader("X-Handler", "service-access-denied-handler")
+            }
     }
 
     @TestConfiguration

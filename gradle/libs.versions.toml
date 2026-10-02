@@ -47,6 +47,8 @@ spring-boot-testcontainers = { module = "org.springframework.boot:spring-boot-te
 kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }
 kotlin-test-junit5 = { module = "org.jetbrains.kotlin:kotlin-test-junit5" }
 jackson-module-kotlin = { module = "tools.jackson.module:jackson-module-kotlin" }
+# 스타터가 Jackson 2를 쓰는 서비스에서도 같은 본문을 쓰는지 확인하는 테스트용
+jackson2-databind = { module = "com.fasterxml.jackson.core:jackson-databind" }
 kotlinx-coroutines-reactor = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-reactor" }
 
 # 데이터
