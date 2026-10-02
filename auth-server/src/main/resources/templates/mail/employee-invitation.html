@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title>직원 계정 초대</title></head>
+<body style="font-family: sans-serif; line-height: 1.6; color: #222;">
+<p><span th:text="${name}">이름</span>님, 안녕하세요.</p>
+<p>Dozy Coffee 직원 계정에 초대되었습니다.<br>아래 버튼을 눌러 비밀번호를 정하면 계정을 사용할 수 있습니다.</p>
+<p><a th:href="${link}" href="#" style="display: inline-block; padding: 10px 16px; background: #3b2a20; color: #fff; text-decoration: none; border-radius: 4px;">초대 수락하기</a></p>
+<p style="font-size: 13px; color: #666;">버튼이 열리지 않으면 이 주소를 브라우저에 붙여 넣으세요.<br><span th:text="${link}">링크</span></p>
+<p style="font-size: 13px; color: #666;">링크는 <span th:text="${expiresAt}">만료 시각</span>까지 한 번만 쓸 수 있습니다. 초대받을 일이 없었다면 이 메일을 무시해 주세요.</p>
+</body>
+</html>

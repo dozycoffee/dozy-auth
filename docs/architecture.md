@@ -199,7 +199,7 @@ com.dozycoffee.auth.server
 | 다른 도메인 테이블과 조인하지 않음 | 계정 정보는 계정 포트로 따로 조회 | `refresh_session JOIN employee_profile` |
 
 - 세션 폐기는 `RevokeSessionsPort` 하나로 모읍니다.
-- 메일 포트는 메일 종류와 값만 받습니다 (예: `InvitationMail(name, link, expiresAt)`). 문구와 템플릿은 메일 어댑터가 가집니다.
+- 메일 포트(`SendMailPort`)는 메일 종류와 값만 받습니다 (예: `EmployeeInvitationMail(to, name, token, expiresAt)`). 문구, 템플릿, 링크는 메일 어댑터가 가집니다. 링크는 어댑터가 앱 화면 주소([api/account.md](api/account.md)의 링크 표)에 토큰을 붙여 만듭니다 ([VER-05](domain.md#7-verification-규칙-ver)).
 
 ## 9. 코드 규칙
 
@@ -208,7 +208,7 @@ com.dozycoffee.auth.server
 | DB 접근 | Exposed DSL만, `adapter/outbound/persistence` 안에서만 | 실행되는 SQL을 코드에 드러내기 위해 |
 | 트랜잭션 | `application/service`에만 `@Transactional`. 여러 테이블을 바꾸면 한 트랜잭션. 영속성 어댑터는 트랜잭션을 열지 않고 호출한 UseCase의 트랜잭션 안에서 실행됨 (Exposed `SpringTransactionManager`) | 중간 상태 방지 |
 | 감사 로그 | 업무와 같은 트랜잭션에서 기록. 에러로 끝나도 남아야 하는 기록은 [§9.2](#92-감사-기록과-트랜잭션) | 업무와 기록이 함께 반영되거나 함께 사라지게 |
-| 메일 발송 | 트랜잭션 커밋 후 | 롤백된 작업의 메일 방지 |
+| 메일 발송 | 트랜잭션 커밋 후, 별도 스레드에서. 실패는 로그만 남김 ([§9.3](#93-메일-발송)) | 롤백된 작업의 메일 방지 |
 | 현재 시각 | `Clock` 주입. `Instant.now()` 직접 호출 금지 | 만료·유예 시간 테스트 |
 | 난수 | `SecureRandom`만 | 예측 방지 |
 | 비교 | 토큰·해시는 상수 시간 비교 (`MessageDigest.isEqual`) | 타이밍 공격 방지 |
@@ -239,3 +239,14 @@ class ProtectedAccountException : AuthException("PROTECTED_ACCOUNT", 403, "보�
 - 지정한 예외는 상태 변경과 감사 기록을 모두 마친 뒤 마지막에 던집니다. 그 예외로 끝나는 경로에는 커밋돼도 되는 변경만 둡니다.
 - 지정하지 않은 예외(예상하지 못한 오류)는 기존대로 전부 롤백되고 기록도 남지 않습니다. 이 동작은 `AuditRecordTransactionTest`가 확인합니다.
 - 기록만 `REQUIRES_NEW`로 따로 커밋하지 않습니다. 업무가 롤백돼도 기록이 남아 상태와 기록이 어긋나고, 요청 하나가 연결을 두 개 씁니다.
+
+### 9.3 메일 발송
+
+UseCase는 `SendMailPort.send`를 트랜잭션 안에서 호출하고, 발송 시점과 실패 처리는 메일 어댑터(`AfterCommitMailSender`)가 맡습니다.
+
+- 트랜잭션 안에서 호출하면 그 트랜잭션에 `TransactionSynchronization`을 등록하고 **커밋 뒤(`afterCommit`)에** 보냅니다. 롤백되면 보내지 않습니다. 어댑터는 트랜잭션을 열지 않습니다.
+- 트랜잭션 밖에서 호출하면(예: 기동 작업) 커밋을 기다리지 않고 보냅니다.
+- 발송은 요청 스레드가 아니라 메일 전용 스레드에서 합니다. 응답이 SMTP 지연을 기다리지 않고, 메일을 보냈는지가 응답 시간으로 드러나지 않게 하기 위해서입니다 (예: 비밀번호 찾기는 `ACTIVE` 계정이 있을 때만 보냄).
+- 발송에 실패하면 메일 종류와 예외만 경고 로그로 남기고 **다시 시도하지 않습니다.** 호출한 쪽에는 예외를 던지지 않으므로 업무는 그대로 성공합니다. 받는 사람은 재발송(초대 재발송, 비밀번호 찾기 다시 요청)으로 복구합니다. 대기열이 가득 차 받지 못한 메일도 같습니다.
+- 로그에는 본문과 링크를 남기지 않습니다 ([SEC-03](domain.md#12-민감정보-sec)). 메일 값 객체의 토큰(`OpaqueSecret`)은 `toString`에서 가려집니다.
+- 발송 대기 중인 메일은 메모리에만 있어 서버가 비정상 종료되면 사라집니다. 정상 종료할 때는 잠시 기다려 보냅니다. 발송 보장이 필요해지면 outbox 테이블을 검토합니다.

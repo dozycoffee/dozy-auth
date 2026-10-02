@@ -9,3 +9,14 @@ dozy:
     password-hash:
       memory-kib: 1024
       iterations: 1
+
+---
+# 메일은 보내지 않고 로그로 출력합니다(링크의 토큰은 가림). 보낸 메일을 확인하는 테스트는 support/RecordingMailSender를 씁니다.
+dozy:
+  auth:
+    mail:
+      sender: console
+      from: no-reply@dozycoffee.test
+      app-url:
+        internal: https://admin.dozycoffee.test
+        partner: https://partner.dozycoffee.test

@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title>관리 알림</title></head>
+<body style="font-family: sans-serif; line-height: 1.6; color: #222;">
+<p>안녕하세요.</p>
+<p>Dozy Coffee 인증 관리에서 owner에게 바로 알리는 작업이 있었습니다.</p>
+<table style="border-collapse: collapse;">
+  <tr><th style="text-align: left; padding: 4px 12px 4px 0;">작업</th><td th:text="${action}">작업</td></tr>
+  <tr><th style="text-align: left; padding: 4px 12px 4px 0;">시각</th><td th:text="${occurredAt}">시각</td></tr>
+</table>
+<p>누가 무엇을 바꿨는지는 <a th:href="${consoleUrl}" href="#">관리 콘솔</a>의 감사 로그에서 확인할 수 있습니다.</p>
+</body>
+</html>
