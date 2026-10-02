@@ -41,6 +41,9 @@ spring-boot-starter-webflux-test = { module = "org.springframework.boot:spring-b
 spring-boot-autoconfigure = { module = "org.springframework.boot:spring-boot-autoconfigure" }
 spring-boot-starter-security-test = { module = "org.springframework.boot:spring-boot-starter-security-test" }
 spring-boot-testcontainers = { module = "org.springframework.boot:spring-boot-testcontainers" }
+# 스타터 테스트에서 서비스의 기본 RestClient.Builder·WebClient.Builder와 함께 쓰는지 확인
+spring-boot-restclient = { module = "org.springframework.boot:spring-boot-restclient" }
+spring-boot-webclient = { module = "org.springframework.boot:spring-boot-webclient" }
 
 # Kotlin
 # 스타터가 배포 메타데이터에 버전을 싣도록 Kotlin 버전을 직접 지정 (Boot BOM은 배포에 쓰지 않음)
@@ -64,6 +67,8 @@ postgresql = { module = "org.postgresql:postgresql" }
 # 보안
 nimbus-jose-jwt = { module = "com.nimbusds:nimbus-jose-jwt", version.ref = "nimbus-jose-jwt" }
 bouncycastle-bcprov = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncycastle" }
+# 스타터의 system token 클라이언트 (client credentials). Spring Boot의 OAuth2 Client 자동 설정은 쓰지 않음
+spring-security-oauth2-client = { module = "org.springframework.security:spring-security-oauth2-client" }
 bucket4j-core = { module = "com.bucket4j:bucket4j_jdk17-core", version.ref = "bucket4j" }
 
 # 운영
