@@ -6,6 +6,12 @@ spring:
       # local 프로필에서만 켭니다 (application-local.yaml)
       enabled: false
 
+# 서버가 받는 토큰의 검증 설정 (스타터 속성, docs/configuration.md §7). issuer-base-uri는 프로필별로 넣습니다.
+dozy:
+  auth:
+    audience: auth
+    accepted-realms: [internal]
+
 ---
 # 공용 서버(dev, prod)는 환경 변수로 DB를 받습니다. 변수 목록은 docs/configuration.md §1
 spring:
@@ -19,7 +25,9 @@ spring:
 
 dozy:
   auth:
-    issuer-base-url: ${AUTH_ISSUER_BASE_URL}
+    issuer-base-uri: ${AUTH_ISSUER_BASE_URL}
+    cors:
+      allowed-origins: ${AUTH_CORS_ALLOWED_ORIGINS}
     signing:
       keys-dir: ${AUTH_SIGNING_KEYS_DIR}
       active-kid: ${AUTH_SIGNING_ACTIVE_KID}

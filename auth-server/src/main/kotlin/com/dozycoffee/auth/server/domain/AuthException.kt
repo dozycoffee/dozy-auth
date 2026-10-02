@@ -20,3 +20,9 @@ class TooManyAttemptsException(
     val retryAfter: Duration,
     message: String = "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.",
 ) : AuthException("TOO_MANY_ATTEMPTS", 429, message)
+
+/**
+ * 토큰은 검증을 통과했지만 그 주체를 인증된 사용자로 볼 수 없음 (예: 계정이 없거나 비활성화됨).
+ * 토큰 검증 실패와 같은 `401 UNAUTHENTICATED`로 응답합니다 (api/conventions.md §10).
+ */
+class UnauthenticatedException : AuthException("UNAUTHENTICATED", 401, "인증이 필요합니다.")

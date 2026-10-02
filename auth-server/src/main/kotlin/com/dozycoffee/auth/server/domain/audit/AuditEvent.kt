@@ -76,6 +76,36 @@ data class AuditEvent(
                 userAgent = userAgent,
             )
 
+        /**
+         * AUD-08 찾은 계정의 로그인 기록 (`LOGIN_SUCCEEDED`, `LOGIN_FAILED`, `ACCOUNT_LOCKED`). 행위자와 대상은 모두 그 계정이고,
+         * detail에는 realm(경로 값)과 [extraDetail]을 남깁니다.
+         *
+         * - `LOGIN_SUCCEEDED`: `detail.sessionId` (새 refresh 세션 id)
+         * - `LOGIN_FAILED`: `detail.reason` (응답한 에러 코드. 예: `INVALID_CREDENTIALS`, `ACCOUNT_SUSPENDED`)
+         */
+        fun login(
+            occurredAt: Instant,
+            action: AuditAction,
+            principal: AuditActor,
+            realm: Realm,
+            ip: String?,
+            userAgent: String?,
+            extraDetail: Map<String, Any?> = emptyMap(),
+        ): AuditEvent {
+            require(action in LOGIN_ACTIONS) { "로그인 action이 아님: $action" }
+            return AuditEvent(
+                occurredAt = occurredAt,
+                action = action,
+                actor = principal,
+                target = AuditTarget.principal(principal.id),
+                detail = mapOf("realm" to realm.pathValue) + extraDetail,
+                ip = ip,
+                userAgent = userAgent,
+            )
+        }
+
+        private val LOGIN_ACTIONS = setOf(AuditAction.LOGIN_SUCCEEDED, AuditAction.LOGIN_FAILED, AuditAction.ACCOUNT_LOCKED)
+
         // 예외 메시지에는 키 이름과 위치만 쓰고 값은 쓰지 않습니다 (SEC-03).
         private fun requireValidDetail(
             value: Any?,

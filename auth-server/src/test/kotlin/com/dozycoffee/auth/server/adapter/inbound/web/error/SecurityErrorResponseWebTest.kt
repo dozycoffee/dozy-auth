@@ -1,10 +1,14 @@
 package com.dozycoffee.auth.server.adapter.inbound.web.error
 
+import com.dozycoffee.auth.server.config.ClockConfig
+import com.dozycoffee.auth.server.config.JwtConfig
 import com.dozycoffee.auth.server.config.SecurityConfig
+import com.dozycoffee.auth.server.config.TokenVerificationConfig
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.security.test.context.support.WithMockUser
+import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
@@ -14,12 +18,16 @@ import org.springframework.test.web.servlet.get
 @ContextConfiguration(
     classes = [
         SecurityConfig::class,
+        TokenVerificationConfig::class,
+        JwtConfig::class,
+        ClockConfig::class,
         GlobalExceptionHandler::class,
         TraceIdFilter::class,
         ProblemAuthenticationEntryPoint::class,
         ProblemAccessDeniedHandler::class,
     ],
 )
+@ActiveProfiles("test")
 class SecurityErrorResponseWebTest {
     @Autowired
     lateinit var mockMvc: MockMvc

@@ -1,7 +1,9 @@
 # 자동 테스트 (configuration.md §4). DB는 Testcontainers, 서명 키는 build/ 아래에 만들어 씁니다.
 dozy:
   auth:
-    issuer-base-url: http://localhost:8080
+    issuer-base-uri: http://localhost:8080
+    cors:
+      allowed-origins: https://admin.dozycoffee.test
     signing:
       keys-dir: build/test-signing-keys
       auto-generate: true

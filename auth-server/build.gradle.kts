@@ -6,6 +6,8 @@ description = "Dozy Auth 서버"
 
 dependencies {
     implementation(project(":auth-core"))
+    // 토큰 검증은 서비스와 같은 스타터 검증기를 씀 (ADR-0031)
+    implementation(project(":auth-spring-boot-starter"))
 
     // 웹·보안
     implementation(libs.spring.boot.starter.webmvc)

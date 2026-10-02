@@ -1,7 +1,7 @@
 package com.dozycoffee.auth.server.config
 
 import com.dozycoffee.auth.server.domain.token.IssuerBaseUri
-import org.springframework.beans.factory.annotation.Value
+import com.dozycoffee.auth.starter.DozyAuthProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
@@ -10,9 +10,10 @@ import org.springframework.context.annotation.Configuration
  */
 @Configuration(proxyBeanMethods = false)
 class TokenConfig {
-    /** `AUTH_ISSUER_BASE_URL` (configuration.md §1). 없으면 기동에 실패합니다. */
+    /**
+     * `AUTH_ISSUER_BASE_URL` (configuration.md §1). 속성은 스타터와 같은 `dozy.auth.issuer-base-uri` 하나라
+     * 발급하는 `iss`와 검증에서 허용하는 issuer가 같은 값에서 나옵니다. 없으면 기동에 실패합니다.
+     */
     @Bean
-    fun issuerBaseUri(
-        @Value("\${dozy.auth.issuer-base-url}") value: String,
-    ): IssuerBaseUri = IssuerBaseUri(value)
+    fun issuerBaseUri(properties: DozyAuthProperties): IssuerBaseUri = IssuerBaseUri(properties.issuerBaseUri)
 }
