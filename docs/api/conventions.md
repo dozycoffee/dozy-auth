@@ -116,7 +116,7 @@ RFC 9457 Problem Details 형식이며 `Content-Type: application/problem+json`�
 ## 7. CORS와 CSRF
 
 - **CORS:** 허용 origin을 명시합니다(`AUTH_CORS_ALLOWED_ORIGINS`). 와일드카드는 쓰지 않고 `Access-Control-Allow-Credentials: true`로 응답합니다. 앱은 `credentials: 'include'`로 요청합니다.
-- **CSRF:** 쿠키를 쓰는 API(토큰 갱신, 로그아웃)는 `SameSite=Strict`에 더해 `Origin` 헤더가 허용 목록에 있는지 검사합니다. 없거나 다르면 `403 FORBIDDEN`입니다.
+- **CSRF:** 쿠키를 쓰는 API(토큰 갱신, 로그아웃)는 `SameSite=Strict`에 더해 `Origin` 헤더가 허용 목록에 있는지 검사합니다. 없거나 다르면 `403 FORBIDDEN`입니다. 쿠키와 세션을 보기 전에 검사하므로 거부된 요청은 세션을 바꾸지 않습니다. CORS preflight(`OPTIONS`)는 이 검사 대신 CORS 규칙을 따릅니다.
 
 ## 8. 요청 제한
 
@@ -124,6 +124,7 @@ RFC 9457 Problem Details 형식이며 `Content-Type: application/problem+json`�
 - IP는 서버가 정한 클라이언트 주소입니다. 프록시 뒤에서는 신뢰할 프록시가 전달한 `X-Forwarded-For`만 반영합니다 ([configuration.md §9](../configuration.md#9-클라이언트-주소와-프록시)).
 - 메일을 보내는 API(가입, 인증 메일 재발송, 비밀번호 찾기)는 같은 이메일에 대한 반복 요청도 제한합니다. 한도는 `policy.rate-limit-email`이고 이메일은 대소문자를 구분하지 않습니다. 제한에 걸려도 계정 존재 여부가 드러나지 않게 같은 `202`로 응답하고 메일만 보내지 않습니다.
 - 서비스 토큰 발급은 요청 제한 대상이 아닙니다. client secret은 난수라 대입 공격이 의미 없고, 실패는 `invalid_client`로만 응답합니다.
+- refresh 쿠키를 쓰는 API(토큰 갱신, 로그아웃)도 인증 방식이 "없음"이 아니라 대상이 아닙니다. refresh token도 난수라 대입이 의미 없고, 대신 `Origin` 검사([§7](#7-cors와-csrf))를 합니다.
 - 로그인은 추가로 계정 단위 잠금이 있습니다 ([LGN-01](../domain.md#5-로그인-규칙-lgn)).
 - 본인 확인용 비밀번호를 받는 API(비밀번호 변경, 파트너 탈퇴)는 principal 단위로도 제한합니다. 한도는 `policy.rate-limit-password-confirm`이며, 비밀번호를 확인하기 전에 셉니다.
 - 초과하면 `429 TOO_MANY_ATTEMPTS`와 `Retry-After`(초)로 응답합니다. IP 단위 제한은 컨트롤러보다 먼저 거부하므로 비밀번호 검증이나 감사 기록이 일어나지 않습니다.

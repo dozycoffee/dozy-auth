@@ -173,12 +173,18 @@ erDiagram
 | `absolute_expires_at` | timestamptz | | 최초 로그인 + `policy.refresh-absolute-ttl` |
 | `revoked_at` | timestamptz | ✅ | |
 | `revoke_reason` | varchar(30) | ✅ | [SES-06](domain.md#6-세션-규칙-ses)의 값 |
-| `user_agent` | varchar(255) | ✅ | |
+| `user_agent` | varchar(255) | ✅ | 로그인 요청의 `User-Agent`. 255자를 넘으면 앞부분만 저장 |
 | `ip` | inet | ✅ | 로그인 시 IP |
 
 - 인덱스: `previous_token_hash` (`WHERE previous_token_hash IS NOT NULL`), `principal_id` (`WHERE revoked_at IS NULL`)
 
 **갱신 쿼리** ([SES-03](domain.md#6-세션-규칙-ses), [SES-04](domain.md#6-세션-규칙-ses))
+
+갱신은 판정을 먼저 하고 교체합니다.
+
+1. 제시된 토큰의 해시로 세션을 조회합니다 (`current_token_hash = :presentedHash OR previous_token_hash = :presentedHash`, 만료·폐기된 세션 포함).
+2. 조회한 세션을 SES-03으로 판정합니다. 요청 경로의 realm과 세션의 `realm`이 다르면 여기서 `SESSION_EXPIRED`입니다.
+3. 판정이 "교체"일 때만 아래 쿼리를 실행합니다.
 
 ```sql
 UPDATE refresh_session
@@ -193,7 +199,8 @@ WHERE current_token_hash = :presentedHash
 RETURNING id, principal_id, realm;
 ```
 
-- 1행이면 성공입니다. 0행이면 `previous_token_hash = :presentedHash`로 다시 조회해 판정합니다.
+- 1행이면 성공입니다. 0행이면(그 사이 다른 요청이 먼저 교체함, 폐기됨) 1번부터 한 번 더 조회해 판정합니다. 보통 직전 토큰이 되어 `TOKEN_ROTATED`이고, 다시 "교체"로 판정되면 `SESSION_EXPIRED`로 끝냅니다.
+- 쿼리에 `realm` 조건은 넣지 않습니다. `current_token_hash`는 UNIQUE이고 `realm`은 바뀌지 않으므로, 2번에서 realm을 확인한 행과 이 쿼리가 바꾸는 행은 같습니다.
 - `:now`는 DB의 `now()`가 아니라 애플리케이션 `Clock` 값입니다. 테스트에서 시간을 제어하기 위해서입니다.
 
 ### 3.11 audit_log
