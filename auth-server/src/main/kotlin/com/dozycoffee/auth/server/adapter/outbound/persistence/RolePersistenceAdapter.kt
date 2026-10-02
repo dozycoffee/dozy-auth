@@ -7,6 +7,7 @@ import com.dozycoffee.auth.server.application.port.outbound.authorization.Create
 import com.dozycoffee.auth.server.application.port.outbound.authorization.DeleteRolePort
 import com.dozycoffee.auth.server.application.port.outbound.authorization.GrantRolePort
 import com.dozycoffee.auth.server.application.port.outbound.authorization.LoadAudiencePort
+import com.dozycoffee.auth.server.application.port.outbound.authorization.LoadOwnerPort
 import com.dozycoffee.auth.server.application.port.outbound.authorization.LoadPrincipalRolesPort
 import com.dozycoffee.auth.server.application.port.outbound.authorization.LoadRolePort
 import com.dozycoffee.auth.server.application.port.outbound.authorization.RevokeRolePort
@@ -17,6 +18,7 @@ import com.dozycoffee.auth.server.domain.authorization.OwnerAlreadyAssignedExcep
 import com.dozycoffee.auth.server.domain.authorization.Role
 import com.dozycoffee.auth.server.domain.authorization.RoleCodeDuplicatedException
 import com.dozycoffee.auth.server.domain.authorization.RoleGrant
+import com.dozycoffee.auth.server.domain.authorization.SystemRoles
 import org.jetbrains.exposed.v1.core.JoinType
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.ResultRow
@@ -60,7 +62,8 @@ class RolePersistenceAdapter :
     LoadPrincipalRolesPort,
     GrantRolePort,
     RevokeRolePort,
-    CountRoleHoldersPort {
+    CountRoleHoldersPort,
+    LoadOwnerPort {
     override fun findAudiences(): List<Audience> =
         AudienceTable
             .selectAll()
@@ -210,6 +213,15 @@ class RolePersistenceAdapter :
                 .associate { it[PrincipalRoleTable.roleId] to it[holders] }
         return roleIds.associateWith { counts[it] ?: 0L }
     }
+
+    override fun findOwnerId(): UUID? =
+        PrincipalRoleTable
+            .join(RoleTable, JoinType.INNER, PrincipalRoleTable.roleId, RoleTable.id)
+            .join(AudienceTable, JoinType.INNER, RoleTable.audienceId, AudienceTable.id)
+            .select(PrincipalRoleTable.principalId)
+            .where { (AudienceTable.code eq SystemRoles.OWNER.audience) and (RoleTable.code eq SystemRoles.OWNER.code) }
+            .singleOrNull()
+            ?.get(PrincipalRoleTable.principalId)
 
     private fun holds(
         principalId: UUID,
