@@ -82,6 +82,36 @@ class AuditEventTest {
     }
 
     @Test
+    fun `AUD-08 찾은 계정의 로그인 기록은 행위자와 대상이 그 계정이고 detail에 realm과 추가 값을 남김`() {
+        val principalId = UUID.fromString("0199a3d0-0000-7000-8000-000000000001")
+        val actor = AuditActor(principalId, PrincipalType.EMPLOYEE)
+
+        val event =
+            AuditEvent.login(
+                NOW,
+                AuditAction.LOGIN_FAILED,
+                actor,
+                Realm.INTERNAL,
+                "203.0.113.10",
+                "Mozilla/5.0",
+                mapOf(
+                    "reason" to "ACCOUNT_SUSPENDED",
+                ),
+            )
+
+        assertEquals(actor, event.actor)
+        assertEquals(AuditTarget(AuditTargetType.PRINCIPAL, "0199a3d0-0000-7000-8000-000000000001"), event.target)
+        assertEquals(mapOf("realm" to "internal", "reason" to "ACCOUNT_SUSPENDED"), event.detail)
+    }
+
+    @Test
+    fun `로그인 기록 함수는 로그인 action만 받음`() {
+        val actor = AuditActor(UUID.fromString("0199a3d0-0000-7000-8000-000000000001"), PrincipalType.EMPLOYEE)
+
+        assertFailsWith<IllegalArgumentException> { AuditEvent.login(NOW, AuditAction.PASSWORD_CHANGED, actor, Realm.INTERNAL, null, null) }
+    }
+
+    @Test
     fun `AUD-07 정보 수정은 바뀐 필드 이름을 값으로 남길 수 있음`() {
         val detail = mapOf("fields" to listOf("name", "email", "phone"))
 

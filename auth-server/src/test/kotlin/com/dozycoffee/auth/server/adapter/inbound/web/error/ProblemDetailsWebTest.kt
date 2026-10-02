@@ -20,6 +20,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.invoke
 import org.springframework.security.test.context.support.WithMockUser
 import org.springframework.security.web.SecurityFilterChain
+import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
@@ -46,6 +47,7 @@ import kotlin.test.assertTrue
         ProblemAccessDeniedHandler::class,
     ],
 )
+@ActiveProfiles("test")
 class ProblemDetailsWebTest {
     @Autowired
     lateinit var mockMvc: MockMvc

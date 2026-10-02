@@ -78,6 +78,7 @@ Set-Cookie: dozy_refresh=...; HttpOnly; Secure; SameSite=Strict; Path=/realms/{r
 ```
 
 - `expiresIn`은 초 단위이며 `policy.access-token-ttl`입니다.
+- 토큰을 담은 응답이라 `Cache-Control: no-store`입니다.
 
 **에러**
 
@@ -165,6 +166,7 @@ Set-Cookie: dozy_refresh=...; HttpOnly; Secure; SameSite=Strict; Path=/realms/{r
 
 - `roles`는 DB의 현재 값이라 토큰의 role과 최대 `policy.access-token-ttl`만큼 다를 수 있습니다.
 - 파트너는 `roles`가 빈 배열입니다.
+- 토큰의 주체 계정이 없거나 `DEACTIVATED`이면 `401 UNAUTHENTICATED`입니다. 개인정보가 파기된 계정이기 때문입니다 ([ACC-04](../domain.md#3-계정-상태-규칙-acc)). 다른 상태는 토큰이 만료까지 유효하므로([SES-07](../domain.md#6-세션-규칙-ses)) 그대로 응답합니다.
 
 ### 비밀번호 변경
 
