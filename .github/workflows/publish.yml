@@ -42,10 +42,17 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v6
 
-      # 테스트와 배포 메타데이터 검사(verifyPublicationMetadata)를 통과해야 배포한다
-      - name: 빌드와 배포
+      # 서버를 포함한 전체 테스트와 배포 메타데이터 검사(verifyPublicationMetadata)를 먼저 끝낸다.
+      # build와 publish를 한 번에 실행하면 서버 테스트가 끝나기 전에 일부 모듈이 올라갈 수 있다 (v0.2.0 첫 시도)
+      - name: 빌드
         run: |
-          ./gradlew build publish \
+          ./gradlew build \
+            -PreleaseVersion="${GITHUB_REF_NAME#v}" \
+            -Porg.gradle.java.installations.fromEnv=JAVA_HOME_17_X64,JAVA_HOME_21_X64
+
+      - name: 배포
+        run: |
+          ./gradlew publish \
             -PreleaseVersion="${GITHUB_REF_NAME#v}" \
             -Porg.gradle.java.installations.fromEnv=JAVA_HOME_17_X64,JAVA_HOME_21_X64
         env:
