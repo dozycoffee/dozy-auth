@@ -17,6 +17,7 @@ dependencies {
     implementation(libs.nimbus.jose.jwt)
     implementation(libs.bouncycastle.bcprov)
     implementation(libs.bucket4j.core)
+    implementation(libs.caffeine)
 
     // Kotlin
     implementation(libs.kotlin.reflect)

@@ -9,6 +9,8 @@ import com.dozycoffee.auth.server.adapter.inbound.web.error.ProblemAuthenticatio
 import com.dozycoffee.auth.server.adapter.inbound.web.error.TraceIdFilter
 import com.dozycoffee.auth.server.adapter.inbound.web.internal.JwksController
 import com.dozycoffee.auth.server.adapter.inbound.web.internal.SystemTokenController
+import com.dozycoffee.auth.server.adapter.inbound.web.ratelimit.ClientRateLimitFilter
+import com.dozycoffee.auth.server.application.port.inbound.CheckClientRateLimitUseCase
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
@@ -32,13 +34,15 @@ import org.springframework.security.web.access.intercept.RequestAuthorizationCon
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
+import org.springframework.web.filter.CorsFilter
+import org.springframework.web.servlet.HandlerExceptionResolver
 
 /**
  * HTTP 보안 설정. 경로마다 인증 방식이 달라(api/conventions.md §2) 필터 체인을 경로별로 나눕니다 (ADR-0031).
  *
  * | 순서 | 경로 | 인증 |
  * |---|---|---|
- * | 1 | [PUBLIC_PATHS] (로그인, 초대 조회·수락, 서비스 토큰 발급, JWKS, 상태 확인) | 없음 (서비스 토큰 발급의 client 인증은 컨트롤러) |
+ * | 1 | [PUBLIC_PATHS] (로그인, 초대 조회·수락, 서비스 토큰 발급, JWKS, 상태 확인) | 없음 (서비스 토큰 발급의 client 인증은 컨트롤러). IP 단위 요청 제한 ([ClientRateLimitFilter]) |
  * | 2 | `/realms/...` | 사용자 access token. `aud`는 보지 않고 `iss`의 realm이 경로와 같아야 함. system token은 403 |
  * | 3 | `/admin/...`, `/internal/...` | access token(관리)·system token. `aud`에 `auth` 포함 |
  * | 4 | 그 밖의 모든 경로 | 거부 |
@@ -51,18 +55,25 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(CorsProperties::class)
 class SecurityConfig {
-    /** 1. 인증 없이 여는 경로. bearer 토큰 검증을 하지 않으므로 `Authorization` 헤더가 있어도 보지 않습니다. */
+    /**
+     * 1. 인증 없이 여는 경로. bearer 토큰 검증을 하지 않으므로 `Authorization` 헤더가 있어도 보지 않습니다.
+     *
+     * IP 단위 요청 제한(api/conventions.md §8)을 CORS 바로 뒤에 둡니다. 429 응답에도 CORS 헤더가 붙고, 컨트롤러보다 먼저 거부합니다.
+     */
     @Bean
     @Order(1)
     fun publicSecurityFilterChain(
         http: HttpSecurity,
         entryPoint: ProblemAuthenticationEntryPoint,
         accessDeniedHandler: ProblemAccessDeniedHandler,
+        checkClientRateLimit: CheckClientRateLimitUseCase,
+        @Qualifier("handlerExceptionResolver") resolver: HandlerExceptionResolver,
     ): SecurityFilterChain {
         http {
             securityMatcher(*PUBLIC_PATHS)
             authorizeHttpRequests { authorize(anyRequest, permitAll) }
             common(entryPoint, accessDeniedHandler)
+            addFilterAfter<CorsFilter>(ClientRateLimitFilter(checkClientRateLimit, resolver))
         }
         return http.build()
     }
@@ -180,6 +191,7 @@ class SecurityConfig {
         /**
          * 인증 없이 여는 경로 (api/conventions.md §2 "없음"). 인증 없는 API를 추가하면 여기에 넣습니다.
          * `/realms/...`보다 먼저 매칭되므로 `/realms/{realm}/...` 아래의 공개 API도 여기에 둡니다.
+         * 여기 넣은 경로는 [ClientRateLimitFilter.EXCLUDED_PATHS]에 없으면 IP 단위 요청 제한 대상입니다.
          */
         val PUBLIC_PATHS: Array<String> =
             arrayOf(

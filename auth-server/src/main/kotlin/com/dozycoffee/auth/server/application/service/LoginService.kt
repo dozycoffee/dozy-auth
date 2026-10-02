@@ -69,7 +69,7 @@ class LoginService(
         // LGN-01 2. realm에 맞는 profile에서 이메일로 조회. 형식이 틀린 이메일은 없는 계정과 같습니다 (LGN-02)
         val employee = emailOrNull(command.email)?.let(loadEmployee::findEmployeeByEmail)
 
-        // LGN-01 1. 계정 잠금 (IP 요청 제한은 요청 제한 작업에서 이 앞에 둡니다)
+        // LGN-01 1. 계정 잠금 (IP 요청 제한은 컨트롤러보다 앞의 요청 제한 필터가 먼저 확인합니다)
         employee?.account?.ensureNotLocked(now)
 
         // LGN-01 3. 비밀번호 검증. 계정이나 비밀번호가 없으면 가짜 해시로 검증해 응답 시간을 맞춥니다 (LGN-02)

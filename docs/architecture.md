@@ -117,10 +117,10 @@ com.dozycoffee.auth.server
 │   ├─ port/outbound/         외부로 나가는 인터페이스 (도메인별, mail, jwt, crypto)
 │   └─ service/               UseCase 구현 (auth, admin, internal, system)
 ├─ adapter/
-│   ├─ inbound/web/           컨트롤러 (auth, admin, internal, dev), error, ratelimit
+│   ├─ inbound/web/           컨트롤러 (auth, admin, internal, dev), error, ratelimit(IP 요청 제한 필터)
 │   ├─ inbound/scheduler/     정리 배치, 일일 요약
 │   ├─ inbound/startup/       owner 부트스트랩
-│   └─ outbound/              persistence(Exposed), mail, jwt(Nimbus), crypto(Argon2)
+│   └─ outbound/              persistence(Exposed), mail, jwt(Nimbus), crypto(Argon2), ratelimit(Bucket4j)
 └─ config/                    Spring Security, Exposed, 빈 조립
 ```
 
@@ -251,3 +251,18 @@ UseCase는 `SendMailPort.send`를 트랜잭션 안에서 호출하고, 발송 �
 - 발송에 실패하면 메일 종류와 예외만 경고 로그로 남기고 **다시 시도하지 않습니다.** 호출한 쪽에는 예외를 던지지 않으므로 업무는 그대로 성공합니다. 받는 사람은 재발송(초대 재발송, 비밀번호 찾기 다시 요청)으로 복구합니다. 대기열이 가득 차 받지 못한 메일도 같습니다.
 - 로그에는 본문과 링크를 남기지 않습니다 ([SEC-03](domain.md#12-민감정보-sec)). 메일 값 객체의 토큰(`OpaqueSecret`)은 `toString`에서 가려집니다.
 - 발송 대기 중인 메일은 메모리에만 있어 서버가 비정상 종료되면 사라집니다. 정상 종료할 때는 잠시 기다려 보냅니다. 발송 보장이 필요해지면 outbox 테이블을 검토합니다.
+
+### 9.4 요청 제한
+
+[api/conventions.md §8](api/conventions.md#8-요청-제한)의 요청 제한은 카운터 하나(`ConsumeRateLimitPort`, Bucket4j 인메모리 어댑터)를 용도별로 나눠 씁니다. UseCase는 포트를 직접 쓰지 않고 `RateLimitService`의 용도별 메서드를 씁니다.
+
+| 제한 | 호출하는 곳 | 넘으면 |
+|---|---|---|
+| IP (`policy.rate-limit-ip`) | `adapter/inbound/web/ratelimit`의 필터. 인증 없는 경로의 보안 필터 체인에서 CORS 바로 뒤 | `TooManyAttemptsException`을 예외 처리기로 넘김 (429) |
+| 이메일 (`policy.rate-limit-email`) | 메일을 보내는 UseCase가 메일을 보내기 직전 (`tryAcquireMailSend`) | `false`. UseCase는 메일만 보내지 않고 같은 `202` |
+| principal (`policy.rate-limit-password-confirm`) | 본인 확인용 비밀번호를 받는 UseCase가 비밀번호를 검증하기 전 (`checkPasswordConfirmation`) | `TooManyAttemptsException` (429) |
+
+- 인증 없는 경로의 체인에 넣은 API는 따로 등록하지 않아도 IP 제한 대상입니다. 제외할 경로만 필터의 제외 목록에 둡니다.
+- 버킷은 마지막으로 쓴 뒤 한도 기간이 지나면 메모리에서 지웁니다(그때는 이미 가득 찬 상태). 버킷 수에도 상한이 있어, 넘으면 오래 쓰지 않은 것부터 지웁니다.
+- 이메일 키는 원문 대신 소문자 주소의 해시로 보관하고, 키를 로그에 남기지 않습니다 ([SEC-03](domain.md#12-민감정보-sec)).
+- 시간은 주입한 `Clock`으로 잽니다. 테스트는 시계를 옮겨 다시 채워지는 것을 확인하고, 테스트 메서드마다 카운터를 비웁니다 (`support/RateLimitResetListener`).
