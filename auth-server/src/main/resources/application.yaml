@@ -23,3 +23,44 @@ dozy:
     signing:
       keys-dir: ${AUTH_SIGNING_KEYS_DIR}
       active-kid: ${AUTH_SIGNING_ACTIVE_KID}
+
+---
+# 메일 (docs/configuration.md §7). 발송은 커밋 후 별도 스레드에서 하지만(architecture.md §9.3) SMTP가 멈췄을 때 스레드가 오래 붙잡히지 않게 시간 제한을 둡니다.
+spring:
+  mail:
+    default-encoding: UTF-8
+    properties:
+      "[mail.smtp.connectiontimeout]": 5000
+      "[mail.smtp.timeout]": 10000
+      "[mail.smtp.writetimeout]": 10000
+
+management:
+  health:
+    mail:
+      # SMTP 장애로 서버 상태 전체가 DOWN이 되지 않게 합니다. 발송 실패는 로그로 봅니다.
+      enabled: false
+
+---
+# 공용 서버(dev, prod)의 메일 설정은 환경 변수로 받습니다 (docs/configuration.md §1, §7)
+spring:
+  config:
+    activate:
+      on-profile: dev | prod
+  mail:
+    host: ${AUTH_MAIL_SMTP_HOST:}
+    port: ${AUTH_MAIL_SMTP_PORT:587}
+    username: ${AUTH_MAIL_SMTP_USERNAME:}
+    password: ${AUTH_MAIL_SMTP_PASSWORD:}
+    properties:
+      "[mail.smtp.auth]": true
+      "[mail.smtp.starttls.enable]": true
+      "[mail.smtp.starttls.required]": true
+
+dozy:
+  auth:
+    mail:
+      sender: ${AUTH_MAIL_SENDER}
+      from: ${AUTH_MAIL_FROM}
+      app-url:
+        internal: ${AUTH_APP_URL_INTERNAL}
+        partner: ${AUTH_APP_URL_PARTNER}

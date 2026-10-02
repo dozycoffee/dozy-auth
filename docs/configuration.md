@@ -12,11 +12,11 @@ auth-server가 읽는 설정과 프로필별 동작입니다. 비밀값(DB 비�
 | `AUTH_SIGNING_KEYS_DIR` | ✅ | `/secrets/signing-keys` | 서명 키 폴더 ([§3](#3-서명-키)) |
 | `AUTH_SIGNING_ACTIVE_KID` | ✅ | `dozy-2026-09` | 서명에 쓸 키 |
 | `AUTH_CORS_ALLOWED_ORIGINS` | ✅ | `https://admin.dozycoffee.com,https://partner.dozycoffee.com` | 쉼표 구분, 와일드카드 금지 |
-| `AUTH_APP_URL_INTERNAL` | ✅ | `https://admin.dozycoffee.com` | internal realm 메일 링크 기준 주소 |
-| `AUTH_APP_URL_PARTNER` | ✅ | `https://partner.dozycoffee.com` | partner realm 메일 링크 기준 주소 |
-| `AUTH_MAIL_SENDER` | ✅ | `smtp` / `console` | `console`은 메일 내용을 로그로 출력 (local·dev 전용) |
-| `AUTH_MAIL_SMTP_HOST`, `_PORT`, `_USERNAME`, `_PASSWORD` | smtp일 때 | | |
-| `AUTH_MAIL_FROM` | ✅ | `no-reply@dozycoffee.com` | |
+| `AUTH_APP_URL_INTERNAL` | ✅ | `https://admin.dozycoffee.com` | internal realm 메일 링크 기준 주소 ([§7](#7-메일)) |
+| `AUTH_APP_URL_PARTNER` | ✅ | `https://partner.dozycoffee.com` | partner realm 메일 링크 기준 주소 ([§7](#7-메일)) |
+| `AUTH_MAIL_SENDER` | ✅ | `smtp` / `console` | `console`은 메일 내용을 로그로 출력 (local·dev 전용, [§7](#7-메일)) |
+| `AUTH_MAIL_SMTP_HOST`, `_PORT`, `_USERNAME`, `_PASSWORD` | smtp일 때 | `smtp.example.com`, `587` | `HOST`가 없으면 기동 실패. `PORT` 기본값 `587`. dev·prod는 SMTP 인증과 STARTTLS를 요구 |
+| `AUTH_MAIL_FROM` | ✅ | `no-reply@dozycoffee.com` | 보내는 주소. 이메일 형식이 아니면 기동 실패 |
 | `BOOTSTRAP_OWNER_EMAIL` | owner가 없을 때 | `owner@dozycoffee.com` | [GOV-11](domain.md#8-관리-권한-규칙-gov). 비밀번호는 설정에 두지 않음 |
 
 - 정책 수치([domain.md §2](domain.md#2-정책-값))는 코드 기본값(`domain.AuthPolicy`)으로 두고, 바꿀 필요가 생기면 `dozy.auth.policy.*` 속성으로 노출합니다. 속성 이름은 정책 이름에서 `policy.`를 뗀 것입니다 (예: `dozy.auth.policy.access-token-ttl`).
@@ -68,7 +68,7 @@ auth-server가 읽는 설정과 프로필별 동작입니다. 비밀값(DB 비�
 | `local` | 개발자 PC | Docker Compose 지원으로 PostgreSQL·Mailpit 자동 기동. 서명 키가 없으면 `.local/signing-keys/`에 생성해 재사용. `/dev/**` 활성. 부트스트랩 이메일 기본값 `owner@dozycoffee.local` |
 | `dev` | 공용 개발 서버 | `/dev/**` 활성. 서명 키는 설정으로 주입 (자동 생성 없음) |
 | `prod` | 운영 | [§2](#2-기동-시-검사) 검사. `/dev/**` 비활성. JSON 로그 |
-| `test` | 자동 테스트 | Testcontainers PostgreSQL. 서명 키는 `auth-server/build/test-signing-keys/`에 자동 생성. 메일은 테스트 대역. 비밀번호 해시는 가벼운 파라미터 ([§6](#6-비밀번호-해시)) |
+| `test` | 자동 테스트 | Testcontainers PostgreSQL. 서명 키는 `auth-server/build/test-signing-keys/`에 자동 생성. 메일은 `console`(링크의 토큰은 가림)이고, 보낸 메일을 확인하는 테스트는 기록용 테스트 대역을 씀. 비밀번호 해시는 가벼운 파라미터 ([§6](#6-비밀번호-해시)) |
 
 - 개발용 API는 `@Profile("local", "dev")`로만 등록합니다.
 - `.local/`은 git에 올리지 않습니다.
@@ -104,3 +104,31 @@ auth-server가 읽는 설정과 프로필별 동작입니다. 비밀값(DB 비�
 - 해시 한 번이 `memory-kib`만큼 JVM 힙을 씁니다. 동시 로그인 수만큼 곱해지므로 `memory-kib`를 키울 때는 힙 크기를 함께 봅니다.
 - 범위를 벗어난 값이면 기동에 실패합니다.
 - `test` 프로필은 테스트 속도를 위해 `memory-kib: 1024`, `iterations: 1`을 씁니다. 운영 프로필에서는 이 값을 쓰지 않습니다.
+
+## 7. 메일
+
+발송 시점과 실패 처리는 [architecture.md §9.3](architecture.md#93-메일-발송)을 따릅니다.
+
+| 속성 | 환경 변수 | 설명 |
+|---|---|---|
+| `dozy.auth.mail.sender` | `AUTH_MAIL_SENDER` | `smtp` 또는 `console` |
+| `dozy.auth.mail.from` | `AUTH_MAIL_FROM` | 보내는 주소. 보내는 사람 이름은 `Dozy Coffee` |
+| `dozy.auth.mail.app-url.internal` | `AUTH_APP_URL_INTERNAL` | 관리 콘솔 주소. http(s)이고 쿼리가 없어야 함 |
+| `dozy.auth.mail.app-url.partner` | `AUTH_APP_URL_PARTNER` | 파트너 웹 주소. 형식은 위와 같음 |
+| `spring.mail.host`, `port`, `username`, `password` | `AUTH_MAIL_SMTP_*` | SMTP 접속 정보 (Spring Boot 속성) |
+
+- 링크는 앱 주소 뒤에 화면 경로와 토큰을 붙여 만듭니다. 경로는 [api/account.md](api/account.md)의 링크 표를 따릅니다.
+- SMTP 연결·응답 시간 제한은 5초·10초입니다. Spring Boot의 메일 상태 확인(`management.health.mail`)은 끕니다. SMTP 장애로 서버 상태가 DOWN이 되지 않게 하기 위해서입니다.
+
+**프로필별 기본값**
+
+| 프로필 | 발송 방식 | 그 밖의 기본값 |
+|---|---|---|
+| `local` | `smtp` → Mailpit(`localhost:1025`, 인증·TLS 없음) | 보내는 주소 `no-reply@dozycoffee.local`, 앱 주소 `http://localhost:3000`(internal), `http://localhost:3001`(partner). 환경 변수로 바꿀 수 있음 |
+| `dev`, `prod` | 환경 변수 (기본값 없음) | |
+| `test` | `console` | 앱 주소 `https://admin.dozycoffee.test`, `https://partner.dozycoffee.test` |
+
+**콘솔 발송(`console`)**
+
+- 메일을 보내지 않고 받는 주소, 제목, 텍스트 본문을 로그로 출력합니다. `prod`에서는 기동에 실패합니다 ([§2](#2-기동-시-검사)).
+- 링크의 토큰은 `local` 프로필에서만 그대로 출력하고, 그 밖의 프로필(`dev`, `test`)에서는 `token=***`로 가립니다. `local`은 개발자 PC 안에서만 보는 로그이고, `dev`는 여러 사람이 보는 공용 서버 로그이기 때문입니다 ([SEC-03](domain.md#12-민감정보-sec)의 예외). `dev`에서 링크가 필요하면 `smtp`를 씁니다.
