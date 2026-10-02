@@ -41,5 +41,7 @@ dependencies {
     testImplementation(libs.spring.boot.starter.security.test)
     testImplementation(libs.bundles.testcontainers)
     testImplementation(libs.springmockk)
+    // 서비스 토큰 발급 API가 스타터와 같은 OAuth2 Client 구현과 맞물리는지 확인 (SystemTokenClientInteropTest)
+    testImplementation(libs.spring.security.oauth2.client)
     testImplementation(libs.konsist)
 }
