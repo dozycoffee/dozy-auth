@@ -210,7 +210,7 @@ com.dozycoffee.auth.server
 | 트랜잭션 | `application/service`에만 `@Transactional`. 여러 테이블을 바꾸면 한 트랜잭션. 영속성 어댑터는 트랜잭션을 열지 않고 호출한 UseCase의 트랜잭션 안에서 실행됨 (Exposed `SpringTransactionManager`) | 중간 상태 방지 |
 | 감사 로그 | 업무와 같은 트랜잭션에서 기록. 에러로 끝나도 남아야 하는 기록은 [§9.2](#92-감사-기록과-트랜잭션) | 업무와 기록이 함께 반영되거나 함께 사라지게 |
 | 메일 발송 | 트랜잭션 커밋 후, 별도 스레드에서. 실패는 로그만 남김 ([§9.3](#93-메일-발송)) | 롤백된 작업의 메일 방지 |
-| 현재 시각 | `Clock` 주입. `Instant.now()` 직접 호출 금지 | 만료·유예 시간 테스트 |
+| 현재 시각 | `Clock` 주입. `Instant.now()` 직접 호출 금지. 서버 `Clock`은 마이크로초 단위 | 만료·유예 시간 테스트. DB(`timestamptz`)가 마이크로초 아래를 반올림해 저장하므로 메모리와 DB 값을 맞춤 |
 | 난수 | `SecureRandom`만 | 예측 방지 |
 | 비교 | 토큰·해시는 상수 시간 비교 (`MessageDigest.isEqual`) | 타이밍 공격 방지 |
 | 로그 | [SEC-03](domain.md#12-민감정보-sec) | |
