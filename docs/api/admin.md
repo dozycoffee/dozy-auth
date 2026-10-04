@@ -430,7 +430,7 @@ sequenceDiagram
 
 | code | 조건 |
 |---|---|
-| `FORBIDDEN` | admin이 `auth:admin` 부여, `auth:owner` 부여 ([GOV-05](../domain.md#8-관리-권한-규칙-gov)) |
+| `FORBIDDEN` | admin이 `auth:admin` 부여, `auth:owner` 부여 ([GOV-05](../domain.md#8-관리-권한-규칙-gov)), system client에 system role 부여 ([GOV-06](../domain.md#8-관리-권한-규칙-gov)) |
 | `SELF_GRANT_NOT_ALLOWED` | 자기 자신에게 부여 |
 | `PROTECTED_ACCOUNT` | admin이 owner·admin 계정에 부여 |
 | `NOT_FOUND` | principal 또는 role 없음 |
