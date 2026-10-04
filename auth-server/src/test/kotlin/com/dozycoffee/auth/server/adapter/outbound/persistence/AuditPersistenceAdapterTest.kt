@@ -4,6 +4,7 @@ import com.dozycoffee.auth.core.PrincipalType
 import com.dozycoffee.auth.core.Realm
 import com.dozycoffee.auth.server.adapter.outbound.persistence.table.AuditLogTable
 import com.dozycoffee.auth.server.application.port.outbound.audit.AuditLogQuery
+import com.dozycoffee.auth.server.domain.PageRequest
 import com.dozycoffee.auth.server.domain.audit.AuditAction
 import com.dozycoffee.auth.server.domain.audit.AuditActor
 import com.dozycoffee.auth.server.domain.audit.AuditEvent
@@ -37,7 +38,7 @@ class AuditPersistenceAdapterTest {
 
         adapter.record(event)
 
-        val entry = adapter.findAuditLogs(AuditLogQuery(from = NOW, to = NOW.plusSeconds(1))).entries.single()
+        val entry = adapter.findAuditLogs(AuditLogQuery(from = NOW, to = NOW.plusSeconds(1))).items.single()
         assertEquals(event, entry.event)
         val row = AuditLogTable.selectAll().single()
         assertEquals(entry.id, row[AuditLogTable.id])
@@ -89,7 +90,7 @@ class AuditPersistenceAdapterTest {
         val read =
             adapter
                 .findAuditLogs(AuditLogQuery(from = NOW, to = NOW.plusSeconds(1)))
-                .entries
+                .items
                 .single()
                 .event
         assertNull(read.actor)
@@ -112,7 +113,7 @@ class AuditPersistenceAdapterTest {
             detail,
             adapter
                 .findAuditLogs(AuditLogQuery(from = NOW, to = NOW.plusSeconds(1)))
-                .entries
+                .items
                 .single()
                 .event.detail,
         )
@@ -136,7 +137,7 @@ class AuditPersistenceAdapterTest {
 
         assertEquals(
             listOf(AuditAction.PASSWORD_CHANGED, AuditAction.SESSION_REVOKED, AuditAction.PROFILE_UPDATED, AuditAction.LOGIN_SUCCEEDED),
-            page.entries.map { it.event.action },
+            page.items.map { it.event.action },
         )
         assertEquals(4L, page.totalElements)
     }
@@ -150,7 +151,7 @@ class AuditPersistenceAdapterTest {
 
         val page = adapter.findAuditLogs(AuditLogQuery(from = NOW, to = NOW.plusSeconds(60)))
 
-        assertEquals(listOf(AuditAction.PASSWORD_CHANGED, AuditAction.LOGIN_SUCCEEDED), page.entries.map { it.event.action })
+        assertEquals(listOf(AuditAction.PASSWORD_CHANGED, AuditAction.LOGIN_SUCCEEDED), page.items.map { it.event.action })
     }
 
     @Test
@@ -162,7 +163,7 @@ class AuditPersistenceAdapterTest {
 
         val page = adapter.findAuditLogs(AuditLogQuery(from = NOW, to = NOW.plusSeconds(1), actorId = OWNER_ID))
 
-        assertEquals(listOf(AuditAction.ROLE_GRANTED), page.entries.map { it.event.action })
+        assertEquals(listOf(AuditAction.ROLE_GRANTED), page.items.map { it.event.action })
     }
 
     @Test
@@ -182,8 +183,8 @@ class AuditPersistenceAdapterTest {
                 ),
             )
 
-        assertEquals(setOf(AuditAction.ACCOUNT_SUSPENDED, AuditAction.ACCOUNT_REACTIVATED), byType.entries.map { it.event.action }.toSet())
-        assertEquals(listOf(AuditAction.ACCOUNT_SUSPENDED), byTarget.entries.map { it.event.action })
+        assertEquals(setOf(AuditAction.ACCOUNT_SUSPENDED, AuditAction.ACCOUNT_REACTIVATED), byType.items.map { it.event.action }.toSet())
+        assertEquals(listOf(AuditAction.ACCOUNT_SUSPENDED), byTarget.items.map { it.event.action })
     }
 
     @Test
@@ -197,22 +198,22 @@ class AuditPersistenceAdapterTest {
                 AuditLogQuery(from = NOW, to = NOW.plusSeconds(1), actions = setOf(AuditAction.LOGIN_FAILED, AuditAction.ACCOUNT_LOCKED)),
             )
 
-        assertEquals(setOf(AuditAction.LOGIN_FAILED, AuditAction.ACCOUNT_LOCKED), page.entries.map { it.event.action }.toSet())
+        assertEquals(setOf(AuditAction.LOGIN_FAILED, AuditAction.ACCOUNT_LOCKED), page.items.map { it.event.action }.toSet())
         assertEquals(2L, page.totalElements)
     }
 
     @Test
     fun `페이지 크기만큼 나눠 돌려주고 전체 건수를 함께 돌려줌`() {
         (0L until 5L).forEach { adapter.record(event(AuditAction.LOGIN_SUCCEEDED, occurredAt = NOW.plusSeconds(it))) }
-        val query = AuditLogQuery(from = NOW, to = NOW.plusSeconds(60), size = 2)
+        val query = AuditLogQuery(from = NOW, to = NOW.plusSeconds(60), page = PageRequest(0, 2))
 
         val first = adapter.findAuditLogs(query)
-        val last = adapter.findAuditLogs(query.copy(page = 2))
-        val beyond = adapter.findAuditLogs(query.copy(page = 3))
+        val last = adapter.findAuditLogs(query.copy(page = PageRequest(2, 2)))
+        val beyond = adapter.findAuditLogs(query.copy(page = PageRequest(3, 2)))
 
-        assertEquals(listOf(NOW.plusSeconds(4), NOW.plusSeconds(3)), first.entries.map { it.event.occurredAt })
-        assertEquals(listOf(NOW), last.entries.map { it.event.occurredAt })
-        assertEquals(emptyList(), beyond.entries)
+        assertEquals(listOf(NOW.plusSeconds(4), NOW.plusSeconds(3)), first.items.map { it.event.occurredAt })
+        assertEquals(listOf(NOW), last.items.map { it.event.occurredAt })
+        assertEquals(emptyList(), beyond.items)
         assertEquals(5L, first.totalElements)
         assertEquals(5L, beyond.totalElements)
     }

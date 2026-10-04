@@ -833,9 +833,14 @@ sequenceDiagram
 |---|---|
 | `from`, `to` | 기간 (ISO 8601). `from` 이상 `to` 미만. 기본은 최근 `policy.audit-query-default-range` |
 | `actorId` | 행위자 principal id |
-| `targetType`, `targetId` | 대상 |
+| `targetType`, `targetId` | 대상. `targetType`은 `PRINCIPAL`, `ROLE`, `AUDIENCE`, `SESSION` ([data-model.md §3.11](../data-model.md#311-audit_log)) |
 | `action` | action. 여러 개는 쉼표로 구분 |
 | `page`, `size` | [conventions.md §3](conventions.md#3-성공-응답) |
+
+- 최신순입니다. 발생 시각이 같으면 나중에 기록한 것이 먼저입니다.
+- 기간을 하나만 주면 나머지는 이렇게 정합니다. `from`만 주면 지금까지, `to`만 주면 `to` 앞으로 `policy.audit-query-default-range`입니다.
+- `action`, `targetType`은 대소문자를 구분합니다. 모르는 값이 하나라도 있으면 `VALIDATION_FAILED`입니다.
+- owner인지는 토큰의 role로 먼저 검사하고, DB의 현재 role로 다시 확인합니다 ([GOV-14](../domain.md#8-관리-권한-규칙-gov)). DB에서 owner가 아니면 기간 검사보다 먼저 `FORBIDDEN`입니다.
 
 **응답** `200 OK`
 
@@ -858,10 +863,15 @@ sequenceDiagram
 }
 ```
 
+- 행위자와 대상은 id와 type만 담고, 이름·이메일 같은 개인정보는 담지 않습니다 ([AUD-07](../domain.md#11-감사와-알림-aud)). `actorType`은 토큰의 `principalType`과 같은 소문자 값입니다.
+- 행위자나 대상이 없는 기록(시스템 작업, 계정을 찾지 못한 로그인 실패 등 [AUD-08](../domain.md#11-감사와-알림-aud))은 그 id와 type이 `null`입니다. `detail`, `ip`도 없으면 `null`입니다.
+- `user_agent`는 응답하지 않습니다.
+
 **에러**
 
 | code | 조건 |
 |---|---|
-| `VALIDATION_FAILED` | 기간 형식 오류, 기간이 `policy.audit-query-max-range` 초과 |
+| `VALIDATION_FAILED` | 기간 형식 오류, `from`이 `to`보다 앞이 아님, 기간이 `policy.audit-query-max-range` 초과, `actorId` 형식 오류, 모르는 `action`·`targetType` |
+| `FORBIDDEN` | DB의 현재 role로 owner가 아님 |
 
 **규칙** [AUD-04](../domain.md#11-감사와-알림-aud)
