@@ -2,10 +2,10 @@ package com.dozycoffee.auth.server.adapter.outbound.persistence
 
 import com.dozycoffee.auth.core.PrincipalType
 import com.dozycoffee.auth.server.adapter.outbound.persistence.table.AuditLogTable
-import com.dozycoffee.auth.server.application.port.outbound.audit.AuditLogPage
 import com.dozycoffee.auth.server.application.port.outbound.audit.AuditLogQuery
 import com.dozycoffee.auth.server.application.port.outbound.audit.LoadAuditLogsPort
 import com.dozycoffee.auth.server.application.port.outbound.audit.RecordAuditLogPort
+import com.dozycoffee.auth.server.domain.Page
 import com.dozycoffee.auth.server.domain.audit.AuditAction
 import com.dozycoffee.auth.server.domain.audit.AuditActor
 import com.dozycoffee.auth.server.domain.audit.AuditEvent
@@ -51,7 +51,7 @@ class AuditPersistenceAdapter :
         }
     }
 
-    override fun findAuditLogs(query: AuditLogQuery): AuditLogPage {
+    override fun findAuditLogs(query: AuditLogQuery): Page<AuditLogEntry> {
         val condition = query.toCondition()
         val total = AuditLogTable.selectAll().where(condition).count()
         val entries =
@@ -59,10 +59,10 @@ class AuditPersistenceAdapter :
                 .selectAll()
                 .where(condition)
                 .orderBy(AuditLogTable.occurredAt to SortOrder.DESC, AuditLogTable.id to SortOrder.DESC)
-                .limit(query.size)
-                .offset(query.page.toLong() * query.size)
+                .limit(query.page.size)
+                .offset(query.page.offset)
                 .map { it.toEntry() }
-        return AuditLogPage(entries, total)
+        return Page(entries, query.page, total)
     }
 
     private fun AuditLogQuery.toCondition(): Op<Boolean> {
