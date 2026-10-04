@@ -30,3 +30,14 @@ class SelfGrantNotAllowedException : AuthException("SELF_GRANT_NOT_ALLOWED", 403
 class RoleNotGrantableException(
     message: String,
 ) : AuthException("INVALID_STATE", 409, message)
+
+/** 없는 role 정의. */
+class RoleNotFoundException : AuthException("NOT_FOUND", 404, "role이 없습니다.")
+
+/** 없는 audience. */
+class AudienceNotFoundException : AuthException("NOT_FOUND", 404, "audience가 없습니다.")
+
+/** 부여된 principal이 있는 role을 일괄 회수(`revokeAll`) 확인 없이 삭제하려 함 (GOV-13). */
+class RoleInUseException(
+    holders: Long,
+) : AuthException("ROLE_IN_USE", 409, "부여된 principal이 있는 role입니다 (${holders}명). 일괄 회수를 확인한 뒤 다시 요청해 주세요.")

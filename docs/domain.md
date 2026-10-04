@@ -240,6 +240,7 @@ stateDiagram-v2
   - code와 audience는 등록 후 바꿀 수 없습니다. 이름과 설명만 수정합니다.
   - system role은 수정·삭제할 수 없습니다 (`FORBIDDEN`).
   - 부여된 principal이 있으면 삭제를 거부하고(`ROLE_IN_USE`), 확인을 받아 일괄 회수한 뒤 삭제할 수 있습니다.
+    일괄 회수는 회수 대상이 owner·admin이어도 [GOV-02](#8-관리-권한-규칙-gov)를 적용하지 않습니다. 계정 하나를 바꾸는 작업이 아니라 role 정의를 없애는 작업이고, role 정의 관리는 admin의 권한이기 때문입니다([GOV-01](#8-관리-권한-규칙-gov)). system role은 삭제할 수 없으므로 owner·admin 권한 자체는 회수되지 않습니다.
   - audience 추가는 owner만 가능합니다. audience 삭제는 없습니다.
 - **GOV-14** 관리 API의 인가는 지금 role 이름(`auth:owner`, `auth:admin`)으로 검사합니다. 권한 단위(`ACCOUNT_INVITE` 등) 검사는 필요해질 때 도입합니다.
 - **GOV-15** 한 요청이 GOV 규칙 여러 개를 함께 어기면 아래 순서로 검사해 처음 어긴 규칙의 에러를 응답합니다. 대상이 없으면(`NOT_FOUND`) 이 검사 전에 응답합니다.
