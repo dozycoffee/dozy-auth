@@ -5,9 +5,9 @@ import com.dozycoffee.auth.server.adapter.outbound.persistence.AuditLogTable
 import com.dozycoffee.auth.server.adapter.outbound.persistence.EmployeeProfileTable
 import com.dozycoffee.auth.server.adapter.outbound.persistence.PrincipalRoleTable
 import com.dozycoffee.auth.server.adapter.outbound.persistence.VerificationTable
-import com.dozycoffee.auth.server.application.port.inbound.BootstrapOwnerCommand
-import com.dozycoffee.auth.server.application.port.inbound.BootstrapOwnerOutcome
-import com.dozycoffee.auth.server.application.port.inbound.BootstrapOwnerUseCase
+import com.dozycoffee.auth.server.application.port.inbound.system.BootstrapOwnerCommand
+import com.dozycoffee.auth.server.application.port.inbound.system.BootstrapOwnerOutcome
+import com.dozycoffee.auth.server.application.port.inbound.system.BootstrapOwnerUseCase
 import com.dozycoffee.auth.server.application.port.outbound.account.LoadEmployeePort
 import com.dozycoffee.auth.server.application.port.outbound.authorization.LoadOwnerPort
 import com.dozycoffee.auth.server.application.port.outbound.authorization.LoadPrincipalRolesPort

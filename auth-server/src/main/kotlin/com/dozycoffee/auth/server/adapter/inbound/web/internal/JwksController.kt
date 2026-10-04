@@ -1,7 +1,7 @@
 package com.dozycoffee.auth.server.adapter.inbound.web.internal
 
 import com.dozycoffee.auth.core.Jwks
-import com.dozycoffee.auth.server.application.port.inbound.GetJwksUseCase
+import com.dozycoffee.auth.server.application.port.inbound.internal.GetJwksUseCase
 import com.dozycoffee.auth.server.domain.AuthPolicy
 import org.springframework.http.CacheControl
 import org.springframework.http.MediaType

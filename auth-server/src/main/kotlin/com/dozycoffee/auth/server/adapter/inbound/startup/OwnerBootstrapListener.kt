@@ -1,8 +1,8 @@
 package com.dozycoffee.auth.server.adapter.inbound.startup
 
-import com.dozycoffee.auth.server.application.port.inbound.BootstrapOwnerCommand
-import com.dozycoffee.auth.server.application.port.inbound.BootstrapOwnerOutcome
-import com.dozycoffee.auth.server.application.port.inbound.BootstrapOwnerUseCase
+import com.dozycoffee.auth.server.application.port.inbound.system.BootstrapOwnerCommand
+import com.dozycoffee.auth.server.application.port.inbound.system.BootstrapOwnerOutcome
+import com.dozycoffee.auth.server.application.port.inbound.system.BootstrapOwnerUseCase
 import com.dozycoffee.auth.server.domain.authorization.OwnerAlreadyAssignedException
 import org.slf4j.LoggerFactory
 import org.springframework.boot.context.event.ApplicationReadyEvent

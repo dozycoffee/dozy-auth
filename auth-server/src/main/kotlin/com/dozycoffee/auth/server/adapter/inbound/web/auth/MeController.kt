@@ -3,7 +3,7 @@ package com.dozycoffee.auth.server.adapter.inbound.web.auth
 import com.dozycoffee.auth.core.AuthenticatedPrincipal
 import com.dozycoffee.auth.core.Realm
 import com.dozycoffee.auth.server.adapter.inbound.web.RealmPaths
-import com.dozycoffee.auth.server.application.port.inbound.GetMyProfileUseCase
+import com.dozycoffee.auth.server.application.port.inbound.auth.GetMyProfileUseCase
 import com.dozycoffee.auth.starter.CurrentPrincipal
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.GetMapping

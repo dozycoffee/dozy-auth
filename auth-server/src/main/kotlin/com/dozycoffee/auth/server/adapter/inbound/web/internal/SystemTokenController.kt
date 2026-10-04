@@ -1,8 +1,8 @@
 package com.dozycoffee.auth.server.adapter.inbound.web.internal
 
 import com.dozycoffee.auth.server.adapter.inbound.web.ClientInfo
-import com.dozycoffee.auth.server.application.port.inbound.IssueSystemTokenCommand
-import com.dozycoffee.auth.server.application.port.inbound.IssueSystemTokenUseCase
+import com.dozycoffee.auth.server.application.port.inbound.internal.IssueSystemTokenCommand
+import com.dozycoffee.auth.server.application.port.inbound.internal.IssueSystemTokenUseCase
 import com.dozycoffee.auth.server.domain.client.ClientId
 import com.dozycoffee.auth.server.domain.client.InvalidClientException
 import jakarta.servlet.http.HttpServletRequest

@@ -1,11 +1,11 @@
 package com.dozycoffee.auth.server.adapter.inbound.web.error
 
 import com.dozycoffee.auth.server.adapter.outbound.ratelimit.RateLimitBucket4jAdapter
-import com.dozycoffee.auth.server.application.service.RateLimitService
+import com.dozycoffee.auth.server.application.service.system.RateLimitService
 import com.dozycoffee.auth.server.config.ClockConfig
 import com.dozycoffee.auth.server.config.JwtConfig
-import com.dozycoffee.auth.server.config.SecurityConfig
-import com.dozycoffee.auth.server.config.TokenVerificationConfig
+import com.dozycoffee.auth.server.config.security.SecurityConfig
+import com.dozycoffee.auth.server.config.security.TokenVerificationConfig
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest

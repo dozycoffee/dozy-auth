@@ -2,7 +2,7 @@ package com.dozycoffee.auth.server.config
 
 import com.dozycoffee.auth.server.adapter.inbound.startup.OwnerBootstrapListener
 import com.dozycoffee.auth.server.adapter.inbound.startup.OwnerBootstrapProperties
-import com.dozycoffee.auth.server.application.port.inbound.BootstrapOwnerUseCase
+import com.dozycoffee.auth.server.application.port.inbound.system.BootstrapOwnerUseCase
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProperty
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean

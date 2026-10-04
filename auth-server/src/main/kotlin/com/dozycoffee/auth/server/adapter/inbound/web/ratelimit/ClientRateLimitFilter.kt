@@ -3,7 +3,7 @@ package com.dozycoffee.auth.server.adapter.inbound.web.ratelimit
 import com.dozycoffee.auth.server.adapter.inbound.web.ClientInfo
 import com.dozycoffee.auth.server.adapter.inbound.web.internal.JwksController
 import com.dozycoffee.auth.server.adapter.inbound.web.internal.SystemTokenController
-import com.dozycoffee.auth.server.application.port.inbound.CheckClientRateLimitUseCase
+import com.dozycoffee.auth.server.application.port.inbound.system.CheckClientRateLimitUseCase
 import com.dozycoffee.auth.server.domain.TooManyAttemptsException
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest

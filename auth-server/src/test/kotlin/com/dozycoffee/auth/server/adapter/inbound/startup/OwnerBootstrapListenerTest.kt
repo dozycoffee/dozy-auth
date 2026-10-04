@@ -1,9 +1,9 @@
 package com.dozycoffee.auth.server.adapter.inbound.startup
 
-import com.dozycoffee.auth.server.application.port.inbound.BootstrapOwnerCommand
-import com.dozycoffee.auth.server.application.port.inbound.BootstrapOwnerOutcome
-import com.dozycoffee.auth.server.application.port.inbound.BootstrapOwnerResult
-import com.dozycoffee.auth.server.application.port.inbound.BootstrapOwnerUseCase
+import com.dozycoffee.auth.server.application.port.inbound.system.BootstrapOwnerCommand
+import com.dozycoffee.auth.server.application.port.inbound.system.BootstrapOwnerOutcome
+import com.dozycoffee.auth.server.application.port.inbound.system.BootstrapOwnerResult
+import com.dozycoffee.auth.server.application.port.inbound.system.BootstrapOwnerUseCase
 import com.dozycoffee.auth.server.domain.Email
 import com.dozycoffee.auth.server.domain.authorization.OwnerAlreadyAssignedException
 import io.mockk.every

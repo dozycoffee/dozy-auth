@@ -113,15 +113,15 @@ com.dozycoffee.auth.server
 │   ├─ token/                 claim 구성, aud 결정
 │   └─ audit/                 감사 이벤트
 ├─ application/
-│   ├─ port/inbound/          UseCase 인터페이스와 Command (auth, admin, internal)
-│   ├─ port/outbound/         외부로 나가는 인터페이스 (도메인별, mail, jwt, crypto)
-│   └─ service/               UseCase 구현 (auth, admin, internal, system)
+│   ├─ port/inbound/          UseCase 인터페이스와 Command (auth, admin, internal, system, dev)
+│   ├─ port/outbound/         외부로 나가는 인터페이스 (도메인별, mail, jwt, crypto, ratelimit)
+│   └─ service/               UseCase 구현 (port/inbound와 같은 영역으로 나눔)
 ├─ adapter/
-│   ├─ inbound/web/           컨트롤러 (auth, admin, internal, dev), error, ratelimit(IP 요청 제한 필터)
+│   ├─ inbound/web/           컨트롤러 (auth, account, admin, internal, dev), error, csrf, ratelimit(IP 요청 제한 필터)
 │   ├─ inbound/scheduler/     정리 배치, 일일 요약
 │   ├─ inbound/startup/       owner 부트스트랩
 │   └─ outbound/              persistence(Exposed), mail, jwt(Nimbus), crypto(Argon2), ratelimit(Bucket4j)
-└─ config/                    Spring Security, Exposed, 빈 조립
+└─ config/                    빈 조립과 기술 설정. Spring Security 설정은 config/security
 ```
 
 | 계층 | 역할 |
@@ -133,6 +133,20 @@ com.dozycoffee.auth.server
 | `adapter/inbound` | 외부 요청을 UseCase 호출로 변환 |
 | `adapter/outbound` | 포트를 실제 기술로 구현 |
 | `config` | 빈 조립과 기술 설정 |
+
+**영역 (application, adapter/inbound/web 공통)**
+
+| 영역 | 내용 | API 문서 |
+|---|---|---|
+| `auth` | 로그인, 토큰 갱신, 로그아웃, 내 정보, 초대 조회·수락 | [api/auth.md](api/auth.md), [api/account.md](api/account.md) |
+| `admin` | 직원, role 정의·부여, audience, system client, 감사 로그 조회 | [api/admin.md](api/admin.md) |
+| `internal` | JWKS, 서비스 토큰 발급, 서비스가 부르는 내부 API | [api/internal.md](api/internal.md) |
+| `system` | 사람이 아닌 서버가 부르는 기능 (owner 부트스트랩, 요청 제한, 배치) | - |
+| `dev` | 개발용 API (`local`·`dev` 전용) | [api/dev.md](api/dev.md) |
+
+- 컨트롤러는 `adapter/inbound/web/account`처럼 API 문서 단위로 나눌 수 있지만, UseCase와 Service는 위 다섯 영역 중 하나에 둡니다 (`account`의 초대 조회·수락은 `auth`).
+- 여러 Service가 함께 쓰는 보조 클래스는 그 영역 패키지 안에 둡니다.
+- 도메인 예외가 둘 이상이면 도메인 패키지의 `{도메인}Exceptions.kt` 한 파일에 모읍니다 (예: `domain/session/SessionExceptions.kt`). 하나뿐이면 그 클래스 이름의 파일입니다 (ktlint 파일 이름 규칙). 여러 도메인이 함께 쓰는 예외는 `domain/AuthException.kt`에 둡니다.
 
 ## 6. 의존 규칙
 
