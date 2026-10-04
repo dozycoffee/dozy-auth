@@ -182,15 +182,31 @@ class ManagementPolicyTest {
     // GOV-13
 
     @Test
-    fun `GOV-13 system role 정의는 수정·삭제할 수 없음`() {
-        assertCode(FORBIDDEN) { ManagementPolicy.checkCanModifyRoleDefinition(role(SystemRoles.OWNER, isSystem = true)) }
-        assertCode(FORBIDDEN) { ManagementPolicy.checkCanModifyRoleDefinition(role(SystemRoles.ADMIN, isSystem = true)) }
+    fun `GOV-13 system role 정의는 owner도 수정·삭제할 수 없음`() {
+        assertCode(FORBIDDEN) { ManagementPolicy.checkCanModifyRoleDefinition(OWNER, role(SystemRoles.OWNER, isSystem = true)) }
+        assertCode(FORBIDDEN) { ManagementPolicy.checkCanModifyRoleDefinition(OWNER, role(SystemRoles.ADMIN, isSystem = true)) }
     }
 
     @Test
-    fun `GOV-13 일반 role 정의는 수정·삭제할 수 있음`() {
-        ManagementPolicy.checkCanModifyRoleDefinition(role(GENERAL_ROLE, isSystem = false))
-        ManagementPolicy.checkCanModifyRoleDefinition(role(RoleCode("auth", "partner_reader"), isSystem = false))
+    fun `GOV-13 owner와 admin은 일반 role 정의를 등록·수정·삭제할 수 있음`() {
+        listOf(OWNER, ADMIN).forEach { manager ->
+            ManagementPolicy.checkCanDefineRole(manager)
+            ManagementPolicy.checkCanModifyRoleDefinition(manager, role(GENERAL_ROLE, isSystem = false))
+            ManagementPolicy.checkCanModifyRoleDefinition(manager, role(RoleCode("auth", "partner_reader"), isSystem = false))
+        }
+    }
+
+    @Test
+    fun `GOV-13 관리 등급이 없으면 role 정의를 등록·수정·삭제할 수 없음`() {
+        assertCode(FORBIDDEN) { ManagementPolicy.checkCanDefineRole(NO_GRADE) }
+        assertCode(FORBIDDEN) { ManagementPolicy.checkCanModifyRoleDefinition(NO_GRADE, role(GENERAL_ROLE, isSystem = false)) }
+    }
+
+    @Test
+    fun `GOV-13 audience 추가는 owner만 할 수 있음`() {
+        ManagementPolicy.checkCanCreateAudience(OWNER)
+        assertCode(FORBIDDEN) { ManagementPolicy.checkCanCreateAudience(ADMIN) }
+        assertCode(FORBIDDEN) { ManagementPolicy.checkCanCreateAudience(NO_GRADE) }
     }
 
     // GOV-15
