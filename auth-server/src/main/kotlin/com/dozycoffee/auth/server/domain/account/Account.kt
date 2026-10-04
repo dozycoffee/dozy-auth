@@ -65,6 +65,16 @@ data class Account(
     }
 
     /**
+     * 관리자의 비밀번호 재설정 메일(api/admin.md 비밀번호 재설정 메일 발송)은 `ACTIVE`인 사람 계정에만 보냅니다.
+     * system client는 비밀번호가 없고 secret 재발급으로 바꿉니다 (CLI-03).
+     *
+     * @throws InvalidAccountStateException `ACTIVE`가 아니거나 system client일 때
+     */
+    fun ensurePasswordResettable() {
+        if (status != AccountStatus.ACTIVE || type == PrincipalType.SYSTEM) throw InvalidAccountStateException()
+    }
+
+    /**
      * 정보 수정(ACC-07)은 비활성화된 계정에 할 수 없습니다. 개인정보가 이미 파기됐고(ACC-04) 되돌릴 수 없기 때문입니다.
      *
      * @throws InvalidAccountStateException `DEACTIVATED`일 때

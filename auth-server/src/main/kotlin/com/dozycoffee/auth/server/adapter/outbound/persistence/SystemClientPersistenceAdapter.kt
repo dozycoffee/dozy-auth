@@ -2,13 +2,16 @@ package com.dozycoffee.auth.server.adapter.outbound.persistence
 
 import com.dozycoffee.auth.server.adapter.outbound.persistence.table.SystemClientTable
 import com.dozycoffee.auth.server.application.port.outbound.client.LoadSystemClientPort
+import com.dozycoffee.auth.server.application.port.outbound.client.ScrubSystemClientPort
 import com.dozycoffee.auth.server.domain.SecretHash
 import com.dozycoffee.auth.server.domain.client.ClientId
 import com.dozycoffee.auth.server.domain.client.SystemClient
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.update
 import org.springframework.stereotype.Component
+import java.util.UUID
 
 /**
  * system client를 저장합니다 (docs/data-model.md §3.4).
@@ -17,13 +20,21 @@ import org.springframework.stereotype.Component
  * 등록·secret 재발급은 관리 API에서 추가합니다. 그 전까지는 운영 런북의 SQL로 등록합니다.
  */
 @Component
-class SystemClientPersistenceAdapter : LoadSystemClientPort {
+class SystemClientPersistenceAdapter :
+    LoadSystemClientPort,
+    ScrubSystemClientPort {
     override fun findByClientId(clientId: ClientId): SystemClient? =
         SystemClientTable
             .selectAll()
             .where { SystemClientTable.clientId eq clientId.value }
             .singleOrNull()
             ?.toSystemClient()
+
+    override fun scrubSystemClient(principalId: UUID): Boolean =
+        SystemClientTable.update({ SystemClientTable.principalId eq principalId }) {
+            it[SystemClientTable.clientId] = SystemClient.deactivatedClientId(principalId)
+            it[SystemClientTable.clientSecretHash] = null
+        } > 0
 
     private fun ResultRow.toSystemClient() =
         SystemClient(
