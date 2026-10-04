@@ -112,6 +112,23 @@ class AccountStatusTransitionTest {
     }
 
     @Test
+    fun `ACTIVE인 사람 계정에는 비밀번호 재설정 메일을 보낼 수 있음`() {
+        account(ACTIVE).ensurePasswordResettable()
+        account(ACTIVE).copy(type = PrincipalType.PARTNER).ensurePasswordResettable()
+    }
+
+    @ParameterizedTest
+    @EnumSource(names = ["PENDING", "SUSPENDED", "DEACTIVATED"])
+    fun `ACTIVE가 아닌 계정의 비밀번호 재설정 메일은 INVALID_STATE`(status: AccountStatus) {
+        assertInvalidState { account(status).ensurePasswordResettable() }
+    }
+
+    @Test
+    fun `system client의 비밀번호 재설정 메일은 INVALID_STATE`() {
+        assertInvalidState { account(ACTIVE).copy(type = PrincipalType.SYSTEM).ensurePasswordResettable() }
+    }
+
+    @Test
     fun `전이에 실패하면 계정은 바뀌지 않음`() {
         val account = account(PENDING)
 
