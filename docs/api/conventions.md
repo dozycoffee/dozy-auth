@@ -126,7 +126,7 @@ RFC 9457 Problem Details 형식이며 `Content-Type: application/problem+json`�
 - 서비스 토큰 발급은 요청 제한 대상이 아닙니다. client secret은 난수라 대입 공격이 의미 없고, 실패는 `invalid_client`로만 응답합니다.
 - refresh 쿠키를 쓰는 API(토큰 갱신, 로그아웃)도 인증 방식이 "없음"이 아니라 대상이 아닙니다. refresh token도 난수라 대입이 의미 없고, 대신 `Origin` 검사([§7](#7-cors와-csrf))를 합니다.
 - 로그인은 추가로 계정 단위 잠금이 있습니다 ([LGN-01](../domain.md#5-로그인-규칙-lgn)).
-- 본인 확인용 비밀번호를 받는 API(비밀번호 변경, 파트너 탈퇴)는 principal 단위로도 제한합니다. 한도는 `policy.rate-limit-password-confirm`이며, 비밀번호를 확인하기 전에 셉니다.
+- 본인 확인용 비밀번호를 받는 API(비밀번호 변경, 파트너 탈퇴)는 principal 단위로도 제한합니다. 한도는 `policy.rate-limit-password-confirm`이며, 비밀번호를 확인하기 전에 셉니다. 비밀번호가 맞았는지와 관계없이 모든 시도를 세므로 성공한 요청도 한도를 씁니다. 한도를 넘은 요청은 비밀번호를 검증하지 않고 거부합니다.
 - 초과하면 `429 TOO_MANY_ATTEMPTS`와 `Retry-After`(초)로 응답합니다. IP 단위 제한은 컨트롤러보다 먼저 거부하므로 비밀번호 검증이나 감사 기록이 일어나지 않습니다.
 - 카운터는 인스턴스 메모리에 있습니다 ([ADR-0024](../adr/0024-in-memory-rate-limit-and-scheduler.md)).
 

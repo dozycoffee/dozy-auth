@@ -195,10 +195,15 @@ Set-Cookie: dozy_refresh=...; HttpOnly; Secure; SameSite=Strict; Path=/realms/{r
 
 | code | 조건 |
 |---|---|
+| `VALIDATION_FAILED` | 새 비밀번호가 [PWD-01](../domain.md#4-비밀번호-규칙-pwd)~[PWD-03](../domain.md#4-비밀번호-규칙-pwd) 위반 |
 | `CURRENT_PASSWORD_MISMATCH` | 현재 비밀번호 불일치 |
-| `TOO_MANY_ATTEMPTS` | 현재 비밀번호 확인 실패 반복 |
+| `INVALID_STATE` | 계정이 `ACTIVE`가 아님 (예: 정지된 계정이 만료 전 토큰으로 요청) |
+| `TOO_MANY_ATTEMPTS` | `policy.rate-limit-password-confirm` 초과 ([conventions.md §8](conventions.md#8-요청-제한)) |
 
 **규칙** [PWD-06](../domain.md#4-비밀번호-규칙-pwd), [PWD-08](../domain.md#4-비밀번호-규칙-pwd)
 
-- 현재 세션은 토큰의 `sid`로 식별합니다.
-- 감사 로그: `PASSWORD_CHANGED`
+- 처리 순서: 요청 제한 → 계정 상태 → 현재 비밀번호 확인 → 새 비밀번호 규칙. 앞에서 거부하면 뒤는 하지 않습니다.
+- 토큰의 주체 계정이 없거나 `DEACTIVATED`이면 내 정보와 같이 `401 UNAUTHENTICATED`입니다.
+- 현재 세션은 토큰의 `sid`로 식별합니다. 토큰에 `sid`가 없으면(개발용 토큰) 남길 세션이 없으므로 모든 세션을 폐기합니다.
+- 현재 비밀번호가 틀리면 아무것도 바꾸지 않고 감사 로그도 남기지 않습니다.
+- 감사 로그: `PASSWORD_CHANGED` (함께 폐기한 세션이 있으면 `detail.revokedSessions`, [AUD-08](../domain.md#11-감사와-알림-aud))

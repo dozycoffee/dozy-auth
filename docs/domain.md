@@ -72,7 +72,7 @@ Auth의 용어, 정책 수치, 규칙, 감사·알림을 정의합니다. 다른
 | `policy.cleanup-schedule` | 매일 04:00 KST | 정리 배치 ([AUD-05](#11-감사와-알림-aud)) |
 | `policy.rate-limit-ip` | 1분에 20회 | 인증 없이 호출하는 API의 클라이언트 IP 단위 요청 제한 ([api/conventions.md §8](api/conventions.md#8-요청-제한)) |
 | `policy.rate-limit-email` | 10분에 3회 | 메일을 보내는 API의 받는 이메일 단위 요청 제한. 넘으면 응답은 같고 메일만 보내지 않음 |
-| `policy.rate-limit-password-confirm` | 결정 필요 | 본인 확인용 비밀번호를 받는 API의 principal 단위 요청 제한. 비밀번호 변경·파트너 탈퇴 작업 전에 정함 |
+| `policy.rate-limit-password-confirm` | 15분에 5회 | 본인 확인용 비밀번호를 받는 API(비밀번호 변경, 파트너 탈퇴)의 principal 단위 요청 제한. 로그인 잠금(`policy.login-lock-threshold`, `policy.login-lock-duration`)과 같은 수준 |
 
 ## 3. 계정 상태 규칙 (ACC)
 
