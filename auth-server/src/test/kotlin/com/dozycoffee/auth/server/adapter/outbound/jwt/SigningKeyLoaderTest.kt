@@ -12,6 +12,7 @@ import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 import java.time.Clock
 import java.time.ZoneOffset
+import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
 import kotlin.test.assertEquals
@@ -69,6 +70,14 @@ class SigningKeyLoaderTest {
     }
 
     @Test
+    fun `자동 생성이 아니면 빈 활성 키는 지정하지 않은 것으로 보고 기동 실패`() {
+        TestSigningKeys.write(dir, CURRENT_KID, TestSigningKeys.CURRENT_PEM)
+
+        val error = assertFailsWith<IllegalStateException> { loader.load(SigningKeyProperties(dir, activeKid = "")) }
+        assertTrue(error.message!!.contains("active-kid"))
+    }
+
+    @Test
     fun `서명 키가 최소 크기보다 작으면 기동 실패`() {
         TestSigningKeys.write(dir, CURRENT_KID, TestSigningKeys.weakPem())
 
@@ -111,6 +120,24 @@ class SigningKeyLoaderTest {
         TestSigningKeys.write(dir, CURRENT_KID, TestSigningKeys.CURRENT_PEM)
 
         val keys = loader.load(SigningKeyProperties(dir, activeKid = NEXT_KID, autoGenerate = true))
+
+        assertEquals(NEXT_KID, keys.active.keyID)
+        assertEquals(listOf(CURRENT_KID, NEXT_KID), keys.published.map { it.keyID })
+    }
+
+    @Test
+    fun `자동 생성은 빈 활성 키를 지정하지 않은 것으로 보고 빈 폴더에 현재 연월 kid로 만듦`() {
+        val keys = loader.load(SigningKeyProperties(dir, activeKid = " ", autoGenerate = true))
+
+        assertEquals("dozy-2026-09", keys.active.keyID)
+        assertEquals(listOf(dir.resolve("dozy-2026-09.pem")), dir.listDirectoryEntries())
+    }
+
+    @Test
+    fun `자동 생성은 빈 활성 키면 기존 키 중 이름순 마지막 키로 서명`() {
+        TestSigningKeys.writeCurrentAndNext(dir)
+
+        val keys = loader.load(SigningKeyProperties(dir, activeKid = "", autoGenerate = true))
 
         assertEquals(NEXT_KID, keys.active.keyID)
         assertEquals(listOf(CURRENT_KID, NEXT_KID), keys.published.map { it.keyID })

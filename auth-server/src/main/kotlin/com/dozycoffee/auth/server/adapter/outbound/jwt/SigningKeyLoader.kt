@@ -26,6 +26,7 @@ import kotlin.io.path.readText
  * - 폴더 안의 `{kid}.pem`(PKCS#8 RSA 개인키)을 모두 읽고, 모든 공개키를 게시합니다.
  * - 서명은 `activeKid` 키 하나로만 합니다.
  * - `autoGenerate`면 키가 없을 때 만들어 저장하고, 다음 기동부터 재사용합니다.
+ * - 빈 `activeKid`는 지정하지 않은 것으로 봅니다.
  * - 문제가 있으면 [IllegalStateException]으로 기동을 멈춥니다.
  */
 class SigningKeyLoader(
@@ -34,7 +35,8 @@ class SigningKeyLoader(
 ) {
     fun load(properties: SigningKeyProperties): SigningKeys {
         val dir = properties.keysDir
-        if (properties.autoGenerate) ensureKeyExists(dir, properties.activeKid)
+        val configuredKid = properties.activeKid?.takeUnless { it.isBlank() }
+        if (properties.autoGenerate) ensureKeyExists(dir, configuredKid)
 
         check(dir.isDirectory()) { "서명 키 폴더가 없습니다: $dir" }
         val files = dir.listDirectoryEntries("*$EXTENSION").sortedBy { it.fileName.toString() }
@@ -42,7 +44,7 @@ class SigningKeyLoader(
 
         val keys = files.map(::readKey)
         val activeKid =
-            properties.activeKid
+            configuredKid
                 ?: if (properties.autoGenerate) keys.last().keyID else error("서명에 쓸 키(active-kid)를 지정해야 합니다")
         val active = keys.firstOrNull { it.keyID == activeKid } ?: error("활성 서명 키 파일이 없습니다: $activeKid$EXTENSION")
 
