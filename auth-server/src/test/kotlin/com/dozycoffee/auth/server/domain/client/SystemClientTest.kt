@@ -4,6 +4,7 @@ import com.dozycoffee.auth.server.domain.SecretHash
 import com.dozycoffee.auth.server.support.TokenFixtures.NOW
 import com.dozycoffee.auth.server.support.TokenFixtures.SYSTEM
 import org.junit.jupiter.api.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertSame
 
@@ -35,6 +36,11 @@ class SystemClientTest {
     fun `client가 없으면 인증하지 않음`() {
         assertNull(SystemClient.authenticate(null, SecretHash.of(SECRET)))
         assertNull(SystemClient.authenticate(null, SecretHash("0".repeat(64))))
+    }
+
+    @Test
+    fun `ACC-04 비활성화한 client의 client_id는 deleted-principal id`() {
+        assertEquals("deleted-${SYSTEM.id}", SystemClient.deactivatedClientId(SYSTEM.id))
     }
 
     private fun client(

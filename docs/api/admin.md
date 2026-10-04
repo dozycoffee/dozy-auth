@@ -327,7 +327,7 @@ sequenceDiagram
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `reason` | string | ✅ | 감사 로그에 기록 |
+| `reason` | string | ✅ | 감사 로그에 기록. 500자 이하, 공백만으로는 안 됨 |
 
 **응답** `204 No Content`
 
@@ -341,7 +341,8 @@ sequenceDiagram
 
 **규칙** [ACC-03](../domain.md#3-계정-상태-규칙-acc), [SES-07](../domain.md#6-세션-규칙-ses)
 
-- 감사 로그: `ACCOUNT_SUSPENDED`
+- `reason`이 없거나 형식에 맞지 않으면 `VALIDATION_FAILED`입니다.
+- 감사 로그: `ACCOUNT_SUSPENDED` (`detail.reason`)
 
 ### 정지 해제
 
@@ -362,6 +363,7 @@ sequenceDiagram
 | `INVALID_STATE` | `SUSPENDED`가 아님 |
 
 - 계정 탈취로 정지했다면 해제 후 재설정 메일을 보내는 것을 권장합니다.
+- 정지할 때 폐기한 세션은 되살리지 않습니다. 해제 후 다시 로그인합니다.
 - 감사 로그: `ACCOUNT_REACTIVATED`
 
 ### 계정 비활성화
@@ -376,7 +378,7 @@ sequenceDiagram
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `reason` | string | ✅ | 감사 로그에 기록 |
+| `reason` | string | ✅ | 감사 로그에 기록. 500자 이하, 공백만으로는 안 됨 |
 
 **응답** `204 No Content`
 
@@ -393,7 +395,8 @@ sequenceDiagram
 **규칙** [ACC-04](../domain.md#3-계정-상태-규칙-acc), [CLI-04](../domain.md#9-system-client-규칙-cli)
 
 - system client 폐기도 이 API로 합니다. 파트너 본인 탈퇴는 [파트너 탈퇴](account.md#파트너-탈퇴)입니다.
-- 감사 로그: `ACCOUNT_DEACTIVATED`
+- `reason`이 없거나 형식에 맞지 않으면 `VALIDATION_FAILED`입니다.
+- 감사 로그: `ACCOUNT_DEACTIVATED` (`detail.reason`)
 
 ### 비밀번호 재설정 메일 발송
 
@@ -418,6 +421,7 @@ sequenceDiagram
 **규칙** [PWD-05](../domain.md#4-비밀번호-규칙-pwd), [VER-01](../domain.md#7-verification-규칙-ver) (`PASSWORD_RESET`), [VER-03](../domain.md#7-verification-규칙-ver)
 
 - 메일을 보내는 것만으로는 비밀번호와 세션이 바뀌지 않습니다. 탈취가 의심되면 먼저 정지합니다.
+- 메일은 지금 profile의 이메일로 커밋 후 보냅니다. 관리자가 고른 계정에 보내므로 이메일 단위 요청 제한([conventions.md §8](conventions.md#8-요청-제한))은 적용하지 않습니다.
 - 감사 로그: `PASSWORD_RESET_REQUESTED`
 
 ## 4. role 부여
