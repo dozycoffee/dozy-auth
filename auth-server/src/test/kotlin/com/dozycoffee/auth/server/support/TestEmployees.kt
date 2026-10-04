@@ -135,6 +135,11 @@ class TestEmployees(
     /** 새 role code. 테스트마다 다른 code를 써서 role 정의가 겹치지 않게 합니다. */
     fun newRoleCode(audience: String): RoleCode = RoleCode(audience, "role_${UUID.randomUUID().toString().replace("-", "")}")
 
+    /** role을 정의만 하고 아무에게도 부여하지 않습니다. [cleanUp]에서 지웁니다. */
+    fun defineRole(code: RoleCode) {
+        inTransaction { roleId(code) }
+    }
+
     fun account(id: UUID): Account = inTransaction { checkNotNull(loadAccount.findAccountById(id)) }
 
     fun lockedUntil(id: UUID): Instant? =

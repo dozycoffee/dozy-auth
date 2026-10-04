@@ -22,6 +22,9 @@ data class SystemClient(
     val createdAt: Instant,
 ) {
     companion object {
+        /** `system_client.name`의 길이 (data-model.md §3.4). */
+        const val NAME_MAX_LENGTH: Int = 100
+
         /** client가 없을 때 비교할 해시. 어떤 원문의 해시와도 일치하지 않는다고 봅니다. */
         private val NO_MATCH = SecretHash("0".repeat(64))
 

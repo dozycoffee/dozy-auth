@@ -679,6 +679,7 @@ sequenceDiagram
 ```
 
 - secret은 포함하지 않습니다. role 변경은 [role 부여](#role-부여)·[role 회수](#role-회수), 폐기는 [계정 비활성화](#계정-비활성화)로 합니다.
+- 최근 등록한 순서입니다. 비활성화한 client도 `DEACTIVATED`로 나오며, `clientId`는 바뀐 값(`deleted-{principalId}`, [ACC-04](../domain.md#3-계정-상태-규칙-acc))이고 `roles`는 비어 있습니다.
 
 ### system client 등록
 
@@ -710,9 +711,15 @@ sequenceDiagram
 | `NOT_FOUND` | 없는 role |
 | `CLIENT_ID_DUPLICATED` | 같은 `clientId` |
 
-**규칙** [CLI-02](../domain.md#9-system-client-규칙-cli), [CLI-04](../domain.md#9-system-client-규칙-cli)
+**규칙** [CLI-02](../domain.md#9-system-client-규칙-cli), [CLI-04](../domain.md#9-system-client-규칙-cli), [GOV-06](../domain.md#8-관리-권한-규칙-gov)
 
-- 감사 로그: `SYSTEM_CLIENT_REGISTERED`, role을 지정했으면 `ROLE_GRANTED`
+- secret을 담은 응답이라 `Cache-Control: no-store`입니다.
+- `clientId`가 없거나 [CLI-01](../domain.md#9-system-client-규칙-cli) 형식이 아니면, `name`이 없거나 공백만 있거나 컬럼 길이([data-model.md §3.4](../data-model.md#34-system_client))를 넘으면, `roles`에 `{audience}:{code}` 형식이 아닌 값이 있으면 `VALIDATION_FAILED`입니다.
+- `roles`를 생략하거나 빈 목록으로 보내면 role 없이 등록합니다. 같은 role을 여러 번 보내면 하나로 봅니다.
+- 에러가 여럿이면 [GOV-15](../domain.md#8-관리-권한-규칙-gov)의 system client 등록 순서를 따릅니다.
+- principal, system client, role 부여를 한 트랜잭션에서 처리합니다. 하나라도 실패하면 계정을 만들지 않습니다.
+- 비활성화한 client의 `clientId`로 다시 등록할 수 있습니다 ([ACC-04](../domain.md#3-계정-상태-규칙-acc)). 새 principal이 만들어집니다.
+- 감사 로그: `SYSTEM_CLIENT_REGISTERED`, role을 지정했으면 `ROLE_GRANTED` ([AUD-08](../domain.md#11-감사와-알림-aud))
 
 ### secret 재발급
 
@@ -739,6 +746,9 @@ sequenceDiagram
 
 **규칙** [CLI-02](../domain.md#9-system-client-규칙-cli), [CLI-03](../domain.md#9-system-client-규칙-cli)
 
+- secret을 담은 응답이라 `Cache-Control: no-store`입니다.
+- system client가 아닌 principal은 없는 system client(`NOT_FOUND`)입니다. `SUSPENDED`, `DEACTIVATED`는 `INVALID_STATE`입니다.
+- 에러는 `NOT_FOUND`, 관리 등급(`FORBIDDEN`), `INVALID_STATE` 순서로 판단합니다.
 - 감사 로그: `CLIENT_SECRET_ROTATED`
 
 ## 7. owner 양도

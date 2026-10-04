@@ -79,6 +79,15 @@ class AccountPersistenceAdapter :
             .singleOrNull()
             ?.toAccount()
 
+    override fun findAccountsByIds(ids: Collection<UUID>): Map<UUID, Account> {
+        if (ids.isEmpty()) return emptyMap()
+        return PrincipalTable
+            .selectAll()
+            .where { PrincipalTable.id inList ids }
+            .map { it.toAccount() }
+            .associateBy { it.id }
+    }
+
     // FOR NO KEY UPDATE: 같은 계정의 관리 작업·상태 변경과는 차례로 처리하지만, 다른 테이블이 이 계정을 참조하는 외래 키 검사
     // (예: 이 계정이 부여한 role의 granted_by)는 막지 않습니다. 서로에게 부여하는 두 요청이 교착되지 않게 하기 위해서입니다.
     override fun lockAccountById(id: UUID): Account? =

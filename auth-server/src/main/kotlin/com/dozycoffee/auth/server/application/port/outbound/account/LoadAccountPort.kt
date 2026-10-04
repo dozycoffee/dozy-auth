@@ -6,4 +6,7 @@ import java.util.UUID
 /** 타입과 관계없이 principal을 조회합니다. 갱신(SES-05)처럼 계정 상태만 필요할 때 씁니다. */
 interface LoadAccountPort {
     fun findAccountById(id: UUID): Account?
+
+    /** [ids] 중 있는 principal (system client 목록의 상태). 없는 id는 결과에 없습니다. */
+    fun findAccountsByIds(ids: Collection<UUID>): Map<UUID, Account>
 }

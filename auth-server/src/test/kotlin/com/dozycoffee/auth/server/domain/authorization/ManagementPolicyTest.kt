@@ -128,6 +128,29 @@ class ManagementPolicyTest {
         assertCode(FORBIDDEN) { ManagementPolicy.checkCanInvite(OWNER, listOf(SystemRoles.OWNER)) }
     }
 
+    // system client 등록
+
+    @Test
+    fun `system client 등록은 owner·admin이 role 없이 하거나 일반 role을 지정해 할 수 있음`() {
+        listOf(OWNER, ADMIN).forEach { manager ->
+            ManagementPolicy.checkCanRegisterSystemClient(manager, emptyList())
+            ManagementPolicy.checkCanRegisterSystemClient(manager, listOf(GENERAL_ROLE, RoleCode("auth", "partner_reader")))
+        }
+    }
+
+    @Test
+    fun `관리 등급이 없으면 role 없는 system client 등록도 FORBIDDEN`() {
+        assertCode(FORBIDDEN) { ManagementPolicy.checkCanRegisterSystemClient(NO_GRADE, emptyList()) }
+    }
+
+    @Test
+    fun `GOV-06 owner라도 system client 등록에서 system role을 지정하면 FORBIDDEN`() {
+        listOf(SystemRoles.ADMIN, SystemRoles.OWNER).forEach { role ->
+            assertCode(FORBIDDEN) { ManagementPolicy.checkCanRegisterSystemClient(OWNER, listOf(GENERAL_ROLE, role)) }
+            assertCode(FORBIDDEN) { ManagementPolicy.checkCanRegisterSystemClient(ADMIN, listOf(role)) }
+        }
+    }
+
     // GOV-06
 
     @Test
