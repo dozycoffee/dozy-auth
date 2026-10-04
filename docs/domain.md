@@ -248,6 +248,7 @@ stateDiagram-v2
   - role 부여: [GOV-05](#8-관리-권한-규칙-gov) → [GOV-04](#8-관리-권한-규칙-gov) → [GOV-02](#8-관리-권한-규칙-gov) → [GOV-06](#8-관리-권한-규칙-gov) → [GOV-07](#8-관리-권한-규칙-gov)
   - role 회수: GOV-05 → GOV-02
   - 직원 초대: 없는 role(`NOT_FOUND`) → GOV-05 → 이메일 중복(`DUPLICATE_EMAIL`). 대상이 새로 만들 `PENDING` 직원이라 GOV-04, GOV-02, GOV-06, GOV-07에는 걸리지 않습니다.
+  - system client 등록: 없는 role(`NOT_FOUND`) → GOV-05 → GOV-06 → `client_id` 중복(`CLIENT_ID_DUPLICATED`). 대상이 새로 만들 `ACTIVE` system client라 GOV-04, GOV-02, GOV-07에는 걸리지 않습니다.
   - 그 밖의 계정 변경: [GOV-03](#8-관리-권한-규칙-gov) → GOV-02 (둘 다 `PROTECTED_ACCOUNT`). 초대 취소는 비활성화이므로([ACC-06](#3-계정-상태-규칙-acc)) GOV-03 대상입니다.
   - 계정 상태 전이([ACC-01](#3-계정-상태-규칙-acc))의 `INVALID_STATE`는 GOV 규칙을 모두 통과한 뒤 판단합니다.
 
@@ -289,6 +290,7 @@ stateDiagram-v2
 - **AUD-08** 기록 단위
   - 요청 하나에 action 하나를 기본으로 합니다. 여러 role을 한 번에 부여하면 `ROLE_GRANTED` 한 건에 `detail.roles`로 담습니다.
   - 직원 초대([GOV-11](#8-관리-권한-규칙-gov) 부트스트랩 포함)는 `EMPLOYEE_INVITED`를 남기고, role을 함께 부여했으면 `ROLE_GRANTED` 한 건(`detail.roles`)을 더 남깁니다. `EMPLOYEE_INVITED`에는 `detail`을 남기지 않습니다. `auth` audience role 포함 여부(AUD-01 즉시 알림)는 함께 남긴 `ROLE_GRANTED`로 판단합니다.
+  - system client 등록은 `SYSTEM_CLIENT_REGISTERED`(`detail.clientId`)를 남기고, role을 함께 부여했으면 `ROLE_GRANTED` 한 건(`detail.roles`)을 더 남깁니다. 비활성화하면 `client_id`가 바뀌므로([ACC-04](#3-계정-상태-규칙-acc)) 어떤 client였는지 기록에 남깁니다. secret 재발급(`CLIENT_SECRET_ROTATED`)에는 `detail`을 남기지 않습니다. 어느 쪽에도 secret이나 해시는 넣지 않습니다([AUD-07](#11-감사와-알림-aud)).
   - 정보 수정(`PROFILE_UPDATED`)은 바뀐 필드 이름만 `detail.fields`(예: `["name", "phone"]`)로 남깁니다([AUD-07](#11-감사와-알림-aud)). 보낸 값이 지금 값과 같아 바뀐 필드가 없으면 남기지 않습니다.
   - 초대 재발송(관리자 API, [GOV-11](#8-관리-권한-규칙-gov) 부트스트랩 재발급)은 남기지 않습니다. 초대는 `EMPLOYEE_INVITED`로 이미 남았고 재발송은 계정·권한을 바꾸지 않기 때문입니다.
   - 비활성화([ACC-04](#3-계정-상태-규칙-acc))로 함께 회수한 role은 `ROLE_REVOKED`로 따로 남기지 않습니다. 초대 취소([ACC-06](#3-계정-상태-규칙-acc))는 `ACCOUNT_DEACTIVATED`에 `detail.via = "invitation_cancelled"`를 남깁니다.

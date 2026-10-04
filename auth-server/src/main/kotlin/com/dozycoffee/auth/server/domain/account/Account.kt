@@ -75,6 +75,16 @@ data class Account(
     }
 
     /**
+     * system client의 secret 재발급(CLI-03)은 `ACTIVE`인 계정에만 할 수 있습니다. 정지한 client가 새 secret을 받지 않게 하고,
+     * 비활성화한 client(ACC-04)는 되살리지 않습니다. system client인지는 UseCase가 먼저 확인합니다.
+     *
+     * @throws InvalidAccountStateException `ACTIVE`가 아닐 때
+     */
+    fun ensureClientSecretRotatable() {
+        if (status != AccountStatus.ACTIVE) throw InvalidAccountStateException()
+    }
+
+    /**
      * 정보 수정(ACC-07)은 비활성화된 계정에 할 수 없습니다. 개인정보가 이미 파기됐고(ACC-04) 되돌릴 수 없기 때문입니다.
      *
      * @throws InvalidAccountStateException `DEACTIVATED`일 때

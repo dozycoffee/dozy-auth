@@ -129,6 +129,17 @@ class AccountStatusTransitionTest {
     }
 
     @Test
+    fun `CLI-03 ACTIVE인 system client는 secret을 재발급할 수 있음`() {
+        account(ACTIVE).copy(type = PrincipalType.SYSTEM).ensureClientSecretRotatable()
+    }
+
+    @ParameterizedTest
+    @EnumSource(names = ["PENDING", "SUSPENDED", "DEACTIVATED"])
+    fun `CLI-03 ACTIVE가 아닌 system client의 secret 재발급은 INVALID_STATE`(status: AccountStatus) {
+        assertInvalidState { account(status).copy(type = PrincipalType.SYSTEM).ensureClientSecretRotatable() }
+    }
+
+    @Test
     fun `전이에 실패하면 계정은 바뀌지 않음`() {
         val account = account(PENDING)
 

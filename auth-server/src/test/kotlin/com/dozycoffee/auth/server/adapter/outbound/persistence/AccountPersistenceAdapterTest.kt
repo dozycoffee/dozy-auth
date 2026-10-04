@@ -90,6 +90,16 @@ class AccountPersistenceAdapterTest {
     }
 
     @Test
+    fun `여러 계정을 id로 한 번에 조회하고 없는 id는 빠짐`() {
+        val first = createEmployee().account
+        val second = createEmployee(email = "second@dozycoffee.com").account
+        val unknown = UUID.fromString("0199a3c4-0000-7000-8000-000000000000")
+
+        assertEquals(mapOf(first.id to first, second.id to second), adapter.findAccountsByIds(listOf(first.id, second.id, unknown)))
+        assertEquals(emptyMap(), adapter.findAccountsByIds(emptyList()))
+    }
+
+    @Test
     fun `직원 profile이 없는 principal은 직원으로 조회하지 않음`() {
         val systemId =
             PrincipalTable

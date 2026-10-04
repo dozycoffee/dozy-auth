@@ -61,6 +61,9 @@ enum class ManagementAction(
 
     /** 비밀번호 재설정 메일 발송. */
     SEND_PASSWORD_RESET(false),
+
+    /** system client secret 재발급 (CLI-03). */
+    ROTATE_CLIENT_SECRET(false),
 }
 
 /**
@@ -106,9 +109,26 @@ object ManagementPolicy {
     }
 
     /**
+     * system client를 등록하면서 [roles]를 함께 부여할 수 있는지 검사합니다. [roles]가 비어 있으면 관리 등급만 봅니다.
+     *
+     * 대상은 새로 만들 `ACTIVE` system client이므로 [checkCanGrant]의 규칙 중 GOV-05와 GOV-06만 걸립니다. 자기 자신일 수 없고(GOV-04),
+     * role이 없어 보호 대상이 아니며(GOV-02), `ACTIVE`에는 부여할 수 있습니다(GOV-07). 계정을 만들기 전에 검사하려고 대상 없이 검사합니다.
+     *
+     * @throws ForbiddenException 관리 등급이 없음, `auth:owner` 지정 또는 owner가 아닌데 `auth:admin` 지정(GOV-05),
+     *   그 밖의 system role 지정(GOV-06)
+     */
+    fun checkCanRegisterSystemClient(
+        manager: Manager,
+        roles: Collection<RoleCode>,
+    ) {
+        checkIsManager(manager)
+        roles.forEach { checkCanHandleRole(manager, it) }
+        checkPrincipalTypeAccepts(PrincipalType.SYSTEM, roles)
+    }
+
+    /**
      * [roles]를 [target]에게 부여할 수 있는지 검사합니다. 하나라도 어기면 전체를 거부합니다 (GOV-08).
-     * system client 등록에서 함께 부여하는 role도 이 검사를 씁니다. 이때 대상은 새로 만들 계정입니다.
-     * 직원 초대는 [checkCanInvite]로 검사합니다.
+     * 직원 초대는 [checkCanInvite], system client 등록은 [checkCanRegisterSystemClient]로 검사합니다.
      *
      * @throws ForbiddenException 관리 등급이 없음, `auth:owner` 부여 또는 owner가 아닌데 `auth:admin` 부여(GOV-05),
      *   system client에 system role 부여(GOV-06)
