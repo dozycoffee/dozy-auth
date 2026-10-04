@@ -6,7 +6,7 @@ import com.dozycoffee.auth.core.PrincipalKey
 interface UpdateRoleUseCase {
     /**
      * @throws com.dozycoffee.auth.server.domain.authorization.RoleNotFoundException 없는 role
-     * @throws com.dozycoffee.auth.server.domain.ForbiddenException system role
+     * @throws com.dozycoffee.auth.server.domain.ForbiddenException DB의 현재 role에 관리 등급이 없음 (GOV-14), system role
      */
     fun updateRole(command: UpdateRoleCommand): RoleDefinition
 }
