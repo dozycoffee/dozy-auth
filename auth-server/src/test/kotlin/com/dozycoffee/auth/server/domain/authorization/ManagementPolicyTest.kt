@@ -106,6 +106,28 @@ class ManagementPolicyTest {
         assertCode(FORBIDDEN) { ManagementPolicy.checkCanGrant(ADMIN, EMPLOYEE_TARGET, listOf(GENERAL_ROLE, SystemRoles.ADMIN)) }
     }
 
+    // 직원 초대
+
+    @Test
+    fun `직원 초대는 owner·admin이 role 없이 하거나 일반 role을 지정해 할 수 있음`() {
+        listOf(OWNER, ADMIN).forEach { manager ->
+            ManagementPolicy.checkCanInvite(manager, emptyList())
+            ManagementPolicy.checkCanInvite(manager, listOf(GENERAL_ROLE, RoleCode("auth", "partner_reader")))
+        }
+    }
+
+    @Test
+    fun `관리 등급이 없으면 role 없는 직원 초대도 FORBIDDEN`() {
+        assertCode(FORBIDDEN) { ManagementPolicy.checkCanInvite(NO_GRADE, emptyList()) }
+    }
+
+    @Test
+    fun `GOV-05 직원 초대에서 auth admin은 owner만 지정하고 auth owner는 누구도 지정할 수 없음`() {
+        ManagementPolicy.checkCanInvite(OWNER, listOf(SystemRoles.ADMIN))
+        assertCode(FORBIDDEN) { ManagementPolicy.checkCanInvite(ADMIN, listOf(GENERAL_ROLE, SystemRoles.ADMIN)) }
+        assertCode(FORBIDDEN) { ManagementPolicy.checkCanInvite(OWNER, listOf(SystemRoles.OWNER)) }
+    }
+
     // GOV-06
 
     @Test
