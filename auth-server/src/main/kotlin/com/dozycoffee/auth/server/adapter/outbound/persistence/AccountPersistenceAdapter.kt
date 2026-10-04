@@ -1,6 +1,8 @@
 package com.dozycoffee.auth.server.adapter.outbound.persistence
 
 import com.dozycoffee.auth.core.PrincipalType
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.EmployeeProfileTable
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.PrincipalTable
 import com.dozycoffee.auth.server.application.port.outbound.account.ChangeAccountStatusPort
 import com.dozycoffee.auth.server.application.port.outbound.account.CreateEmployeePort
 import com.dozycoffee.auth.server.application.port.outbound.account.EmployeeSearchCriteria

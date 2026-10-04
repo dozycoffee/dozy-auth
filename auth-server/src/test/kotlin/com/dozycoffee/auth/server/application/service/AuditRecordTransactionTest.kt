@@ -1,8 +1,8 @@
 package com.dozycoffee.auth.server.application.service
 
 import com.dozycoffee.auth.core.Realm
-import com.dozycoffee.auth.server.adapter.outbound.persistence.AuditLogTable
 import com.dozycoffee.auth.server.adapter.outbound.persistence.AuditPersistenceAdapter
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.AuditLogTable
 import com.dozycoffee.auth.server.application.port.outbound.audit.RecordAuditLogPort
 import com.dozycoffee.auth.server.domain.audit.AuditEvent
 import com.dozycoffee.auth.server.domain.credential.InvalidCredentialsException

@@ -1,9 +1,9 @@
 package com.dozycoffee.auth.server.adapter.inbound.web.account
 
 import com.dozycoffee.auth.server.TestcontainersConfiguration
-import com.dozycoffee.auth.server.adapter.outbound.persistence.AuditLogTable
-import com.dozycoffee.auth.server.adapter.outbound.persistence.PasswordCredentialTable
-import com.dozycoffee.auth.server.adapter.outbound.persistence.VerificationTable
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.AuditLogTable
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.PasswordCredentialTable
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.VerificationTable
 import com.dozycoffee.auth.server.domain.AuthPolicy
 import com.dozycoffee.auth.server.domain.account.AccountStatus
 import com.dozycoffee.auth.server.support.TestEmployees

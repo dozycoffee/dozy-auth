@@ -2,8 +2,8 @@ package com.dozycoffee.auth.server.adapter.inbound.web.auth
 
 import com.dozycoffee.auth.core.Realm
 import com.dozycoffee.auth.server.TestcontainersConfiguration
-import com.dozycoffee.auth.server.adapter.outbound.persistence.AuditLogTable
-import com.dozycoffee.auth.server.adapter.outbound.persistence.RefreshSessionTable
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.AuditLogTable
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.RefreshSessionTable
 import com.dozycoffee.auth.server.domain.AuthPolicy
 import com.dozycoffee.auth.server.domain.SecretHash
 import com.dozycoffee.auth.server.domain.account.AccountStatus

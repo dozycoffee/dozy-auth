@@ -120,7 +120,7 @@ com.dozycoffee.auth.server
 │   ├─ inbound/web/           컨트롤러 (auth, account, admin, internal, dev), error, csrf, ratelimit(IP 요청 제한 필터)
 │   ├─ inbound/scheduler/     정리 배치, 일일 요약
 │   ├─ inbound/startup/       owner 부트스트랩
-│   └─ outbound/              persistence(Exposed), mail, jwt(Nimbus), crypto(Argon2), ratelimit(Bucket4j)
+│   └─ outbound/              persistence(Exposed, 테이블 정의는 persistence/table), mail, jwt(Nimbus), crypto(Argon2), ratelimit(Bucket4j)
 └─ config/                    빈 조립과 기술 설정. Spring Security 설정은 config/security
 ```
 

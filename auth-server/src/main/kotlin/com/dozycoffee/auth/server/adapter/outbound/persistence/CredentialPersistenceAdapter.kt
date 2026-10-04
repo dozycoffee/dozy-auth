@@ -1,5 +1,6 @@
 package com.dozycoffee.auth.server.adapter.outbound.persistence
 
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.PasswordCredentialTable
 import com.dozycoffee.auth.server.application.port.outbound.credential.CreatePasswordCredentialPort
 import com.dozycoffee.auth.server.application.port.outbound.credential.DeletePasswordCredentialPort
 import com.dozycoffee.auth.server.application.port.outbound.credential.LoadPasswordCredentialPort

@@ -3,10 +3,10 @@ package com.dozycoffee.auth.server.adapter.inbound.web.internal
 import com.dozycoffee.auth.core.Realm
 import com.dozycoffee.auth.core.RoleCode
 import com.dozycoffee.auth.server.TestcontainersConfiguration
-import com.dozycoffee.auth.server.adapter.outbound.persistence.PrincipalRoleTable
-import com.dozycoffee.auth.server.adapter.outbound.persistence.PrincipalTable
 import com.dozycoffee.auth.server.adapter.outbound.persistence.RolePersistenceAdapter
-import com.dozycoffee.auth.server.adapter.outbound.persistence.SystemClientTable
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.PrincipalRoleTable
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.PrincipalTable
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.SystemClientTable
 import com.dozycoffee.auth.server.domain.AuthPolicy
 import com.dozycoffee.auth.server.domain.OpaqueSecret
 import com.dozycoffee.auth.server.domain.SecretHash
