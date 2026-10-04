@@ -86,6 +86,10 @@ sequenceDiagram
 | `q` | 이름 또는 이메일 검색어 |
 | `page`, `size` | [conventions.md §3](conventions.md#3-성공-응답) |
 
+- 생성 최신순입니다.
+- `q`는 이름이나 이메일에 그 문자열이 들어간 직원을 대소문자 구분 없이 찾습니다. `%`, `_`도 글자 그대로 찾습니다. 앞뒤 공백은 무시하며, 비어 있으면 조건이 없는 것으로 봅니다.
+- 없는 role로 찾으면 빈 목록입니다. `role` 형식이 틀리면(`{audience}:{code}`가 아님) `VALIDATION_FAILED`입니다.
+
 **응답** `200 OK`
 
 ```json
@@ -130,7 +134,9 @@ sequenceDiagram
 }
 ```
 
-- `invitation`은 `PENDING`일 때만 `{ "expiresAt": "..." }`이고, 그 외에는 `null`입니다.
+- `invitation`은 `PENDING`일 때만 `{ "expiresAt": "..." }`이고, 그 외에는 `null`입니다. `expiresAt`이 지났으면 만료된 초대이며 [초대 재발송](#초대-재발송)으로 다시 보냅니다.
+- `lockedUntil`은 로그인 실패로 잠겨 있는 동안만 값이 있고([ACC-02](../domain.md#3-계정-상태-규칙-acc)), 잠금이 풀렸으면 `null`입니다.
+- `updatedAt`은 계정 상태나 정보가 마지막으로 바뀐 시각입니다.
 
 **에러**
 
@@ -168,7 +174,8 @@ sequenceDiagram
 
 **규칙** [ACC-07](../domain.md#3-계정-상태-규칙-acc)
 
-- 감사 로그: `PROFILE_UPDATED`
+- `email`을 보내면 무시하지 않고 `VALIDATION_FAILED`입니다. `name`은 보내면 `null`이나 빈 값일 수 없습니다.
+- 감사 로그: `PROFILE_UPDATED` (`detail.fields`, [AUD-07](../domain.md#11-감사와-알림-aud)). 보낸 값이 지금 값과 같아 바뀐 필드가 없으면 남기지 않습니다.
 
 ### 초대 재발송
 
@@ -197,6 +204,8 @@ sequenceDiagram
 **규칙** [VER-03](../domain.md#7-verification-규칙-ver)
 
 - 부트스트랩 owner의 초대는 재기동할 때도 재발급됩니다 ([GOV-11](../domain.md#8-관리-권한-규칙-gov)).
+- 메일은 지금 profile의 이메일로 커밋 후 보냅니다.
+- 감사 로그: 남기지 않음 ([AUD-08](../domain.md#11-감사와-알림-aud))
 
 ### 초대 취소
 
@@ -218,6 +227,7 @@ sequenceDiagram
 
 **규칙** [ACC-06](../domain.md#3-계정-상태-규칙-acc)
 
+- [ACC-04](../domain.md#3-계정-상태-규칙-acc)의 처리를 한 트랜잭션에서 합니다. 이메일이 파기되므로 같은 이메일로 다시 초대할 수 있습니다 ([ACC-05](../domain.md#3-계정-상태-규칙-acc)).
 - 감사 로그: `ACCOUNT_DEACTIVATED` (`detail.via = "invitation_cancelled"`)
 
 ## 2. 파트너

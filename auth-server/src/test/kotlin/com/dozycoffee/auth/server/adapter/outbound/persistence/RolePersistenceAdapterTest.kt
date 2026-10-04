@@ -232,6 +232,56 @@ class RolePersistenceAdapterTest {
     }
 
     @Test
+    fun `여러 principal의 role을 한 번에 조회하고 role이 없으면 빈 목록`() {
+        val first = insertPrincipal()
+        val second = insertPrincipal()
+        val inbound = adapter.createRole(audience("wms"), "inbound_manager", "입고 관리자", null, null, NOW)
+        adapter.grant(RoleGrant(first, inbound.id, null, NOW))
+        adapter.grant(RoleGrant(first, ADMIN_ROLE_ID, null, NOW))
+
+        val roles = adapter.findRoleCodes(listOf(first, second))
+
+        assertEquals(
+            mapOf(
+                first to listOf("auth:admin", "wms:inbound_manager"),
+                second to emptyList(),
+            ),
+            roles.mapValues { (_, codes) ->
+                codes.map {
+                    it.value
+                }
+            },
+        )
+        assertEquals(emptyMap(), adapter.findRoleCodes(emptyList()))
+    }
+
+    @Test
+    fun `role을 가진 principal을 찾음`() {
+        val inbound = adapter.createRole(audience("wms"), "inbound_manager", "입고 관리자", null, null, NOW)
+        val first = insertPrincipal()
+        val second = insertPrincipal()
+        adapter.grant(RoleGrant(first, inbound.id, null, NOW))
+        adapter.grant(RoleGrant(second, inbound.id, null, NOW))
+        adapter.grant(RoleGrant(insertPrincipal(), ADMIN_ROLE_ID, null, NOW))
+
+        assertEquals(setOf(first, second), adapter.findHolderIds(inbound.id))
+    }
+
+    @Test
+    fun `ACC-04 principal의 모든 role을 회수하고 다른 principal은 그대로`() {
+        val inbound = adapter.createRole(audience("wms"), "inbound_manager", "입고 관리자", null, null, NOW)
+        val principal = insertPrincipal()
+        val other = insertPrincipal()
+        adapter.grant(RoleGrant(principal, inbound.id, null, NOW))
+        adapter.grant(RoleGrant(principal, ADMIN_ROLE_ID, null, NOW))
+        adapter.grant(RoleGrant(other, inbound.id, null, NOW))
+
+        assertEquals(2, adapter.revokeAll(principal))
+        assertEquals(emptyList(), adapter.findRoleCodes(principal))
+        assertEquals(listOf("wms:inbound_manager"), adapter.findRoleCodes(other).map { it.value })
+    }
+
+    @Test
     fun `GOV-10 다른 principal이 owner이면 auth owner 부여를 거부`() {
         val owner = insertPrincipal()
         val other = insertPrincipal()

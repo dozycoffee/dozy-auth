@@ -1,8 +1,10 @@
 package com.dozycoffee.auth.server.adapter.outbound.persistence
 
 import com.dozycoffee.auth.core.PrincipalType
+import com.dozycoffee.auth.server.application.port.outbound.account.EmployeeSearchCriteria
 import com.dozycoffee.auth.server.domain.AuthPolicy
 import com.dozycoffee.auth.server.domain.Email
+import com.dozycoffee.auth.server.domain.PageRequest
 import com.dozycoffee.auth.server.domain.account.AccountStatus
 import com.dozycoffee.auth.server.domain.account.DuplicateEmailException
 import com.dozycoffee.auth.server.domain.account.Employee
@@ -288,8 +290,60 @@ class AccountPersistenceAdapterTest {
         }
     }
 
-    private fun createEmployee(email: String = "kim@dozycoffee.com"): Employee =
-        adapter.createEmployee(Email(email), "김바리", null, null, NOW)
+    @Test
+    fun `직원 기록은 생성 시각과 계정·profile 중 늦은 수정 시각을 담고 직원이 아니면 null`() {
+        val id = createEmployee().account.id
+        val later = NOW.plusSeconds(60)
+        adapter.updateEmployeeProfile(id, "김도윤", null, null, later)
+
+        val record = assertNotNull(adapter.findEmployeeRecord(id))
+        assertEquals(NOW, record.createdAt)
+        assertEquals(later, record.updatedAt)
+        assertEquals(record, adapter.lockEmployeeRecord(id))
+        assertNull(adapter.findEmployeeRecord(UUID.randomUUID()))
+    }
+
+    @Test
+    fun `이름 또는 이메일에 검색어가 들어간 직원을 대소문자 무시하고 찾고 퍼센트와 밑줄은 글자 그대로 찾음`() {
+        val byName = createEmployee(email = "a@dozycoffee.com", name = "Zq_%바리스타")
+        val byEmail = createEmployee(email = "ZQ_%Kim@dozycoffee.com", name = "김도윤")
+        createEmployee(email = "zqab@dozycoffee.com", name = "zqab")
+
+        val page = adapter.searchEmployeeRecords(EmployeeSearchCriteria(query = "zq_%"), PageRequest())
+
+        assertEquals(setOf(byName.account.id, byEmail.account.id), page.items.map { it.id }.toSet())
+        assertEquals(2L, page.totalElements)
+    }
+
+    @Test
+    fun `상태와 id 조건을 함께 적용하고 생성 최신순으로 페이지를 나눔`() {
+        val keyword = "검색${UUID.randomUUID().toString().take(8)}"
+        val oldest = createEmployee(email = "1@dozycoffee.com", name = "${keyword}1", createdAt = NOW)
+        val middle = createEmployee(email = "2@dozycoffee.com", name = "${keyword}2", createdAt = NOW.plusSeconds(1))
+        val newest = createEmployee(email = "3@dozycoffee.com", name = "${keyword}3", createdAt = NOW.plusSeconds(2))
+        adapter.changeStatus(middle.account.id, AccountStatus.PENDING, AccountStatus.ACTIVE, NOW)
+        val all = EmployeeSearchCriteria(query = keyword)
+
+        val first = adapter.searchEmployeeRecords(all, PageRequest(0, 2))
+        val second = adapter.searchEmployeeRecords(all, PageRequest(1, 2))
+        val pending = adapter.searchEmployeeRecords(all.copy(status = AccountStatus.PENDING), PageRequest())
+        val byIds = adapter.searchEmployeeRecords(all.copy(principalIds = setOf(oldest.account.id, middle.account.id)), PageRequest())
+        val noIds = adapter.searchEmployeeRecords(all.copy(principalIds = emptySet()), PageRequest())
+
+        assertEquals(listOf(newest, middle).map { it.account.id }, first.items.map { it.id })
+        assertEquals(listOf(oldest.account.id), second.items.map { it.id })
+        assertEquals(3L, first.totalElements)
+        assertEquals(2, first.totalPages)
+        assertEquals(listOf(newest, oldest).map { it.account.id }, pending.items.map { it.id })
+        assertEquals(listOf(middle, oldest).map { it.account.id }, byIds.items.map { it.id })
+        assertEquals(0L, noIds.totalElements)
+    }
+
+    private fun createEmployee(
+        email: String = "kim@dozycoffee.com",
+        name: String = "김바리",
+        createdAt: Instant = NOW,
+    ): Employee = adapter.createEmployee(Email(email), name, null, null, createdAt)
 
     private fun principalRow(id: UUID) = PrincipalTable.selectAll().where { PrincipalTable.id eq id }.single()
 

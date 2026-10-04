@@ -199,6 +199,7 @@ com.dozycoffee.auth.server
 | 원자적 동작은 메서드 하나 | `rotate`가 "현재 해시가 맞을 때만 교체"까지 책임 | 조회·비교·저장을 UseCase에서 조립 |
 | 다른 도메인 테이블과 조인하지 않음 | 계정 정보는 계정 포트로 따로 조회 | `refresh_session JOIN employee_profile` |
 
+- 목록 조건이 다른 도메인 정보이면(예: 직원 목록의 `role`) 그 도메인 포트로 대상 id를 먼저 구해 넘기고, 목록 항목에 붙일 다른 도메인 정보(예: 직원별 role)는 한 페이지의 id를 모아 한 번에 조회합니다.
 - 세션 폐기는 `RevokeSessionsPort` 하나로 모읍니다.
 - 메일 포트(`SendMailPort`)는 메일 종류와 값만 받습니다 (예: `EmployeeInvitationMail(to, name, token, expiresAt)`). 문구, 템플릿, 링크는 메일 어댑터가 가집니다. 링크는 어댑터가 앱 화면 주소([api/account.md](api/account.md)의 링크 표)에 토큰을 붙여 만듭니다 ([VER-05](domain.md#7-verification-규칙-ver)).
 

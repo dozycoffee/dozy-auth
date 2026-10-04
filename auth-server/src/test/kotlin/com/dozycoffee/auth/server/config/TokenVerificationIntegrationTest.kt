@@ -92,7 +92,7 @@ class TokenVerificationIntegrationTest {
     fun `관리 API는 aud에 auth가 있는 직원 토큰만 통과`() {
         val admin = employees.create()
 
-        get("/admin/employees", tokens.issue(admin.key, roles = listOf("auth:admin"))).andExpect { status { isNotFound() } }
+        get("/admin/employees", tokens.issue(admin.key, roles = listOf("auth:admin"))).andExpect { status { isOk() } }
     }
 
     @Test

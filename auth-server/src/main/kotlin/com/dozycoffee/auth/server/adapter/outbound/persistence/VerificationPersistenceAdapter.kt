@@ -86,6 +86,16 @@ class VerificationPersistenceAdapter :
             .singleOrNull()
             ?.toVerification()
 
+    override fun findUnfinished(
+        principalId: UUID,
+        purpose: VerificationPurpose,
+    ): Verification? =
+        VerificationTable
+            .selectAll()
+            .where { (VerificationTable.principalId eq principalId) and (VerificationTable.purpose eq purpose.name) and notFinished() }
+            .singleOrNull()
+            ?.toVerification()
+
     override fun findLive(
         purpose: VerificationPurpose,
         now: Instant,

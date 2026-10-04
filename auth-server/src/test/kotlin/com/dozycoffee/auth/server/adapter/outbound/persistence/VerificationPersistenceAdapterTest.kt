@@ -261,6 +261,20 @@ class VerificationPersistenceAdapterTest {
     }
 
     @Test
+    fun `소비·무효화되지 않은 초대는 만료됐어도 찾고 소비·무효화된 초대는 찾지 않음`() {
+        val expired = insertPrincipal()
+        val consumed = insertPrincipal()
+        val invitation = issue(expired, VerificationPurpose.EMPLOYEE_INVITATION, NOW.minus(AuthPolicy.INVITATION_TTL).minusSeconds(1))
+        adapter.consume(issue(consumed, VerificationPurpose.EMPLOYEE_INVITATION).id, NOW)
+
+        assertEquals(invitation, adapter.findUnfinished(expired, VerificationPurpose.EMPLOYEE_INVITATION))
+        assertNull(adapter.findUnfinished(expired, VerificationPurpose.PASSWORD_RESET))
+        assertNull(adapter.findUnfinished(consumed, VerificationPurpose.EMPLOYEE_INVITATION))
+        adapter.invalidateAll(expired, NOW)
+        assertNull(adapter.findUnfinished(expired, VerificationPurpose.EMPLOYEE_INVITATION))
+    }
+
+    @Test
     fun `VER-08 발송 대상 주소는 입력값 그대로 스냅샷으로 남김`() {
         val issued = NewVerification.issue(insertPrincipal(), VerificationPurpose.PASSWORD_RESET, Email("Lee@DozyCoffee.COM"), NOW)
 

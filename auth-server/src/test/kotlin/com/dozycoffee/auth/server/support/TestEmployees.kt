@@ -76,9 +76,10 @@ class TestEmployees(
         roles: List<RoleCode> = emptyList(),
         name: String = "김도윤",
         phone: String? = null,
+        email: String = "employee-${UUID.randomUUID()}@dozycoffee.test",
     ): CreatedEmployee =
         inTransaction {
-            val email = Email("employee-${UUID.randomUUID()}@dozycoffee.test")
+            val email = Email(email)
             val employee = createEmployee.createEmployee(email, name, phone, null, NOW)
             val id = employee.account.id
             createdPrincipals += id
@@ -115,6 +116,14 @@ class TestEmployees(
         inTransaction {
             val owner = checkNotNull(loadRole.findRoleByCode(SystemRoles.OWNER))
             grantRole.grant(RoleGrant(employee.id, owner.id, null, NOW))
+        }
+    }
+
+    /** [employee]에게 seed의 `auth:admin`을 부여합니다. */
+    fun makeAdmin(employee: CreatedEmployee) {
+        inTransaction {
+            val admin = checkNotNull(loadRole.findRoleByCode(SystemRoles.ADMIN))
+            grantRole.grant(RoleGrant(employee.id, admin.id, null, NOW))
         }
     }
 

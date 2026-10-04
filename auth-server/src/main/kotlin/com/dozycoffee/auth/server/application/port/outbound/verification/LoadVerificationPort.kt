@@ -22,6 +22,15 @@ interface LoadVerificationPort {
     ): Verification?
 
     /**
+     * [principalId]의 [purpose] 토큰 중 소비·무효화되지 않은 것. 만료됐어도 돌려줍니다. VER-03에 따라 많아야 하나입니다.
+     * 직원 상세의 `invitation`(api/admin.md)에서 `PENDING` 직원의 초대 만료 시각을 보여 줄 때 씁니다.
+     */
+    fun findUnfinished(
+        principalId: UUID,
+        purpose: VerificationPurpose,
+    ): Verification?
+
+    /**
      * [now]에 살아 있는 [purpose] 토큰 전체. 발급 순서입니다.
      * GOV-09 진행 중인 `OWNER_TRANSFER`가 있는지 확인하고, 양도를 취소할 때 무효화할 토큰을 찾습니다.
      */

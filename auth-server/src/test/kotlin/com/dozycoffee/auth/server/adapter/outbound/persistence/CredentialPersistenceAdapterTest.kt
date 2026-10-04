@@ -9,7 +9,9 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.junit.jupiter.api.Test
 import java.time.Instant
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /** 비밀번호 credential 조회·생성 (docs/data-model.md §3.5). */
 @PersistenceAdapterTest
@@ -46,6 +48,16 @@ class CredentialPersistenceAdapterTest {
         val row = PasswordCredentialTable.selectAll().where { PasswordCredentialTable.principalId eq id }.single()
         assertEquals(createdAt, row[PasswordCredentialTable.changedAt])
         assertEquals(createdAt, row[PasswordCredentialTable.createdAt])
+    }
+
+    @Test
+    fun `ACC-04 비밀번호를 지우고 없으면 false`() {
+        val id = accounts.createEmployee(Email("kim@dozycoffee.com"), "김도윤", null, null, NOW).account.id
+        adapter.createPasswordCredential(id, PasswordHash(HASH), NOW)
+
+        assertTrue(adapter.deletePasswordCredential(id))
+        assertNull(adapter.findPasswordHash(id))
+        assertFalse(adapter.deletePasswordCredential(id))
     }
 
     private companion object {
