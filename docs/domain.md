@@ -169,6 +169,8 @@ stateDiagram-v2
   | `OWNER_TRANSFERRED` | [GOV-09](#8-관리-권한-규칙-gov) |
   | `OWNER_RECOVERY` | [GOV-12](#8-관리-권한-규칙-gov) 수동 복구 |
 
+  폐기는 살아 있는(폐기되지 않고 만료 전인) 세션에만 적용합니다. 이미 폐기된 세션의 폐기 시각과 사유는 바꾸지 않고, 만료된 세션은 그대로 둡니다. 함께 폐기한 세션 수(`detail.revokedSessions`, [AUD-08](#11-감사와-알림-aud))는 이번에 폐기한 세션만 셉니다.
+
 - **SES-07** 세션을 폐기해도 이미 발급된 access token은 `policy.access-token-ttl`까지 유효합니다. 즉시 차단은 지원하지 않습니다 ([ADR-0004](adr/0004-no-immediate-revocation.md)).
 - **SES-08** 로그아웃은 세션이 없거나 이미 만료됐어도 성공으로 응답합니다.
 
@@ -277,6 +279,7 @@ stateDiagram-v2
 - **AUD-08** 기록 단위
   - 요청 하나에 action 하나를 기본으로 합니다. 여러 role을 한 번에 부여하면 `ROLE_GRANTED` 한 건에 `detail.roles`로 담습니다.
   - `SESSION_REVOKED`는 로그아웃과 재사용 탐지에만 남깁니다. 정지·비활성화·비밀번호 변경·양도로 함께 폐기된 세션은 그 작업의 action에 `detail.revokedSessions`(개수)로 남깁니다.
+  - `SESSION_REVOKED`는 그 요청이 세션을 실제로 폐기했을 때만 남깁니다(이미 폐기·만료된 세션의 로그아웃은 남기지 않음). 대상은 세션의 계정이고, `detail.realm`, `detail.sessionId`, `detail.reason`(폐기 사유 `LOGOUT` 또는 `REUSE_DETECTED`)을 남깁니다. 행위자는 로그아웃이면 그 계정이고, 재사용 탐지는 토큰을 누가 제시했는지 알 수 없으므로 `NULL`입니다.
   - `LOGIN_FAILED`에서 계정을 찾지 못하면 `actor_id`, `target_id`는 `NULL`이고 `detail`에는 realm(`detail.realm`, 경로 값 예: `internal`)만 남깁니다. 입력한 이메일은 남기지 않습니다.
   - 계정을 찾은 로그인 기록(`LOGIN_SUCCEEDED`, `LOGIN_FAILED`, `ACCOUNT_LOCKED`)은 행위자와 대상이 모두 그 계정이고, `detail.realm`을 남깁니다. `LOGIN_SUCCEEDED`는 `detail.sessionId`(새 refresh 세션), `LOGIN_FAILED`는 `detail.reason`(응답한 에러 코드: `INVALID_CREDENTIALS`, `EMAIL_NOT_VERIFIED`, `ACCOUNT_SUSPENDED`)을 더합니다.
   - 비밀번호가 맞았지만 계정 상태로 거부한 로그인([LGN-03](#5-로그인-규칙-lgn))도 `LOGIN_FAILED`입니다.

@@ -26,3 +26,11 @@ class TooManyAttemptsException(
  * 토큰 검증 실패와 같은 `401 UNAUTHENTICATED`로 응답합니다 (api/conventions.md §10).
  */
 class UnauthenticatedException : AuthException("UNAUTHENTICATED", 401, "인증이 필요합니다.")
+
+/**
+ * 권한 없음이나 규칙상 금지된 요청 (`403 FORBIDDEN`, api/conventions.md §11).
+ * 예: refresh 쿠키를 쓰는 API에 허용되지 않은 `Origin` (api/conventions.md §7).
+ */
+class ForbiddenException(
+    message: String = "접근 권한이 없습니다.",
+) : AuthException("FORBIDDEN", 403, message)

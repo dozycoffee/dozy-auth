@@ -3,6 +3,7 @@ package com.dozycoffee.auth.server.domain.session
 import com.dozycoffee.auth.core.Realm
 import com.dozycoffee.auth.server.domain.AuthPolicy
 import com.dozycoffee.auth.server.domain.SecretHash
+import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
@@ -51,6 +52,17 @@ data class RefreshSession(
      * 영속성 어댑터의 갱신 쿼리(`least(..., absolute_expires_at)`)가 같은 값을 저장합니다.
      */
     fun extendedExpiresAt(now: Instant): Instant = minOf(idleExpiresAt(now), absoluteExpiresAt)
+
+    /**
+     * [now]부터 [absoluteExpiresAt]까지 남은 시간을 초 단위로 올린 값. refresh 쿠키의 `Max-Age`입니다 (api/conventions.md §6).
+     * DB는 시각을 마이크로초까지만 저장하므로 1초 미만은 올립니다. 내리면 로그인 직후에도 `policy.refresh-absolute-ttl`보다
+     * 1초 짧아집니다. 이미 지났으면 0입니다.
+     */
+    fun remainingAbsoluteLifetime(now: Instant): Duration {
+        val remaining = Duration.between(now, absoluteExpiresAt)
+        val seconds = remaining.seconds + if (remaining.nano > 0) 1 else 0
+        return Duration.ofSeconds(maxOf(0L, seconds))
+    }
 
     companion object {
         /** `policy.refresh-idle-ttl` 기준 만료 시각. 절대 만료로 줄이기 전의 값입니다. */

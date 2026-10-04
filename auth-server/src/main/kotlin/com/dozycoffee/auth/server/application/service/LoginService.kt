@@ -32,7 +32,6 @@ import com.dozycoffee.auth.server.domain.token.IssuerBaseUri
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
-import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
@@ -149,7 +148,7 @@ class LoginService(
             accessToken = accessToken,
             expiresIn = AuthPolicy.ACCESS_TOKEN_TTL,
             refreshToken = refreshToken,
-            refreshTokenMaxAge = remainingSeconds(now, session.absoluteExpiresAt),
+            refreshTokenMaxAge = session.remainingAbsoluteLifetime(now),
         )
     }
 
@@ -162,19 +161,6 @@ class LoginService(
     ) {
         val principal = AuditActor(employee.account.id, employee.account.type)
         recordAuditLog.record(AuditEvent.login(now, action, principal, command.realm, command.ip, command.userAgent, detail))
-    }
-
-    /**
-     * 쿠키 `Max-Age`(초)로 쓸 남은 시간. DB는 시각을 마이크로초까지만 저장하므로 1초 미만은 올립니다.
-     * 내리면 로그인 직후에도 `policy.refresh-absolute-ttl`보다 1초 짧아집니다.
-     */
-    private fun remainingSeconds(
-        now: Instant,
-        until: Instant,
-    ): Duration {
-        val remaining = Duration.between(now, until)
-        val seconds = remaining.seconds + if (remaining.nano > 0) 1 else 0
-        return Duration.ofSeconds(maxOf(0L, seconds))
     }
 
     private fun emailOrNull(value: String): Email? = runCatching { Email(value) }.getOrNull()

@@ -4,6 +4,7 @@ import com.dozycoffee.auth.core.AuthenticatedPrincipal
 import com.dozycoffee.auth.core.PrincipalType
 import com.dozycoffee.auth.server.adapter.inbound.web.account.InvitationController
 import com.dozycoffee.auth.server.adapter.inbound.web.auth.SessionController
+import com.dozycoffee.auth.server.adapter.inbound.web.csrf.RefreshCookieOriginFilter
 import com.dozycoffee.auth.server.adapter.inbound.web.error.ProblemAccessDeniedHandler
 import com.dozycoffee.auth.server.adapter.inbound.web.error.ProblemAuthenticationEntryPoint
 import com.dozycoffee.auth.server.adapter.inbound.web.error.TraceIdFilter
@@ -43,14 +44,15 @@ import org.springframework.web.servlet.HandlerExceptionResolver
  * | 순서 | 경로 | 인증 |
  * |---|---|---|
  * | 1 | [PUBLIC_PATHS] (로그인, 초대 조회·수락, 서비스 토큰 발급, JWKS, 상태 확인) | 없음 (서비스 토큰 발급의 client 인증은 컨트롤러). IP 단위 요청 제한 ([ClientRateLimitFilter]) |
- * | 2 | `/realms/...` | 사용자 access token. `aud`는 보지 않고 `iss`의 realm이 경로와 같아야 함. system token은 403 |
- * | 3 | `/admin/...`, `/internal/...` | access token(관리)·system token. `aud`에 `auth` 포함 |
- * | 4 | 그 밖의 모든 경로 | 거부 |
+ * | 2 | [SessionController.REFRESH_COOKIE_PATHS] (토큰 갱신, 로그아웃) | refresh 쿠키 (서비스가 확인). `Origin` 검사 ([RefreshCookieOriginFilter]). 요청 제한 없음 |
+ * | 3 | `/realms/...` | 사용자 access token. `aud`는 보지 않고 `iss`의 realm이 경로와 같아야 함. system token은 403 |
+ * | 4 | `/admin/...`, `/internal/...` | access token(관리)·system token. `aud`에 `auth` 포함 |
+ * | 5 | 그 밖의 모든 경로 | 거부 |
  *
  * - 토큰 검증은 스타터의 디코더와 권한 변환기를 씁니다 ([TokenVerificationConfig]). 스타터의 기본 필터 체인과 401·403 처리기는
  *   이 설정과 `adapter/inbound/web/error`의 처리기가 있어 만들어지지 않습니다.
  * - 401·403은 `adapter/inbound/web/error`가 컨트롤러의 에러와 같은 형식(api/conventions.md §4)으로 응답합니다.
- * - CSRF는 쿠키를 쓰는 API(토큰 갱신, 로그아웃)가 생길 때 `Origin` 검사(api/conventions.md §7)로 다룹니다.
+ * - CSRF는 Spring Security의 토큰 방식 대신, 쿠키를 쓰는 API(2번 체인)의 `Origin` 검사(api/conventions.md §7)로 다룹니다.
  */
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(CorsProperties::class)
@@ -78,9 +80,32 @@ class SecurityConfig {
         return http.build()
     }
 
-    /** 2. `/realms/{realm}/...` 본인 API. */
+    /**
+     * 2. refresh 쿠키로 인증하는 경로 (api/conventions.md §2). bearer 토큰을 보지 않고, 쿠키는 컨트롤러 뒤의 서비스가 확인합니다.
+     *
+     * `Origin` 검사(api/conventions.md §7)를 CORS보다 앞에 둡니다. 인증 방식이 "없음"이 아니므로 IP 단위 요청 제한(§8)은 걸지 않습니다.
+     */
     @Bean
     @Order(2)
+    fun refreshCookieSecurityFilterChain(
+        http: HttpSecurity,
+        entryPoint: ProblemAuthenticationEntryPoint,
+        accessDeniedHandler: ProblemAccessDeniedHandler,
+        corsProperties: CorsProperties,
+        @Qualifier("handlerExceptionResolver") resolver: HandlerExceptionResolver,
+    ): SecurityFilterChain {
+        http {
+            securityMatcher(*SessionController.REFRESH_COOKIE_PATHS)
+            authorizeHttpRequests { authorize(anyRequest, permitAll) }
+            common(entryPoint, accessDeniedHandler)
+            addFilterBefore<CorsFilter>(RefreshCookieOriginFilter(corsProperties.allowedOrigins, resolver))
+        }
+        return http.build()
+    }
+
+    /** 3. `/realms/{realm}/...` 본인 API. */
+    @Bean
+    @Order(3)
     fun userSecurityFilterChain(
         http: HttpSecurity,
         entryPoint: ProblemAuthenticationEntryPoint,
@@ -102,13 +127,13 @@ class SecurityConfig {
     }
 
     /**
-     * 3. 관리·내부 API. 엔드포인트별 필요 role은 각 API에서 검사합니다.
+     * 4. 관리·내부 API. 엔드포인트별 필요 role은 각 API에서 검사합니다.
      *
      * owner 양도 수락(`POST /admin/owner/transfer/accept`)은 `aud`를 검사하지 않는 예외라(api/conventions.md §2), owner 양도 작업에서
      * 이 체인보다 앞선 체인에 연결합니다.
      */
     @Bean
-    @Order(3)
+    @Order(4)
     fun managementSecurityFilterChain(
         http: HttpSecurity,
         entryPoint: ProblemAuthenticationEntryPoint,
@@ -134,9 +159,9 @@ class SecurityConfig {
         return http.build()
     }
 
-    /** 4. 위에 없는 경로는 모두 거부합니다. 인증 없는 요청은 401, 그 밖에는 403입니다. */
+    /** 5. 위에 없는 경로는 모두 거부합니다. 인증 없는 요청은 401, 그 밖에는 403입니다. */
     @Bean
-    @Order(4)
+    @Order(5)
     fun defaultSecurityFilterChain(
         http: HttpSecurity,
         entryPoint: ProblemAuthenticationEntryPoint,

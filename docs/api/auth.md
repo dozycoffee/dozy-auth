@@ -118,6 +118,9 @@ Set-Cookie: dozy_refresh=...; HttpOnly; Secure; SameSite=Strict; Path=/realms/{r
 **규칙** [SES-03](../domain.md#6-세션-규칙-ses)~[SES-05](../domain.md#6-세션-규칙-ses)
 
 - 쿠키의 realm(경로)과 세션의 realm이 다르면 `SESSION_EXPIRED`입니다.
+- 쿠키가 없어도 `SESSION_EXPIRED`입니다.
+- 에러 응답(`401`, `409`)은 쿠키를 설정하거나 삭제하지 않습니다. `TOKEN_ROTATED`는 세션이 살아 있고, 나머지는 서버에서 이미 쓸 수 없는 쿠키입니다.
+- `SESSION_REVOKED`로 끝나도 세션 폐기와 감사 기록은 반영됩니다.
 - 감사 로그: 재사용 탐지 시 `SESSION_REVOKED`
 
 ### 로그아웃
@@ -140,7 +143,10 @@ Set-Cookie: dozy_refresh=...; HttpOnly; Secure; SameSite=Strict; Path=/realms/{r
 
 **규칙** [SES-06](../domain.md#6-세션-규칙-ses) (`LOGOUT`), [SES-07](../domain.md#6-세션-규칙-ses), [SES-08](../domain.md#6-세션-규칙-ses)
 
-- 감사 로그: `SESSION_REVOKED`
+- 쿠키의 토큰이 세션의 현재 토큰이든 직전 토큰이든 그 세션을 폐기합니다. 갱신과 달리 직전 토큰을 따로 판정하지 않습니다.
+- 경로의 realm과 다른 realm의 세션은 폐기하지 않습니다. 응답은 똑같이 `204`입니다.
+- 쿠키 삭제 헤더는 세션 유무와 관계없이 `204` 응답에 항상 넣습니다.
+- 감사 로그: `SESSION_REVOKED` (세션을 폐기했을 때만)
 
 ### 내 정보
 
