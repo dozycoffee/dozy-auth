@@ -83,4 +83,9 @@ class AuthPolicyTest {
         assertEquals(RateLimit(capacity = 20, period = Duration.ofMinutes(1)), AuthPolicy.RATE_LIMIT_IP)
         assertEquals(RateLimit(capacity = 3, period = Duration.ofMinutes(10)), AuthPolicy.RATE_LIMIT_EMAIL)
     }
+
+    @Test
+    fun `본인 확인용 비밀번호는 principal당 15분에 5회`() {
+        assertEquals(RateLimit(capacity = 5, period = Duration.ofMinutes(15)), AuthPolicy.RATE_LIMIT_PASSWORD_CONFIRM)
+    }
 }

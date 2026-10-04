@@ -18,7 +18,7 @@ import java.util.UUID
  * |---|---|---|---|
  * | 인증 없는 API | [check] (요청 제한 필터) | `policy.rate-limit-ip` | `429 TOO_MANY_ATTEMPTS` |
  * | 메일을 보내는 API | [tryAcquireMailSend] (UseCase) | `policy.rate-limit-email` | 같은 `202`, 메일만 보내지 않음 |
- * | 본인 확인용 비밀번호를 받는 API | [checkPasswordConfirmation] (UseCase) | 호출하는 쪽이 정함 | `429 TOO_MANY_ATTEMPTS` |
+ * | 본인 확인용 비밀번호를 받는 API | [checkPasswordConfirmation] (UseCase) | `policy.rate-limit-password-confirm` | `429 TOO_MANY_ATTEMPTS` |
  *
  * 카운터는 인스턴스 메모리에 있습니다 (ADR-0024). 트랜잭션과 관계없이 호출한 순간 1회를 쓰고, 업무가 롤백돼도 되돌리지 않습니다.
  */
@@ -45,13 +45,10 @@ class RateLimitService(
      * 본인 확인용 비밀번호를 받는 UseCase(비밀번호 변경, 파트너 탈퇴)가 비밀번호를 검증하기 **전에** 호출합니다.
      * 한도를 넘으면 비밀번호를 검증하지 않고 `TooManyAttemptsException`입니다.
      *
-     * @param limit 한도. `policy.rate-limit-password-confirm`이 정해지면 그 상수를 넘깁니다 (domain.md §2)
+     * 비밀번호가 맞았는지와 관계없이 호출할 때마다 1회를 씁니다. 성공한 확인도 셉니다 (api/conventions.md §8).
      */
-    fun checkPasswordConfirmation(
-        principalId: UUID,
-        limit: RateLimit,
-    ) {
-        consume(RateLimitKey.PasswordConfirmation(principalId), limit)
+    fun checkPasswordConfirmation(principalId: UUID) {
+        consume(RateLimitKey.PasswordConfirmation(principalId), AuthPolicy.RATE_LIMIT_PASSWORD_CONFIRM)
     }
 
     private fun consume(

@@ -9,3 +9,6 @@ class InvalidCredentialsException : AuthException("INVALID_CREDENTIALS", 401, "�
 class PasswordPolicyViolationException(
     message: String,
 ) : AuthException("VALIDATION_FAILED", 400, message)
+
+/** PWD-08 본인 확인용 현재 비밀번호가 틀림. 앱은 `401`을 받으면 로그아웃하므로 `400`으로 응답합니다. */
+class CurrentPasswordMismatchException : AuthException("CURRENT_PASSWORD_MISMATCH", 400, "현재 비밀번호가 올바르지 않습니다.")
