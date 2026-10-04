@@ -6,7 +6,7 @@ import com.dozycoffee.auth.core.PrincipalKey
 interface DeleteRoleUseCase {
     /**
      * @throws com.dozycoffee.auth.server.domain.authorization.RoleNotFoundException 없는 role
-     * @throws com.dozycoffee.auth.server.domain.ForbiddenException system role
+     * @throws com.dozycoffee.auth.server.domain.ForbiddenException DB의 현재 role에 관리 등급이 없음 (GOV-14), system role
      * @throws com.dozycoffee.auth.server.domain.authorization.RoleInUseException 부여된 principal이 있는데 [DeleteRoleCommand.revokeAll]이 아님
      */
     fun deleteRole(command: DeleteRoleCommand)

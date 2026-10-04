@@ -42,7 +42,8 @@ import java.util.UUID
 /**
  * role 정의와 audience 관리 API (api/admin.md §5)와 `/admin` 인가 (api/conventions.md §2, GOV-14).
  *
- * 응답 필드 이름, 에러 code, 감사 action은 명세의 문자열 그대로 기대값으로 씁니다. 관리자의 role은 토큰의 role로 정합니다.
+ * 응답 필드 이름, 에러 code, 감사 action은 명세의 문자열 그대로 기대값으로 씁니다.
+ * 관리자의 필요 role(GOV-14)은 토큰으로, 관리 등급은 DB의 role로 정하므로 관리자는 DB와 토큰에 같은 role을 줍니다.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -118,7 +119,7 @@ class AdminRoleApiTest {
 
     @Test
     fun `GOV-13 admin이 role을 등록하면 아무에게도 부여되지 않은 role이 생기고 ROLE_DEFINED를 남김`() {
-        val admin = employees.create()
+        val admin = admin()
         val code = employees.newRoleCode("wms")
 
         val body =
@@ -196,7 +197,7 @@ class AdminRoleApiTest {
 
     @Test
     fun `GOV-13 이름과 설명을 수정하고 ROLE_UPDATED에 바뀐 필드 이름만 남김`() {
-        val admin = employees.create()
+        val admin = admin()
         val code = employees.newRoleCode("wms")
         val holder = employees.create(roles = listOf(code))
         val roleId = roleId(code)
@@ -266,7 +267,7 @@ class AdminRoleApiTest {
 
     @Test
     fun `GOV-13 부여된 principal이 없는 role은 바로 삭제하고 ROLE_DELETED를 남김`() {
-        val admin = employees.create()
+        val admin = admin()
         val code = employees.newRoleCode("wms")
         val roleId = trackRole(defineRole(code))
 
@@ -301,7 +302,7 @@ class AdminRoleApiTest {
 
     @Test
     fun `GOV-13 revokeAll이면 모든 principal에게서 회수한 뒤 삭제하고 회수마다 ROLE_REVOKED, 마지막에 ROLE_DELETED를 남김`() {
-        val admin = employees.create()
+        val admin = admin()
         val code = employees.newRoleCode("wms")
         val otherRole = employees.newRoleCode("wms")
         val first = employees.create(roles = listOf(code, otherRole))
@@ -370,7 +371,7 @@ class AdminRoleApiTest {
 
     @Test
     fun `GOV-13 owner가 audience를 추가하면 AUDIENCE_CREATED를 남김`() {
-        val owner = employees.create()
+        val owner = owner()
         val code = newAudienceCode()
 
         val body =
@@ -435,6 +436,70 @@ class AdminRoleApiTest {
     }
 
     @Test
+    fun `GOV-14 DB에서 auth admin이 회수된 직원은 토큰이 유효해도 role 등록·수정·삭제가 403 FORBIDDEN`() {
+        val code = employees.newRoleCode("wms")
+        employees.create(roles = listOf(code))
+        val roleId = roleId(code)
+        val dismissed = admin()
+        val token = adminToken(dismissed)
+        revokeInDb(dismissed, RoleCode("auth", "admin"))
+        val newCode = employees.newRoleCode("wms")
+
+        post("/admin/roles", token, mapOf("audience" to "wms", "code" to newCode.code, "name" to "읽기")).andExpect {
+            status { isForbidden() }
+            jsonPath("$.code") { value("FORBIDDEN") }
+        }
+        patch("/admin/roles/$roleId", token, mapOf("name" to "새 이름")).andExpect {
+            status { isForbidden() }
+            jsonPath("$.code") { value("FORBIDDEN") }
+        }
+        delete("/admin/roles/$roleId?revokeAll=true", token).andExpect {
+            status { isForbidden() }
+            jsonPath("$.code") { value("FORBIDDEN") }
+        }
+
+        assertTrue(employees.inTransaction { loadRole.findRoleByCode(newCode) == null })
+        assertEquals(code.code, employees.inTransaction { loadRole.findRoleById(roleId) }?.name)
+        assertTrue(allAuditIds().isEmpty())
+    }
+
+    @Test
+    fun `GOV-13 GOV-14 audience 추가는 토큰에 auth owner가 있어도 DB의 role이 owner가 아니면 403 FORBIDDEN`() {
+        val formerOwner = owner()
+        val formerOwnerToken = ownerToken(formerOwner)
+        revokeInDb(formerOwner, RoleCode("auth", "owner"))
+        val admin = admin()
+        val code = newAudienceCode()
+
+        for (token in listOf(formerOwnerToken, tokens.issue(admin.key, roles = listOf("auth:owner")))) {
+            post("/admin/audiences", token, mapOf("code" to code, "name" to "주문")).andExpect {
+                status { isForbidden() }
+                jsonPath("$.code") { value("FORBIDDEN") }
+            }
+        }
+        assertTrue(employees.inTransaction { AudienceTable.selectAll().where { AudienceTable.code eq code }.empty() })
+        assertTrue(allAuditIds().isEmpty())
+    }
+
+    @Test
+    fun `GOV-13 DB에 auth owner가 있는 owner는 role을 등록·수정·삭제할 수 있음`() {
+        val token = ownerToken()
+        val code = employees.newRoleCode("wms")
+
+        val roleId =
+            trackRole(
+                post("/admin/roles", token, mapOf("audience" to "wms", "code" to code.code, "name" to "읽기"))
+                    .andExpect { status { isCreated() } }
+                    .andReturn()
+                    .response.contentAsString,
+            )
+        patch("/admin/roles/$roleId", token, mapOf("name" to "새 이름")).andExpect { status { isOk() } }
+        delete("/admin/roles/$roleId", token).andExpect { status { isNoContent() } }
+
+        assertTrue(employees.inTransaction { loadRole.findRoleById(roleId) == null })
+    }
+
+    @Test
     fun `토큰이 없으면 401 UNAUTHENTICATED`() {
         mockMvc.get("/admin/roles").andExpect {
             status { isUnauthorized() }
@@ -460,9 +525,24 @@ class AdminRoleApiTest {
         }
     }
 
-    private fun ownerToken(owner: CreatedEmployee = employees.create()): String = tokens.issue(owner.key, roles = listOf("auth:owner"))
+    private fun owner(): CreatedEmployee = employees.create().also { employees.makeOwner(it) }
 
-    private fun adminToken(admin: CreatedEmployee = employees.create()): String = tokens.issue(admin.key, roles = listOf("auth:admin"))
+    private fun admin(): CreatedEmployee = employees.create().also { employees.makeAdmin(it) }
+
+    private fun ownerToken(owner: CreatedEmployee = owner()): String = tokens.issue(owner.key, roles = listOf("auth:owner"))
+
+    private fun adminToken(admin: CreatedEmployee = admin()): String = tokens.issue(admin.key, roles = listOf("auth:admin"))
+
+    /** [employee]에게서 [code]를 DB에서만 회수합니다. 이미 발급한 토큰에는 그 role이 남습니다 (SES-07). */
+    private fun revokeInDb(
+        employee: CreatedEmployee,
+        code: RoleCode,
+    ) {
+        val roleId = roleId(code)
+        employees.inTransaction {
+            PrincipalRoleTable.deleteWhere { (PrincipalRoleTable.principalId eq employee.id) and (PrincipalRoleTable.roleId eq roleId) }
+        }
+    }
 
     private fun get(
         path: String,
