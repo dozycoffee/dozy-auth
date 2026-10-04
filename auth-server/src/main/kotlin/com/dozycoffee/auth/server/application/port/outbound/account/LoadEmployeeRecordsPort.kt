@@ -12,7 +12,7 @@ interface LoadEmployeeRecordsPort {
     fun findEmployeeRecord(id: UUID): EmployeeRecord?
 
     /**
-     * [findEmployeeRecord]와 같지만 트랜잭션이 끝날 때까지 그 직원의 principal·profile 행을 잠급니다 (`SELECT ... FOR UPDATE`).
+     * [findEmployeeRecord]와 같지만 트랜잭션이 끝날 때까지 그 직원의 principal·profile 행을 잠급니다 (`SELECT ... FOR NO KEY UPDATE`).
      * 관리자의 변경(정보 수정, 초대 재발송·취소)은 이것으로 읽어, 같은 직원에 대한 변경이 동시에 오면 차례로 처리합니다.
      * 예를 들어 초대 취소로 파기한 개인정보를 동시에 온 정보 수정이 다시 쓰지 못합니다.
      */

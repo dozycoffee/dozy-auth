@@ -32,6 +32,7 @@ import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.core.lowerCase
 import org.jetbrains.exposed.v1.core.or
+import org.jetbrains.exposed.v1.core.vendors.ForUpdateOption
 import org.jetbrains.exposed.v1.jdbc.Query
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insertReturning
@@ -87,7 +88,8 @@ class AccountPersistenceAdapter :
     override fun lockEmployeeRecord(id: UUID): EmployeeRecord? =
         employees()
             .where { EmployeeProfileTable.principalId eq id }
-            .forUpdate()
+            // 키를 바꾸지 않으므로 FOR NO KEY UPDATE. role 부여의 외래 키 검사(FOR KEY SHARE)와 부딪히지 않습니다
+            .forUpdate(ForUpdateOption.PostgreSQL.ForNoKeyUpdate())
             .singleOrNull()
             ?.toEmployeeRecord()
 
