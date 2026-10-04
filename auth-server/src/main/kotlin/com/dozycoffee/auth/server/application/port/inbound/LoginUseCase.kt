@@ -35,7 +35,7 @@ data class LoginCommand(
 }
 
 /**
- * 로그인 결과.
+ * 로그인 결과. 토큰 갱신([RefreshTokenUseCase])도 같은 결과를 돌려줍니다 (api/auth.md: 로그인과 같은 본문).
  *
  * @property accessToken 서명한 access token
  * @property expiresIn access token 수명 (`policy.access-token-ttl`)

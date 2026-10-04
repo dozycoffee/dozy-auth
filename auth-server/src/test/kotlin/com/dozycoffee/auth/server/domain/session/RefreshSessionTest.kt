@@ -54,6 +54,21 @@ class RefreshSessionTest {
     }
 
     @Test
+    fun `쿠키 수명은 절대 만료까지 남은 시간이며 1초 미만은 올림`() {
+        val absolute = LOGIN_AT.plus(AuthPolicy.REFRESH_ABSOLUTE_TTL)
+
+        assertEquals(AuthPolicy.REFRESH_ABSOLUTE_TTL, rotatedSession().remainingAbsoluteLifetime(LOGIN_AT))
+        assertEquals(Duration.ofSeconds(10), rotatedSession().remainingAbsoluteLifetime(absolute.minusSeconds(10).plusNanos(1_000)))
+    }
+
+    @Test
+    fun `절대 만료가 지났으면 쿠키 수명은 0`() {
+        val absolute = LOGIN_AT.plus(AuthPolicy.REFRESH_ABSOLUTE_TTL)
+
+        assertEquals(Duration.ZERO, rotatedSession().remainingAbsoluteLifetime(absolute.plusSeconds(1)))
+    }
+
+    @Test
     fun `만료 시각이 절대 만료 시각을 넘는 세션은 만들 수 없음`() {
         val absolute = LOGIN_AT.plus(AuthPolicy.REFRESH_ABSOLUTE_TTL)
 

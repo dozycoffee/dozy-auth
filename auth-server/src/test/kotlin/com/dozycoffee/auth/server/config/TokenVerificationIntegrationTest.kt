@@ -77,7 +77,7 @@ class TokenVerificationIntegrationTest {
             context.getBeanNamesForType(JwtDecoder::class.java).toSet(),
         )
         assertFalse(context.containsBean("dozySecurityFilterChain"))
-        assertEquals(4, context.getBeanNamesForType(SecurityFilterChain::class.java).size)
+        assertEquals(5, context.getBeanNamesForType(SecurityFilterChain::class.java).size)
         assertEquals<List<Class<*>>>(
             listOf(ProblemAuthenticationEntryPoint::class.java),
             context.getBeansOfType(AuthenticationEntryPoint::class.java).values.map { it.javaClass },

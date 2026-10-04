@@ -2,6 +2,7 @@ package com.dozycoffee.auth.server.domain.audit
 
 import com.dozycoffee.auth.core.Realm
 import java.time.Instant
+import java.util.UUID
 
 /**
  * 감사 로그에 남길 사건 하나 (docs/data-model.md §3.11).
@@ -103,6 +104,33 @@ data class AuditEvent(
                 userAgent = userAgent,
             )
         }
+
+        /**
+         * AUD-08 로그아웃이나 재사용 탐지로 세션 하나를 폐기한 `SESSION_REVOKED`. 대상은 세션의 계정이고, detail에는
+         * realm(경로 값), `sessionId`, `reason`(폐기 사유 `revoke_reason` 값: `LOGOUT`, `REUSE_DETECTED`)을 남깁니다.
+         *
+         * @param principalId 폐기한 세션의 계정
+         * @param actor 로그아웃은 그 계정. 재사용 탐지는 토큰을 누가 제시했는지 알 수 없으므로 `null`(시스템 판정)
+         */
+        fun sessionRevoked(
+            occurredAt: Instant,
+            principalId: UUID,
+            actor: AuditActor?,
+            realm: Realm,
+            sessionId: UUID,
+            reason: String,
+            ip: String?,
+            userAgent: String?,
+        ): AuditEvent =
+            AuditEvent(
+                occurredAt = occurredAt,
+                action = AuditAction.SESSION_REVOKED,
+                actor = actor,
+                target = AuditTarget.principal(principalId),
+                detail = mapOf("realm" to realm.pathValue, "sessionId" to sessionId.toString(), "reason" to reason),
+                ip = ip,
+                userAgent = userAgent,
+            )
 
         private val LOGIN_ACTIONS = setOf(AuditAction.LOGIN_SUCCEEDED, AuditAction.LOGIN_FAILED, AuditAction.ACCOUNT_LOCKED)
 
