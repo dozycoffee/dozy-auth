@@ -2,7 +2,7 @@ package com.dozycoffee.auth.server.adapter.inbound.web.ratelimit
 
 import com.dozycoffee.auth.server.TestcontainersConfiguration
 import com.dozycoffee.auth.server.adapter.outbound.persistence.AuditLogTable
-import com.dozycoffee.auth.server.config.SecurityConfig
+import com.dozycoffee.auth.server.config.security.SecurityConfig
 import com.dozycoffee.auth.server.domain.AuthPolicy
 import com.dozycoffee.auth.server.support.MutableClock
 import com.dozycoffee.auth.server.support.MutableClockConfiguration

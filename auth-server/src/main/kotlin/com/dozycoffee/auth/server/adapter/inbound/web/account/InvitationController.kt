@@ -1,9 +1,9 @@
 package com.dozycoffee.auth.server.adapter.inbound.web.account
 
 import com.dozycoffee.auth.server.adapter.inbound.web.ClientInfo
-import com.dozycoffee.auth.server.application.port.inbound.AcceptInvitationCommand
-import com.dozycoffee.auth.server.application.port.inbound.AcceptInvitationUseCase
-import com.dozycoffee.auth.server.application.port.inbound.GetInvitationUseCase
+import com.dozycoffee.auth.server.application.port.inbound.auth.AcceptInvitationCommand
+import com.dozycoffee.auth.server.application.port.inbound.auth.AcceptInvitationUseCase
+import com.dozycoffee.auth.server.application.port.inbound.auth.GetInvitationUseCase
 import com.dozycoffee.auth.server.domain.credential.RawPassword
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid

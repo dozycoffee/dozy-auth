@@ -43,7 +43,7 @@ src/test/kotlin/com/dozycoffee/auth/server/    테스트
 
 | 추가할 것 | 먼저 고칠 명세 | 코드 위치 |
 |---|---|---|
-| API | `docs/api/*.md` 중 해당 파일 | `adapter/inbound/web/{auth,admin,internal,dev}` → `application/port/inbound` → `application/service` |
+| API | `docs/api/*.md` 중 해당 파일 | `adapter/inbound/web/{auth,account,admin,internal,dev}` → `application/port/inbound/{영역}` → `application/service/{영역}` ([architecture.md §5](../docs/architecture.md#5-auth-server-구조)) |
 | 도메인 규칙 | `docs/domain.md` (새 규칙 ID) | `domain/{도메인}` |
 | 테이블·컬럼 | `docs/data-model.md` | `src/main/resources/db/migration/V{번호}__{설명}.sql`, `adapter/outbound/persistence/*Table` |
 | 에러 코드 | `docs/api/conventions.md` §11 | 도메인 예외 (`AuthException` 하위) |

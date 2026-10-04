@@ -3,10 +3,10 @@ package com.dozycoffee.auth.server.adapter.inbound.web.admin
 import com.dozycoffee.auth.core.AuthenticatedPrincipal
 import com.dozycoffee.auth.core.RoleCode
 import com.dozycoffee.auth.server.adapter.inbound.web.ClientInfo
-import com.dozycoffee.auth.server.application.port.inbound.GrantRolesCommand
-import com.dozycoffee.auth.server.application.port.inbound.GrantRolesUseCase
-import com.dozycoffee.auth.server.application.port.inbound.RevokeRoleCommand
-import com.dozycoffee.auth.server.application.port.inbound.RevokeRoleUseCase
+import com.dozycoffee.auth.server.application.port.inbound.admin.GrantRolesCommand
+import com.dozycoffee.auth.server.application.port.inbound.admin.GrantRolesUseCase
+import com.dozycoffee.auth.server.application.port.inbound.admin.RevokeRoleCommand
+import com.dozycoffee.auth.server.application.port.inbound.admin.RevokeRoleUseCase
 import com.dozycoffee.auth.starter.CurrentPrincipal
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid

@@ -1,8 +1,8 @@
 package com.dozycoffee.auth.server.adapter.inbound.web.dev
 
 import com.dozycoffee.auth.server.adapter.inbound.web.auth.TokenResponse
-import com.dozycoffee.auth.server.application.port.inbound.IssueDevTokenCommand
-import com.dozycoffee.auth.server.application.port.inbound.IssueDevTokenUseCase
+import com.dozycoffee.auth.server.application.port.inbound.dev.IssueDevTokenCommand
+import com.dozycoffee.auth.server.application.port.inbound.dev.IssueDevTokenUseCase
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotNull
 import org.springframework.context.annotation.Profile
