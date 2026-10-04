@@ -75,15 +75,17 @@ curl -i -X POST http://localhost:8080/realms/internal/login \
 
 - 초대가 만료됐으면 서버를 다시 실행하면 새 초대 메일이 갑니다. owner를 처음부터 다시 만들려면 `docker compose down -v`로 DB를 지웁니다.
 
-### 개발용 토큰 (준비 중: 개발용 토큰 API)
+### 개발용 토큰
 
-로그인 없이 원하는 role의 토큰이 필요하면 `local` 프로필의 개발용 API를 씁니다. 형식은 [docs/api/dev.md](docs/api/dev.md)에 있습니다.
+로그인 없이 원하는 role의 토큰이 필요하면 `local` 프로필의 개발용 API를 씁니다. 형식과 규칙은 [docs/api/dev.md](docs/api/dev.md)에 있습니다.
 
 ```bash
 curl -X POST http://localhost:8080/dev/tokens \
   -H 'Content-Type: application/json' \
   -d '{"realm": "internal", "principalType": "employee", "principalId": "0199a3c4-7b2e-7c1a-9f3d-2b6e8a1c4d5f", "roles": ["wms:inbound_manager"]}'
 ```
+
+응답의 `accessToken`을 서비스 호출에 `Authorization: Bearer {accessToken}`으로 넣습니다. 서비스는 이 서버의 JWKS(`http://localhost:8080/.well-known/jwks.json`)로 검증합니다.
 
 ## 자주 쓰는 명령
 
