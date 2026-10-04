@@ -17,7 +17,6 @@ auth-server가 읽는 설정과 프로필별 동작입니다. 비밀값(DB 비�
 | `AUTH_MAIL_SENDER` | ✅ | `smtp` / `console` | `console`은 메일 내용을 로그로 출력 (local·dev 전용, [§7](#7-메일)) |
 | `AUTH_MAIL_SMTP_HOST`, `_PORT`, `_USERNAME`, `_PASSWORD` | smtp일 때 | `smtp.example.com`, `587` | `HOST`가 없으면 기동 실패. `PORT` 기본값 `587`. dev·prod는 SMTP 인증과 STARTTLS를 요구 |
 | `AUTH_MAIL_FROM` | ✅ | `no-reply@dozycoffee.com` | 보내는 주소. 이메일 형식이 아니면 기동 실패 |
-| `AUTH_TRUSTED_PROXIES` | dev·prod ✅ | `10.0.1.0/24` | `X-Forwarded-For`를 믿을 앞단 프록시(로드 밸런서) 주소. CIDR 쉼표 구분. 빈 값이면 어떤 프록시도 믿지 않음 ([§9](#9-클라이언트-주소와-프록시)) |
 | `BOOTSTRAP_OWNER_EMAIL` | owner가 없을 때 | `owner@dozycoffee.com` | [GOV-11](domain.md#8-관리-권한-규칙-gov). 비밀번호는 설정에 두지 않음. 속성 `dozy.auth.bootstrap.owner-email`, local 기본값 `owner@dozycoffee.local`. 이메일 형식이 아니면 기동 실패 |
 
 - 정책 수치([domain.md §2](domain.md#2-정책-값))는 코드 기본값(`domain.AuthPolicy`)으로 두고, 바꿀 필요가 생기면 `dozy.auth.policy.*` 속성으로 노출합니다. 속성 이름은 정책 이름에서 `policy.`를 뗀 것입니다 (예: `dozy.auth.policy.access-token-ttl`).
@@ -171,9 +170,8 @@ Auth 서버가 받는 토큰(`/realms/{realm}` 아래 본인 API, `/admin/**`, `
 | 속성 | 환경 변수 | 설명 |
 |---|---|---|
 | `server.forward-headers-strategy` | - | 모든 프로필 `native` |
-| `server.tomcat.remoteip.internal-proxies` | `AUTH_TRUSTED_PROXIES` | 신뢰할 프록시 주소 (CIDR 쉼표 구분). `dev`·`prod`는 필수이고, `local`·`test`는 Spring Boot 기본값(사설·루프백 대역)을 씀 |
+| `server.tomcat.remoteip.internal-proxies` | - | 신뢰할 프록시 주소. 지금은 모든 프로필이 Spring Boot 기본값(사설·루프백 대역)을 씀 |
 
 - 신뢰할 프록시가 아닌 곳에서 온 요청은 헤더를 무시하고 연결한 주소를 씁니다. 아무나 보낸 `X-Forwarded-For`로 요청 제한을 피하거나 기록을 속일 수 없게 하기 위해서입니다.
 - `prod`는 로드 밸런서 뒤에 두고, 서버 포트는 로드 밸런서에서만 접근할 수 있게 합니다. 로드 밸런서는 받은 `X-Forwarded-For` 끝에 연결한 클라이언트 주소를 붙이거나 덮어써야 합니다. 클라이언트가 보낸 값 앞부분은 위 규칙대로 무시됩니다.
-- `AUTH_TRUSTED_PROXIES`는 로드 밸런서 주소 대역으로 좁힙니다. 넓은 사설 대역을 믿으면 같은 대역에서 직접 접속한 클라이언트가 주소를 속일 수 있습니다.
-- 앞단 프록시가 없으면 빈 값으로 둡니다. 프록시가 있는데 빈 값이면 모든 요청이 프록시 주소 하나로 세어져 함께 제한됩니다.
+- 운영 배포 환경을 정할 때 신뢰할 프록시를 로드 밸런서 주소 대역으로 좁힙니다 (예: 환경 변수 `SERVER_TOMCAT_REMOTEIP_INTERNAL_PROXIES`). 기본값처럼 넓은 사설 대역을 믿으면 같은 대역에서 직접 접속한 클라이언트가 주소를 속일 수 있습니다.

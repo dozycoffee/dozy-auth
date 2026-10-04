@@ -8,7 +8,7 @@ spring:
 
 # 클라이언트 주소 (docs/configuration.md §9). 신뢰할 프록시(internal-proxies)에서 온 요청일 때만 Tomcat이
 # X-Forwarded-For·X-Forwarded-Proto로 remoteAddr·scheme을 바꿉니다. 요청 제한과 세션·감사 기록의 IP가 이 값입니다.
-# local·test는 Spring Boot 기본값(사설·루프백 대역)을 신뢰하고, dev·prod는 AUTH_TRUSTED_PROXIES로 정합니다.
+# 모든 프로필이 Spring Boot 기본값(사설·루프백 대역)을 신뢰합니다. 운영 배포 때 로드 밸런서 대역으로 좁힙니다.
 server:
   forward-headers-strategy: native
 
@@ -31,12 +31,6 @@ spring:
     url: ${AUTH_DB_URL}
     username: ${AUTH_DB_USERNAME}
     password: ${AUTH_DB_PASSWORD}
-
-server:
-  tomcat:
-    remoteip:
-      # 앞단 프록시(로드 밸런서) 주소. CIDR 쉼표 구분이며, 빈 값이면 어떤 프록시도 믿지 않습니다
-      internal-proxies: ${AUTH_TRUSTED_PROXIES}
 
 dozy:
   auth:
