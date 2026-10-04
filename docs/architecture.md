@@ -138,13 +138,13 @@ com.dozycoffee.auth.server
 
 | 영역 | 내용 | API 문서 |
 |---|---|---|
-| `auth` | 로그인, 토큰 갱신, 로그아웃, 내 정보, 초대 조회·수락 | [api/auth.md](api/auth.md), [api/account.md](api/account.md) |
+| `auth` | 로그인, 토큰 갱신, 로그아웃, 내 정보, 초대 조회·수락, 비밀번호 변경·찾기·재설정 | [api/auth.md](api/auth.md), [api/account.md](api/account.md) |
 | `admin` | 직원, role 정의·부여, audience, system client, 감사 로그 조회 | [api/admin.md](api/admin.md) |
 | `internal` | JWKS, 서비스 토큰 발급, 서비스가 부르는 내부 API | [api/internal.md](api/internal.md) |
 | `system` | 사람이 아닌 서버가 부르는 기능 (owner 부트스트랩, 요청 제한, 배치) | - |
 | `dev` | 개발용 API (`local`·`dev` 전용) | [api/dev.md](api/dev.md) |
 
-- 컨트롤러는 `adapter/inbound/web/account`처럼 API 문서 단위로 나눌 수 있지만, UseCase와 Service는 위 다섯 영역 중 하나에 둡니다 (`account`의 초대 조회·수락은 `auth`).
+- 컨트롤러는 `adapter/inbound/web/account`처럼 API 문서 단위로 나눌 수 있지만, UseCase와 Service는 위 다섯 영역 중 하나에 둡니다 (`account`의 초대 조회·수락, 비밀번호 찾기·재설정은 `auth`).
 - 여러 Service가 함께 쓰는 보조 클래스는 그 영역 패키지 안에 둡니다.
 - 도메인 예외가 둘 이상이면 도메인 패키지의 `{도메인}Exceptions.kt` 한 파일에 모읍니다 (예: `domain/session/SessionExceptions.kt`). 하나뿐이면 그 클래스 이름의 파일입니다 (ktlint 파일 이름 규칙). 여러 도메인이 함께 쓰는 예외는 `domain/AuthException.kt`에 둡니다.
 
