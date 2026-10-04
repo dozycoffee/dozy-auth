@@ -439,7 +439,10 @@ sequenceDiagram
 **규칙** [GOV-04](../domain.md#8-관리-권한-규칙-gov)~[GOV-08](../domain.md#8-관리-권한-규칙-gov), [SES-05](../domain.md#6-세션-규칙-ses)
 
 - admin 임명도 이 API로 `auth:admin`을 부여합니다.
-- 감사 로그: `ROLE_GRANTED` (새로 부여한 role만 `detail.roles`에)
+- `roles`가 비었거나 `{audience}:{code}` 형식이 아닌 값이 있으면 `VALIDATION_FAILED`입니다. 같은 role을 여러 번 보내면 하나로 봅니다.
+- 에러는 `NOT_FOUND`(principal, role)를 먼저 판단하고, 그 뒤는 [GOV-15](../domain.md#8-관리-권한-규칙-gov)의 순서입니다.
+- 동시에 삭제된 role은 없는 role(`NOT_FOUND`)입니다. 부여와 [role 삭제](#role-삭제)가 동시에 오면 차례로 처리합니다.
+- 감사 로그: `ROLE_GRANTED` (새로 부여한 role만 `detail.roles`에. 새로 부여한 role이 없으면 남기지 않음)
 
 ### role 회수
 
@@ -464,6 +467,8 @@ sequenceDiagram
 **규칙** [GOV-05](../domain.md#8-관리-권한-규칙-gov), [GOV-08](../domain.md#8-관리-권한-규칙-gov), [SES-07](../domain.md#6-세션-규칙-ses)
 
 - admin 해임도 이 API로 `auth:admin`을 회수합니다.
+- 대상의 상태와 principal type은 보지 않습니다. 정지된 계정에서도 회수할 수 있습니다.
+- 경로의 `role`이 `{audience}:{code}` 형식이 아니면 `VALIDATION_FAILED`입니다.
 - 감사 로그: `ROLE_REVOKED` (가지고 있던 경우만)
 
 ## 5. role 정의와 audience

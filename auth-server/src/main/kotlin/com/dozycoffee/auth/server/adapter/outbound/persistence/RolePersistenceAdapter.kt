@@ -10,6 +10,7 @@ import com.dozycoffee.auth.server.application.port.outbound.authorization.LoadAu
 import com.dozycoffee.auth.server.application.port.outbound.authorization.LoadOwnerPort
 import com.dozycoffee.auth.server.application.port.outbound.authorization.LoadPrincipalRolesPort
 import com.dozycoffee.auth.server.application.port.outbound.authorization.LoadRolePort
+import com.dozycoffee.auth.server.application.port.outbound.authorization.LockRolePort
 import com.dozycoffee.auth.server.application.port.outbound.authorization.RevokeRolePort
 import com.dozycoffee.auth.server.application.port.outbound.authorization.UpdateRolePort
 import com.dozycoffee.auth.server.domain.authorization.Audience
@@ -27,6 +28,7 @@ import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.count
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.vendors.ForUpdateOption
 import org.jetbrains.exposed.v1.jdbc.Query
 import org.jetbrains.exposed.v1.jdbc.deleteReturning
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
@@ -56,6 +58,7 @@ class RolePersistenceAdapter :
     LoadAudiencePort,
     CreateAudiencePort,
     LoadRolePort,
+    LockRolePort,
     CreateRolePort,
     UpdateRolePort,
     DeleteRolePort,
@@ -121,6 +124,24 @@ class RolePersistenceAdapter :
             .orderBy(RoleTable.id)
             .map { it.toRole() }
     }
+
+    // FOR KEY SHARE는 외래 키 검사와 같은 세기라 role 삭제(FOR UPDATE, DELETE)만 막고 이름·설명 수정은 막지 않습니다.
+    // audience 행은 잠그지 않습니다(OF role).
+    override fun lockRolesForGrant(codes: Collection<RoleCode>): List<Role> {
+        if (codes.isEmpty()) return emptyList()
+        return rolesWithAudience()
+            .where { (AudienceTable.code to RoleTable.code) inList codes.map { it.audience to it.code } }
+            .orderBy(RoleTable.id)
+            .forUpdate(ForUpdateOption.PostgreSQL.ForKeyShare(ofTables = arrayOf(RoleTable)))
+            .map { it.toRole() }
+    }
+
+    override fun lockRoleForDelete(id: Long): Role? =
+        rolesWithAudience()
+            .where { RoleTable.id eq id }
+            .forUpdate(ForUpdateOption.PostgreSQL.ForUpdate(ofTables = arrayOf(RoleTable)))
+            .singleOrNull()
+            ?.toRole()
 
     override fun createRole(
         audience: Audience,

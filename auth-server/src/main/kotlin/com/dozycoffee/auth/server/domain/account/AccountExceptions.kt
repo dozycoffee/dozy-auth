@@ -13,3 +13,6 @@ class EmailNotVerifiedException : AuthException("EMAIL_NOT_VERIFIED", 403, "이�
 
 /** LGN-03 비밀번호는 맞았지만 정지된(`SUSPENDED`) 계정의 로그인. */
 class AccountSuspendedException : AuthException("ACCOUNT_SUSPENDED", 403, "정지된 계정입니다.")
+
+/** 없는 principal (관리 API의 `/admin/principals/{principalId}/...`). */
+class PrincipalNotFoundException : AuthException("NOT_FOUND", 404, "principal을 찾을 수 없습니다.")
