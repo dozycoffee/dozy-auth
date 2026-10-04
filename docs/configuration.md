@@ -63,7 +63,7 @@ owner가 없는데 `BOOTSTRAP_OWNER_EMAIL`이 없으면 **모든 프로필에서
 | 속성 | 환경 변수 | 설명 |
 |---|---|---|
 | `dozy.auth.signing.keys-dir` | `AUTH_SIGNING_KEYS_DIR` | 서명 키 폴더 |
-| `dozy.auth.signing.active-kid` | `AUTH_SIGNING_ACTIVE_KID` | 서명에 쓸 키. 자동 생성이 켜져 있으면 비워도 됨 |
+| `dozy.auth.signing.active-kid` | `AUTH_SIGNING_ACTIVE_KID` | 서명에 쓸 키. 자동 생성이 켜져 있으면 비워도 됨. 빈 문자열은 지정하지 않은 것으로 보며, 자동 생성이 꺼져 있으면 기동 실패 |
 | `dozy.auth.signing.auto-generate` | - | 키가 없으면 만들어 저장. `local`·`test` 전용이며 `prod`에서 켜면 기동 실패 |
 
 **자동 생성 (`local`, `test`)**
