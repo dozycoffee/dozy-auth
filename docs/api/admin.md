@@ -66,8 +66,10 @@ sequenceDiagram
 
 **규칙** [VER-01](../domain.md#7-verification-규칙-ver) (`EMPLOYEE_INVITATION`), [GOV-06](../domain.md#8-관리-권한-규칙-gov), [GOV-07](../domain.md#8-관리-권한-규칙-gov)
 
-- principal, profile, role 부여, verification 발급을 한 트랜잭션에서 처리하고, 메일은 커밋 후 보냅니다.
-- 감사 로그: `EMPLOYEE_INVITED`, role을 지정했으면 `ROLE_GRANTED`
+- `roles`를 생략하거나 빈 목록으로 보내면 role 없이 초대합니다. 같은 role을 여러 번 보내면 하나로 봅니다.
+- 에러가 여럿이면 [GOV-15](../domain.md#8-관리-권한-규칙-gov)의 직원 초대 순서를 따릅니다.
+- principal, profile, role 부여, verification 발급을 한 트랜잭션에서 처리하고, 메일은 커밋 후 보냅니다. 하나라도 실패하면 계정을 만들지 않습니다.
+- 감사 로그: `EMPLOYEE_INVITED`, role을 지정했으면 `ROLE_GRANTED` ([AUD-08](../domain.md#11-감사와-알림-aud))
 
 ### 직원 목록
 

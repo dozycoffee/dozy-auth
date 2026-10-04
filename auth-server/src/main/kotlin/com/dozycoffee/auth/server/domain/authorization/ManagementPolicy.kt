@@ -89,8 +89,26 @@ object ManagementPolicy {
     }
 
     /**
+     * 직원을 초대하면서 [roles]를 함께 부여할 수 있는지 검사합니다. [roles]가 비어 있으면 관리 등급만 봅니다.
+     *
+     * 대상은 새로 만들 `PENDING` 직원이므로 [checkCanGrant]의 규칙 중 GOV-05만 걸립니다. 자기 자신일 수 없고(GOV-04),
+     * 아직 role이 없어 보호 대상이 아니며(GOV-02), 직원은 모든 일반 role과 `auth:admin`을 받을 수 있고(GOV-06),
+     * `PENDING`에는 부여할 수 있습니다(GOV-07). 계정을 만들기 전에 검사하려고 대상 없이 검사합니다.
+     *
+     * @throws ForbiddenException 관리 등급이 없음, `auth:owner` 지정 또는 owner가 아닌데 `auth:admin` 지정 (GOV-05)
+     */
+    fun checkCanInvite(
+        manager: Manager,
+        roles: Collection<RoleCode>,
+    ) {
+        checkIsManager(manager)
+        roles.forEach { checkCanHandleRole(manager, it) }
+    }
+
+    /**
      * [roles]를 [target]에게 부여할 수 있는지 검사합니다. 하나라도 어기면 전체를 거부합니다 (GOV-08).
-     * 직원 초대·system client 등록에서 함께 부여하는 role도 이 검사를 씁니다. 이때 대상은 새로 만들 계정입니다.
+     * system client 등록에서 함께 부여하는 role도 이 검사를 씁니다. 이때 대상은 새로 만들 계정입니다.
+     * 직원 초대는 [checkCanInvite]로 검사합니다.
      *
      * @throws ForbiddenException 관리 등급이 없음, `auth:owner` 부여 또는 owner가 아닌데 `auth:admin` 부여(GOV-05),
      *   system client에 system role 부여(GOV-06)

@@ -10,12 +10,16 @@ import com.dozycoffee.auth.server.application.port.inbound.EmployeeDetail
 import com.dozycoffee.auth.server.application.port.inbound.EmployeeSummary
 import com.dozycoffee.auth.server.application.port.inbound.FieldPatch
 import com.dozycoffee.auth.server.application.port.inbound.GetEmployeeUseCase
+import com.dozycoffee.auth.server.application.port.inbound.InviteEmployeeCommand
+import com.dozycoffee.auth.server.application.port.inbound.InviteEmployeeUseCase
+import com.dozycoffee.auth.server.application.port.inbound.InvitedEmployee
 import com.dozycoffee.auth.server.application.port.inbound.ListEmployeesCommand
 import com.dozycoffee.auth.server.application.port.inbound.ListEmployeesUseCase
 import com.dozycoffee.auth.server.application.port.inbound.ResendInvitationCommand
 import com.dozycoffee.auth.server.application.port.inbound.ResendInvitationUseCase
 import com.dozycoffee.auth.server.application.port.inbound.UpdateEmployeeCommand
 import com.dozycoffee.auth.server.application.port.inbound.UpdateEmployeeUseCase
+import com.dozycoffee.auth.server.domain.Email
 import com.dozycoffee.auth.server.domain.PageRequest
 import com.dozycoffee.auth.server.domain.account.AccountStatus
 import com.dozycoffee.auth.server.domain.account.EmployeeProfile
@@ -26,6 +30,7 @@ import jakarta.validation.Valid
 import jakarta.validation.constraints.AssertTrue
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
+import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Size
 import org.springframework.http.HttpStatus
@@ -44,7 +49,7 @@ import java.time.Instant
 import java.util.UUID
 
 /**
- * 직원 목록·상세·정보 수정, 초대 재발송·취소 (api/admin.md §1).
+ * 직원 초대·목록·상세·정보 수정, 초대 재발송·취소 (api/admin.md §1).
  *
  * 토큰 검증(realm `internal`, `aud`에 `auth`)과 직원 토큰 확인은 보안 설정의 관리 체인이 먼저 하고, 필요 role(GOV-14)은 여기서
  * `auth:owner`, `auth:admin` 중 하나인지 토큰으로 검사합니다. owner·admin 보호 규칙(GOV-02, GOV-03)은 UseCase가 DB의 현재 role로
@@ -56,12 +61,40 @@ import java.util.UUID
 @RestController
 @PreAuthorize(AdminEmployeeController.OWNER_OR_ADMIN)
 class AdminEmployeeController(
+    private val inviteEmployee: InviteEmployeeUseCase,
     private val listEmployees: ListEmployeesUseCase,
     private val getEmployee: GetEmployeeUseCase,
     private val updateEmployee: UpdateEmployeeUseCase,
     private val resendInvitation: ResendInvitationUseCase,
     private val cancelInvitation: CancelInvitationUseCase,
 ) {
+    @PostMapping(EMPLOYEES_PATH, consumes = [MediaType.APPLICATION_JSON_VALUE], produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun invite(
+        @Valid @RequestBody body: InviteEmployeeRequest,
+        @CurrentPrincipal principal: AuthenticatedPrincipal,
+        request: HttpServletRequest,
+    ): ResponseEntity<InvitedEmployeeResponse> {
+        val client = ClientInfo.of(request)
+        val invited =
+            inviteEmployee.inviteEmployee(
+                InviteEmployeeCommand(
+                    managerId = principal.key.id,
+                    email = Email(checkNotNull(body.email)),
+                    name = checkNotNull(body.name),
+                    phone = body.phone,
+                    address = body.address,
+                    roles =
+                        body.roles
+                            .orEmpty()
+                            .map { RoleCode.parse(checkNotNull(it)) }
+                            .toSet(),
+                    ip = client.ip,
+                    userAgent = client.userAgent,
+                ),
+            )
+        return ResponseEntity.status(HttpStatus.CREATED).body(InvitedEmployeeResponse.of(invited))
+    }
+
     @GetMapping(EMPLOYEES_PATH, produces = [MediaType.APPLICATION_JSON_VALUE])
     fun list(
         @RequestParam(required = false) status: AccountStatus?,
@@ -141,6 +174,53 @@ class AdminEmployeeController(
 
         /** 검색어 길이 상한. 이메일 최대 길이와 같습니다. */
         private const val QUERY_MAX_LENGTH = 254
+    }
+}
+
+/**
+ * 직원 초대 요청 (api/admin.md 직원 초대). 길이 상한은 저장 컬럼과 같습니다 ([EmployeeProfile], [Email.MAX_LENGTH]).
+ *
+ * - 이메일은 공백 없이 `@` 하나로 나뉜 주소여야 합니다 ([Email]). 대소문자는 입력한 그대로 저장하고 중복은 대소문자 없이 판단합니다.
+ * - `roles`는 생략하거나 빈 목록이면 role 없이 초대합니다. 각 role은 `{audience}:{code}`이며 중복은 하나로 봅니다.
+ *   Kotlin은 목록 원소의 타입 주석을 Bean Validation이 읽을 수 있게 남기지 않으므로 원소 형식은 [isRolesWellFormed]로 검사합니다.
+ */
+data class InviteEmployeeRequest(
+    @field:NotNull
+    @field:Size(max = Email.MAX_LENGTH)
+    val email: String?,
+    @field:NotNull
+    @field:Size(max = EmployeeProfile.NAME_MAX_LENGTH)
+    @field:Pattern(regexp = ".*\\S.*", message = "이름이 비어 있습니다")
+    val name: String?,
+    @field:Size(max = EmployeeProfile.PHONE_MAX_LENGTH)
+    val phone: String? = null,
+    @field:Size(max = EmployeeProfile.ADDRESS_MAX_LENGTH)
+    val address: String? = null,
+    val roles: List<String?>? = null,
+) {
+    @get:JsonIgnore
+    @get:AssertTrue(message = "이메일 형식이 아닙니다")
+    val isEmailWellFormed: Boolean
+        get() = email.let { it == null || (it.length <= Email.MAX_LENGTH && runCatching { Email(it) }.isSuccess) }
+
+    @get:JsonIgnore
+    @get:AssertTrue(message = "role은 audience:code 형식이어야 합니다.")
+    val isRolesWellFormed: Boolean
+        get() = roles.orEmpty().all { it != null && RoleCode.parseOrNull(it) != null }
+
+    /** 개인정보 값은 가립니다. */
+    override fun toString(): String = "InviteEmployeeRequest(roles=$roles)"
+}
+
+/** 직원 초대 응답 (api/admin.md 직원 초대). */
+data class InvitedEmployeeResponse(
+    val principalId: UUID,
+    val status: String,
+    val invitationExpiresAt: Instant,
+) {
+    companion object {
+        fun of(invited: InvitedEmployee): InvitedEmployeeResponse =
+            InvitedEmployeeResponse(invited.principalId, invited.status.name, invited.invitationExpiresAt)
     }
 }
 
