@@ -5,7 +5,7 @@ import com.dozycoffee.auth.server.application.port.inbound.DeleteRoleUseCase
 import com.dozycoffee.auth.server.application.port.outbound.audit.RecordAuditLogPort
 import com.dozycoffee.auth.server.application.port.outbound.authorization.CountRoleHoldersPort
 import com.dozycoffee.auth.server.application.port.outbound.authorization.DeleteRolePort
-import com.dozycoffee.auth.server.application.port.outbound.authorization.LoadRolePort
+import com.dozycoffee.auth.server.application.port.outbound.authorization.LockRolePort
 import com.dozycoffee.auth.server.application.port.outbound.authorization.RevokeRolePort
 import com.dozycoffee.auth.server.domain.audit.AuditAction
 import com.dozycoffee.auth.server.domain.audit.AuditActor
@@ -29,7 +29,7 @@ import java.time.Clock
  */
 @Service
 class DeleteRoleService(
-    private val loadRole: LoadRolePort,
+    private val lockRole: LockRolePort,
     private val countRoleHolders: CountRoleHoldersPort,
     private val revokeRole: RevokeRolePort,
     private val deleteRole: DeleteRolePort,
@@ -38,7 +38,8 @@ class DeleteRoleService(
 ) : DeleteRoleUseCase {
     @Transactional
     override fun deleteRole(command: DeleteRoleCommand) {
-        val role = loadRole.findRoleById(command.roleId) ?: throw RoleNotFoundException()
+        // 동시에 오는 부여와 차례로 처리합니다 (LockRolePort). 부여가 먼저 끝나면 그 부여까지 세어 판단합니다
+        val role = lockRole.lockRoleForDelete(command.roleId) ?: throw RoleNotFoundException()
         ManagementPolicy.checkCanModifyRoleDefinition(role)
         if (!command.revokeAll) {
             val holders = countRoleHolders.countHolders(role.id)

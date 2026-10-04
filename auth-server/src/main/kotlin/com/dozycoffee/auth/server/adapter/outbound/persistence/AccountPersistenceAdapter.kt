@@ -5,6 +5,7 @@ import com.dozycoffee.auth.server.application.port.outbound.account.ChangeAccoun
 import com.dozycoffee.auth.server.application.port.outbound.account.CreateEmployeePort
 import com.dozycoffee.auth.server.application.port.outbound.account.LoadAccountPort
 import com.dozycoffee.auth.server.application.port.outbound.account.LoadEmployeePort
+import com.dozycoffee.auth.server.application.port.outbound.account.LockAccountPort
 import com.dozycoffee.auth.server.application.port.outbound.account.RecordLoginFailurePort
 import com.dozycoffee.auth.server.application.port.outbound.account.ResetLoginFailuresPort
 import com.dozycoffee.auth.server.application.port.outbound.account.ScrubEmployeeProfilePort
@@ -22,6 +23,7 @@ import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.lowerCase
+import org.jetbrains.exposed.v1.core.vendors.ForUpdateOption
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insertReturning
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -46,6 +48,7 @@ import java.util.UUID
 @Component
 class AccountPersistenceAdapter :
     LoadAccountPort,
+    LockAccountPort,
     LoadEmployeePort,
     CreateEmployeePort,
     ChangeAccountStatusPort,
@@ -57,6 +60,16 @@ class AccountPersistenceAdapter :
         PrincipalTable
             .selectAll()
             .where { PrincipalTable.id eq id }
+            .singleOrNull()
+            ?.toAccount()
+
+    // FOR NO KEY UPDATE: 같은 계정의 관리 작업·상태 변경과는 차례로 처리하지만, 다른 테이블이 이 계정을 참조하는 외래 키 검사
+    // (예: 이 계정이 부여한 role의 granted_by)는 막지 않습니다. 서로에게 부여하는 두 요청이 교착되지 않게 하기 위해서입니다.
+    override fun lockAccountById(id: UUID): Account? =
+        PrincipalTable
+            .selectAll()
+            .where { PrincipalTable.id eq id }
+            .forUpdate(ForUpdateOption.PostgreSQL.ForNoKeyUpdate())
             .singleOrNull()
             ?.toAccount()
 
