@@ -265,6 +265,21 @@ class RolePersistenceAdapterTest {
         assertEquals(listOf("auth:owner"), adapter.findRoleCodes(next).map { it.value })
     }
 
+    @Test
+    fun `owner가 없으면 owner 조회는 null`() {
+        assertNull(adapter.findOwnerId())
+    }
+
+    @Test
+    fun `owner 조회는 auth owner를 가진 principal을 돌려줌`() {
+        val owner = insertPrincipal()
+        val admin = insertPrincipal()
+        adapter.grant(RoleGrant(admin, ADMIN_ROLE_ID, null, NOW))
+        adapter.grant(RoleGrant(owner, OWNER_ROLE_ID, null, NOW))
+
+        assertEquals(owner, adapter.findOwnerId())
+    }
+
     private fun audience(code: String): Audience = checkNotNull(adapter.findAudienceByCode(code))
 
     private fun grantRow(

@@ -225,10 +225,13 @@ stateDiagram-v2
   - 기존 owner는 role 없는 직원이 됩니다. 현재 owner는 수락 전까지 취소할 수 있습니다.
 - **GOV-10** owner는 DB 부분 UNIQUE 인덱스로 한 명만 존재하도록 보장합니다. owner가 없어지는 상황(비활성화, 회수)은 허용하지 않습니다. 이미 owner가 있는데 `auth:owner`를 부여하려 하면 `INVALID_STATE`입니다 (동시 부트스트랩, 기존 owner를 회수하지 않은 양도).
 - **GOV-11** 부트스트랩: Auth가 기동할 때 owner가 없으면 `BOOTSTRAP_OWNER_EMAIL`로 직원(`PENDING`)을 만들고 `auth:owner`를 부여한 뒤 초대를 보냅니다.
-  - owner가 `PENDING`이고 초대가 만료됐으면 재기동할 때 다시 발급합니다.
-  - owner가 `ACTIVE`이면 설정값을 무시합니다. 설정값으로 owner를 교체할 수 없습니다.
-  - 인스턴스 여러 대가 동시에 기동해도 한 번만 실행돼야 합니다.
-  - 감사 로그는 `EMPLOYEE_INVITED`, `ROLE_GRANTED`이며 `actor_id`는 `NULL`입니다.
+  - 직원 이름은 `Owner`입니다. 설정에는 이메일만 두므로 수락한 뒤 본인 정보 수정으로 바꿉니다.
+  - owner가 없는데 `BOOTSTRAP_OWNER_EMAIL`이 없으면 기동에 실패합니다 ([configuration.md §2](configuration.md#2-기동-시-검사)).
+  - owner가 없는데 그 이메일을 이미 다른 직원이 쓰고 있으면 그 직원을 owner로 만들지 않습니다. 초대 수락 없이 기존 계정에 owner 권한이 생기기 때문입니다. 오류 로그만 남기고 기동은 계속하며, [GOV-12](#8-관리-권한-규칙-gov) 절차나 다른 이메일로 해결합니다.
+  - owner가 `PENDING`이고 살아 있는 초대가 없으면(만료) 재기동할 때 owner의 이메일로 다시 발급합니다. 초대가 살아 있으면 아무것도 하지 않습니다. 재발급은 관리자의 초대 재발송처럼 감사 로그를 남기지 않습니다.
+  - owner가 있으면(`PENDING` 포함) 설정값을 무시합니다. 설정값으로 owner를 교체할 수 없습니다.
+  - 인스턴스 여러 대가 동시에 기동해도 한 번만 실행돼야 합니다. 부트스트랩은 한 트랜잭션이며, 시작할 때 DB 잠금을 얻어 동시에 기동한 다른 인스턴스는 앞 트랜잭션이 끝난 뒤 만들어진 owner를 봅니다. 잠금 밖에서 owner가 생겨 [GOV-10](#8-관리-권한-규칙-gov) `INVALID_STATE`가 나면 전체를 되돌리고 이미 처리된 것으로 봅니다.
+  - 감사 로그는 `EMPLOYEE_INVITED`, `ROLE_GRANTED`(`detail.roles`)이며 `actor_id`는 `NULL`입니다. owner 알림([AUD-01](#11-감사와-알림-aud))은 보내지 않습니다. 받을 owner가 초대받는 본인이기 때문입니다.
 - **GOV-12** owner 복구(퇴사 등으로 양도 불가)는 앱 기능이 아니라 인프라 관리자의 수동 SQL 절차입니다. 복구해도 [GOV-10](#8-관리-권한-규칙-gov)과 감사 로그 규칙은 같습니다.
 - **GOV-13** role 정의
   - admin과 owner가 등록·수정·삭제합니다. 등록만으로는 아무에게도 권한이 생기지 않습니다.
