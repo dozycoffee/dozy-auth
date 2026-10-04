@@ -16,3 +16,6 @@ class AccountSuspendedException : AuthException("ACCOUNT_SUSPENDED", 403, "정�
 
 /** 없는 직원, 직원이 아닌 principal (api/admin.md 직원 상세). 어느 경우인지 구분하지 않습니다. */
 class EmployeeNotFoundException : AuthException("NOT_FOUND", 404, "직원을 찾을 수 없습니다.")
+
+/** 없는 principal (관리 API의 `/admin/principals/{principalId}/...`). */
+class PrincipalNotFoundException : AuthException("NOT_FOUND", 404, "principal을 찾을 수 없습니다.")

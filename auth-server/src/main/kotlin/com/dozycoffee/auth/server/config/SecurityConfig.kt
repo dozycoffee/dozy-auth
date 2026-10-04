@@ -49,6 +49,8 @@ import org.springframework.web.servlet.HandlerExceptionResolver
  * | 4 | `/admin/...`, `/internal/...` | access token(관리)·system token. `aud`에 `auth` 포함 |
  * | 5 | 그 밖의 모든 경로 | 거부 |
  *
+ * 개발용 API(`/dev/...`)는 `local`·`dev` 프로필에서만 [DevApiConfig]가 인증 없이 엽니다. 다른 프로필에서는 5번 체인이 거부합니다.
+ *
  * - 토큰 검증은 스타터의 디코더와 권한 변환기를 씁니다 ([TokenVerificationConfig]). 스타터의 기본 필터 체인과 401·403 처리기는
  *   이 설정과 `adapter/inbound/web/error`의 처리기가 있어 만들어지지 않습니다.
  * - 401·403은 `adapter/inbound/web/error`가 컨트롤러의 에러와 같은 형식(api/conventions.md §4)으로 응답합니다.

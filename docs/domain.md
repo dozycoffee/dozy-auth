@@ -243,7 +243,8 @@ stateDiagram-v2
     일괄 회수는 회수 대상이 owner·admin이어도 [GOV-02](#8-관리-권한-규칙-gov)를 적용하지 않습니다. 계정 하나를 바꾸는 작업이 아니라 role 정의를 없애는 작업이고, role 정의 관리는 admin의 권한이기 때문입니다([GOV-01](#8-관리-권한-규칙-gov)). system role은 삭제할 수 없으므로 owner·admin 권한 자체는 회수되지 않습니다.
   - audience 추가는 owner만 가능합니다. audience 삭제는 없습니다.
 - **GOV-14** 관리 API의 인가는 지금 role 이름(`auth:owner`, `auth:admin`)으로 검사합니다. 권한 단위(`ACCOUNT_INVITE` 등) 검사는 필요해질 때 도입합니다.
-- **GOV-15** 한 요청이 GOV 규칙 여러 개를 함께 어기면 아래 순서로 검사해 처음 어긴 규칙의 에러를 응답합니다. 대상이 없으면(`NOT_FOUND`) 이 검사 전에 응답합니다.
+  - 엔드포인트의 필요 role은 토큰의 role로 검사하지만, 이 절의 규칙에 쓰는 관리자와 대상의 등급(owner, admin)은 DB의 현재 role로 정합니다. 해임된 admin의 access token이 만료 전이어도([SES-07](#6-세션-규칙-ses)) 변경 작업은 거부됩니다.
+- **GOV-15** 한 요청이 GOV 규칙 여러 개를 함께 어기면 아래 순서로 검사해 처음 어긴 규칙의 에러를 응답합니다. 대상 principal이나 요청한 role 정의가 없으면(`NOT_FOUND`) 이 검사 전에 응답합니다.
   - role 부여: [GOV-05](#8-관리-권한-규칙-gov) → [GOV-04](#8-관리-권한-규칙-gov) → [GOV-02](#8-관리-권한-규칙-gov) → [GOV-06](#8-관리-권한-규칙-gov) → [GOV-07](#8-관리-권한-규칙-gov)
   - role 회수: GOV-05 → GOV-02
   - 그 밖의 계정 변경: [GOV-03](#8-관리-권한-규칙-gov) → GOV-02 (둘 다 `PROTECTED_ACCOUNT`). 초대 취소는 비활성화이므로([ACC-06](#3-계정-상태-규칙-acc)) GOV-03 대상입니다.
@@ -296,6 +297,7 @@ stateDiagram-v2
   - 비밀번호가 맞았지만 계정 상태로 거부한 로그인([LGN-03](#5-로그인-규칙-lgn))도 `LOGIN_FAILED`입니다.
   - 이번 실패로 잠기면 `LOGIN_FAILED`와 `ACCOUNT_LOCKED`를 함께 남깁니다.
   - 잠긴 계정이나 IP 요청 제한으로 거부한 요청([LGN-01](#5-로그인-규칙-lgn) 1번)은 남기지 않습니다.
+  - role 부여·회수 API는 실제로 바뀐 role만 `detail.roles`에 담습니다. 요청한 role을 이미 모두 가졌거나(부여) 가지지 않았으면(회수) 바뀐 것이 없으므로 남기지 않습니다([GOV-08](#8-관리-권한-규칙-gov)).
 - **AUD-03** 즉시 알림은 발생하는 대로 메일을 보내고, 일일 요약은 하루 한 번 모아서 보냅니다. 받는 사람은 owner입니다. owner 양도가 완료되면 이전 owner에게도 완료 메일을 보냅니다.
 - **AUD-04** 감사 로그는 owner만 조회합니다. 최신순이며 조회 기간은 `policy.audit-query-max-range` 이하입니다.
 - **AUD-05** 정리 배치(`policy.cleanup-schedule`)
