@@ -430,7 +430,7 @@ sequenceDiagram
 
 | code | 조건 |
 |---|---|
-| `FORBIDDEN` | admin이 `auth:admin` 부여, `auth:owner` 부여 ([GOV-05](../domain.md#8-관리-권한-규칙-gov)) |
+| `FORBIDDEN` | admin이 `auth:admin` 부여, `auth:owner` 부여 ([GOV-05](../domain.md#8-관리-권한-규칙-gov)), system client에 system role 부여 ([GOV-06](../domain.md#8-관리-권한-규칙-gov)) |
 | `SELF_GRANT_NOT_ALLOWED` | 자기 자신에게 부여 |
 | `PROTECTED_ACCOUNT` | admin이 owner·admin 계정에 부여 |
 | `NOT_FOUND` | principal 또는 role 없음 |
@@ -537,7 +537,7 @@ sequenceDiagram
 |---|
 | `auth:owner`, `auth:admin` |
 
-**요청** `name`, `description`만 받습니다.
+**요청** `name`, `description`만 받습니다. 보내지 않은 필드는 바꾸지 않고, `description`을 빈 문자열로 보내면 설명을 지웁니다.
 
 **응답** `200 OK`. [role 목록](#role-목록)의 항목과 같은 형식
 
@@ -576,7 +576,7 @@ sequenceDiagram
 **규칙** [GOV-13](../domain.md#8-관리-권한-규칙-gov)
 
 - 앱은 `ROLE_IN_USE`를 받으면 영향 인원을 보여주고 확인을 받은 뒤 `revokeAll=true`로 다시 요청합니다.
-- 감사 로그: 회수한 principal마다 `ROLE_REVOKED`, 마지막에 `ROLE_DELETED`
+- 감사 로그: 회수한 principal마다 `ROLE_REVOKED`(`detail.roles`, `detail.via = "role_deleted"`), 마지막에 `ROLE_DELETED`(`detail.revokedPrincipals`는 회수한 principal 수)
 
 ### audience 목록
 

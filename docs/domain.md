@@ -215,6 +215,8 @@ stateDiagram-v2
   | `system` | 일반 role만 |
   | `partner` | 없음 ([DOM-04](#11-realm과-principal-type)) |
 
+  system client에 system role을 부여하면 `FORBIDDEN`, 파트너에게 부여하면 `INVALID_STATE`입니다.
+
 - **GOV-07** `PENDING` 직원에게는 role을 부여할 수 있습니다(초대 시 함께 지정). `SUSPENDED`, `DEACTIVATED`에는 부여할 수 없습니다 (`INVALID_STATE`).
 - **GOV-08** 부여는 멱등입니다. 이미 가진 role은 무시하고, 가지지 않은 role을 회수해도 성공입니다. 여러 role을 한 번에 부여할 때 하나라도 실패하면 전체를 적용하지 않습니다.
 - **GOV-09** owner 양도
@@ -238,8 +240,14 @@ stateDiagram-v2
   - code와 audience는 등록 후 바꿀 수 없습니다. 이름과 설명만 수정합니다.
   - system role은 수정·삭제할 수 없습니다 (`FORBIDDEN`).
   - 부여된 principal이 있으면 삭제를 거부하고(`ROLE_IN_USE`), 확인을 받아 일괄 회수한 뒤 삭제할 수 있습니다.
+    일괄 회수는 회수 대상이 owner·admin이어도 [GOV-02](#8-관리-권한-규칙-gov)를 적용하지 않습니다. 계정 하나를 바꾸는 작업이 아니라 role 정의를 없애는 작업이고, role 정의 관리는 admin의 권한이기 때문입니다([GOV-01](#8-관리-권한-규칙-gov)). system role은 삭제할 수 없으므로 owner·admin 권한 자체는 회수되지 않습니다.
   - audience 추가는 owner만 가능합니다. audience 삭제는 없습니다.
 - **GOV-14** 관리 API의 인가는 지금 role 이름(`auth:owner`, `auth:admin`)으로 검사합니다. 권한 단위(`ACCOUNT_INVITE` 등) 검사는 필요해질 때 도입합니다.
+- **GOV-15** 한 요청이 GOV 규칙 여러 개를 함께 어기면 아래 순서로 검사해 처음 어긴 규칙의 에러를 응답합니다. 대상이 없으면(`NOT_FOUND`) 이 검사 전에 응답합니다.
+  - role 부여: [GOV-05](#8-관리-권한-규칙-gov) → [GOV-04](#8-관리-권한-규칙-gov) → [GOV-02](#8-관리-권한-규칙-gov) → [GOV-06](#8-관리-권한-규칙-gov) → [GOV-07](#8-관리-권한-규칙-gov)
+  - role 회수: GOV-05 → GOV-02
+  - 그 밖의 계정 변경: [GOV-03](#8-관리-권한-규칙-gov) → GOV-02 (둘 다 `PROTECTED_ACCOUNT`). 초대 취소는 비활성화이므로([ACC-06](#3-계정-상태-규칙-acc)) GOV-03 대상입니다.
+  - 계정 상태 전이([ACC-01](#3-계정-상태-규칙-acc))의 `INVALID_STATE`는 GOV 규칙을 모두 통과한 뒤 판단합니다.
 
 ## 9. system client 규칙 (CLI)
 

@@ -1,9 +1,12 @@
 package com.dozycoffee.auth.server.adapter.inbound.web.internal
 
+import com.dozycoffee.auth.server.adapter.inbound.web.ClientInfo
 import com.dozycoffee.auth.server.application.port.inbound.IssueSystemTokenCommand
 import com.dozycoffee.auth.server.application.port.inbound.IssueSystemTokenUseCase
+import com.dozycoffee.auth.server.domain.client.ClientId
 import com.dozycoffee.auth.server.domain.client.InvalidClientException
 import jakarta.servlet.http.HttpServletRequest
+import org.slf4j.LoggerFactory
 import org.springframework.http.CacheControl
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -21,7 +24,10 @@ import java.util.Base64
  * - 요청 형식(파라미터)을 먼저 보고 client 인증을 나중에 합니다. 형식이 틀린 요청은 DB를 거치지 않습니다.
  * - Basic 헤더의 client_id와 secret은 디코드한 뒤 각각 URL 디코드합니다 (RFC 6749 §2.3.1).
  * - 성공·실패 모두 `Cache-Control: no-store`, `Pragma: no-cache`로 응답합니다 (RFC 6749 §5.1).
- * - 요청 제한 대상이 아닙니다 (api/conventions.md §8). secret, 토큰, `Authorization` 헤더는 로그에 남기지 않습니다 (SEC-03).
+ * - 요청 제한 대상이 아닙니다 (api/conventions.md §8).
+ * - 요청마다 info 로그를 한 줄 남깁니다: client_id, 요청 IP, 결과(`issued` 또는 OAuth 에러 이름). client_id는 CLI-01 형식일 때만
+ *   그대로 쓰고, 형식이 틀리면 `invalid format`, Basic 헤더에서 읽지 못하면 `-`입니다. secret, 토큰, `Authorization` 헤더는
+ *   남기지 않습니다 (SEC-03).
  */
 @RestController
 class SystemTokenController(
@@ -29,6 +35,23 @@ class SystemTokenController(
 ) {
     @PostMapping(PATH, produces = [MediaType.APPLICATION_JSON_VALUE])
     fun token(request: HttpServletRequest): ResponseEntity<Map<String, Any>> {
+        val authorization = request.getHeader(HttpHeaders.AUTHORIZATION)
+        val credentials = BasicCredentials.parse(authorization)
+        val response = respond(request, authorization, credentials)
+        log.info(
+            "서비스 토큰 발급: client_id={}, ip={}, result={}",
+            loggedClientId(credentials),
+            ClientInfo.of(request).ip ?: "-",
+            response.body?.get("error") ?: ISSUED,
+        )
+        return response
+    }
+
+    private fun respond(
+        request: HttpServletRequest,
+        authorization: String?,
+        credentials: BasicCredentials?,
+    ): ResponseEntity<Map<String, Any>> {
         if (OAUTH_PARAMETERS.any { (request.getParameterValues(it)?.size ?: 0) > 1 }) {
             return error(INVALID_REQUEST, "Request parameters must not be repeated")
         }
@@ -36,7 +59,6 @@ class SystemTokenController(
         if (grantType.isNullOrEmpty()) return error(INVALID_REQUEST, "Missing grant_type parameter")
         if (grantType != CLIENT_CREDENTIALS) return error(UNSUPPORTED_GRANT_TYPE, "Only client_credentials is supported")
 
-        val authorization = request.getHeader(HttpHeaders.AUTHORIZATION)
         if (request.getParameter(CLIENT_SECRET) != null) {
             // client 인증은 client_secret_basic만 받습니다. 헤더와 함께 보내면 인증 방식을 둘 쓴 것이라 invalid_request (RFC 6749 §5.2)
             return if (authorization != null) {
@@ -45,7 +67,7 @@ class SystemTokenController(
                 invalidClient()
             }
         }
-        val credentials = BasicCredentials.parse(authorization) ?: return invalidClient()
+        if (credentials == null) return invalidClient()
 
         val issued =
             try {
@@ -61,6 +83,13 @@ class SystemTokenController(
             ),
         )
     }
+
+    /** 로그에 남길 client_id. 요청 값을 그대로 남기지 않도록 CLI-01 형식인 값만 씁니다. */
+    private fun loggedClientId(credentials: BasicCredentials?): String =
+        when {
+            credentials == null -> "-"
+            else -> ClientId.parseOrNull(credentials.clientId)?.value ?: "invalid format"
+        }
 
     private fun invalidClient(): ResponseEntity<Map<String, Any>> =
         error(INVALID_CLIENT, "Client authentication failed", HttpStatus.UNAUTHORIZED)
@@ -112,6 +141,9 @@ class SystemTokenController(
 
     companion object {
         const val PATH = "/realms/internal/token"
+
+        private val log = LoggerFactory.getLogger(SystemTokenController::class.java)
+        private const val ISSUED = "issued"
 
         private const val GRANT_TYPE = "grant_type"
         private const val CLIENT_CREDENTIALS = "client_credentials"

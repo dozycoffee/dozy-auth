@@ -1,5 +1,6 @@
 package com.dozycoffee.auth.server.adapter.inbound.web.internal
 
+import com.dozycoffee.auth.core.Realm
 import com.dozycoffee.auth.core.RoleCode
 import com.dozycoffee.auth.server.TestcontainersConfiguration
 import com.dozycoffee.auth.server.adapter.outbound.persistence.PrincipalRoleTable
@@ -10,30 +11,30 @@ import com.dozycoffee.auth.server.domain.AuthPolicy
 import com.dozycoffee.auth.server.domain.OpaqueSecret
 import com.dozycoffee.auth.server.domain.SecretHash
 import com.dozycoffee.auth.server.domain.token.IssuerBaseUri
-import com.nimbusds.jose.JOSEObjectType
-import com.nimbusds.jose.JWSAlgorithm
+import com.dozycoffee.auth.starter.DozyAuthProperties
+import com.dozycoffee.auth.starter.DozyJwtDecoders
 import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet
-import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier
-import com.nimbusds.jose.proc.JWSVerificationKeySelector
+import com.nimbusds.jose.jwk.source.JWKSource
 import com.nimbusds.jose.proc.SecurityContext
-import com.nimbusds.jwt.JWTClaimsSet
-import com.nimbusds.jwt.SignedJWT
-import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
-import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.insertReturning
 import org.jetbrains.exposed.v1.jdbc.update
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.test.system.CapturedOutput
+import org.springframework.boot.test.system.OutputCaptureExtension
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.context.annotation.Import
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
+import org.springframework.security.oauth2.jwt.Jwt
+import org.springframework.security.oauth2.jwt.JwtDecoder
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.ResultActionsDsl
@@ -45,15 +46,18 @@ import org.springframework.transaction.support.TransactionTemplate
 import tools.jackson.databind.json.JsonMapper
 import java.net.URLEncoder
 import java.time.Clock
+import java.time.Duration
 import java.util.Base64
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 /**
  * 서비스 토큰 발급 API (api/internal.md 서비스 토큰 발급, token.md §4, §8). CLI-02, CLI-03, CLI-05, ACC-04.
  *
- * 발급한 토큰은 JWKS API로 받은 공개키로 token.md §6의 2~8을 검증합니다. 스타터는 아직 서버의 테스트 의존성이 아니라서 Nimbus로 직접 검증합니다.
+ * 발급한 토큰은 서비스와 같은 스타터 디코더([DozyJwtDecoders])로 검증합니다. 공개키는 JWKS API로 받은 것을 씁니다 (token.md §6의 2~9).
+ * 요청마다 남기는 발급 로그(client_id, 요청 IP, 결과)에 secret, 토큰, `Authorization` 헤더가 없는지도 확인합니다 (SEC-03).
  * 요청은 MockMvc로 테스트와 같은 스레드에서 처리되어 테스트 트랜잭션에 참여하므로, 넣은 데이터는 테스트가 끝나면 되돌립니다.
  * 다른 테스트와 겹치지 않도록 client_id와 role code는 테스트마다 새로 만듭니다.
  * OAuth 에러 이름과 헤더 값은 명세(RFC 6749)의 문자열 그대로 기대값으로 씁니다.
@@ -63,6 +67,7 @@ import kotlin.test.assertFalse
 @Import(TestcontainersConfiguration::class)
 @ActiveProfiles("test")
 @Transactional
+@ExtendWith(OutputCaptureExtension::class)
 class SystemTokenIntegrationTest {
     @Autowired
     lateinit var mockMvc: MockMvc
@@ -98,13 +103,15 @@ class SystemTokenIntegrationTest {
                 }.andReturn()
                 .response.contentAsString
 
-        val claims = verify(jsonMapper.readTree(body).get("access_token").asString(), audience = "catalog")
-        assertEquals(listOf("auth", "catalog"), claims.audience)
-        assertEquals(client.roles, claims.getStringListClaim("roles"))
-        assertEquals("system", claims.getStringClaim("principalType"))
-        assertEquals(client.principalId.toString(), claims.getStringClaim("principalId"))
-        assertEquals("system:${client.principalId}", claims.subject)
-        assertFalse(claims.claims.containsKey("sid"))
+        val jwt = serviceDecoder(audience = "catalog").decode(accessToken(body))
+        assertEquals("${issuerBaseUri.value}/realms/internal", jwt.issuer.toString())
+        assertEquals(listOf("auth", "catalog"), jwt.audience)
+        assertEquals(client.roles, jwt.getClaimAsStringList("roles"))
+        assertEquals("system", jwt.getClaimAsString("principalType"))
+        assertEquals(client.principalId.toString(), jwt.getClaimAsString("principalId"))
+        assertEquals("system:${client.principalId}", jwt.subject)
+        assertFalse(jwt.hasClaim("sid"))
+        assertEquals(AuthPolicy.ACCESS_TOKEN_TTL, Duration.between(jwt.issuedAt, jwt.expiresAt))
     }
 
     @Test
@@ -117,10 +124,9 @@ class SystemTokenIntegrationTest {
                 .andReturn()
                 .response.contentAsString
 
-        val token = jsonMapper.readTree(body).get("access_token").asString()
-        val claims = SignedJWT.parse(token).jwtClaimsSet
-        assertEquals(emptyList(), claims.audience)
-        assertEquals(emptyList(), claims.getStringListClaim("roles"))
+        val jwt = decodeWithoutAudienceCheck(accessToken(body))
+        assertEquals(emptyList(), jwt.audience)
+        assertEquals(emptyList(), jwt.getClaimAsStringList("roles"))
     }
 
     @Test
@@ -240,6 +246,62 @@ class SystemTokenIntegrationTest {
         ).andExpectInvalidClient()
     }
 
+    @Test
+    fun `발급하면 client_id, 요청 IP, 결과를 로그 한 줄로 남기고 secret, 토큰, Authorization 헤더는 남기지 않음`(output: CapturedOutput) {
+        val client = registerClient(roleAudiences = listOf("catalog"))
+        val authorization = basic(client.clientId, client.secret)
+
+        val body =
+            requestToken(authorization)
+                .andExpect { status { isOk() } }
+                .andReturn()
+                .response.contentAsString
+
+        val line = output.issuanceLines(client.clientId).single()
+        assertTrue("ip=127.0.0.1" in line, line)
+        assertTrue("result=issued" in line, line)
+        assertFalse(client.secret in output.all)
+        assertFalse(accessToken(body) in output.all)
+        assertFalse(authorization.removePrefix("Basic ") in output.all)
+    }
+
+    @Test
+    fun `CLI-03 인증에 실패하면 결과를 invalid_client로 남기고 제시한 secret은 남기지 않음`(output: CapturedOutput) {
+        val client = registerClient(roleAudiences = emptyList())
+        val wrongSecret = "wrong-secret-${suffix()}"
+
+        requestToken(basic(client.clientId, wrongSecret)).andExpectInvalidClient()
+
+        val line = output.issuanceLines(client.clientId).single()
+        assertTrue("result=invalid_client" in line, line)
+        assertFalse(wrongSecret in output.all)
+    }
+
+    @Test
+    fun `CLI-01 형식이 아닌 client_id는 로그에 남기지 않음`(output: CapturedOutput) {
+        val clientId = "Not_A_Client_${suffix()}"
+
+        requestToken(basic(clientId, "secret")).andExpectInvalidClient()
+
+        assertFalse(clientId in output.all)
+        assertTrue(output.all.lines().any { "client_id=invalid format," in it && "result=invalid_client" in it })
+    }
+
+    @Test
+    fun `요청 형식이 틀려도 결과를 로그로 남김`(output: CapturedOutput) {
+        val unsupported = "svc-log-${suffix()}"
+        val missingGrantType = "svc-log-${suffix()}"
+
+        requestToken(basic(unsupported, "secret"), body = "grant_type=password").andExpectOAuthError(400, "unsupported_grant_type")
+        requestToken(basic(missingGrantType, "secret"), body = "").andExpectOAuthError(400, "invalid_request")
+
+        assertTrue("result=unsupported_grant_type" in output.issuanceLines(unsupported).single())
+        assertTrue("result=invalid_request" in output.issuanceLines(missingGrantType).single())
+    }
+
+    /** [clientId]의 발급 로그 줄. client_id 뒤의 구분자까지 맞춰 다른 client_id의 앞부분과 겹치지 않게 합니다. */
+    private fun CapturedOutput.issuanceLines(clientId: String): List<String> = all.lines().filter { "client_id=$clientId," in it }
+
     private fun requestToken(
         authorization: String?,
         body: String = "grant_type=client_credentials",
@@ -271,31 +333,27 @@ class SystemTokenIntegrationTest {
         }
     }
 
-    /** token.md §6의 2~8을 서비스 입장에서 검증합니다. 실패하면 예외가 납니다. */
-    private fun verify(
-        token: String,
-        audience: String,
-    ): JWTClaimsSet {
-        val jwks =
-            mockMvc
-                .get(JwksController.PATH)
-                .andReturn()
-                .response.contentAsString
-        val processor =
-            DefaultJWTProcessor<SecurityContext>().apply {
-                jwsTypeVerifier = DefaultJOSEObjectTypeVerifier(JOSEObjectType("at+jwt"))
-                jwsKeySelector = JWSVerificationKeySelector(JWSAlgorithm.RS256, ImmutableJWKSet(JWKSet.parse(jwks)))
-                jwtClaimsSetVerifier =
-                    DefaultJWTClaimsVerifier(
-                        audience,
-                        JWTClaimsSet.Builder().issuer("${issuerBaseUri.value}/realms/internal").build(),
-                        setOf("sub", "iat", "exp", "jti", "principalType", "principalId", "roles"),
-                    )
-            }
-        val claims = processor.process(token, null)
-        assertEquals(AuthPolicy.ACCESS_TOKEN_TTL.seconds, (claims.expirationTime.time - claims.issueTime.time) / MILLIS)
-        return claims
-    }
+    private fun accessToken(body: String): String = jsonMapper.readTree(body).get("access_token").asString()
+
+    /** [audience] 서비스가 쓰는 스타터 디코더. 공개키는 JWKS API 응답입니다. */
+    private fun serviceDecoder(audience: String): JwtDecoder = DozyJwtDecoders.create(serviceProperties(audience), publishedKeys(), clock)
+
+    /** `aud`가 없는 토큰은 어느 서비스도 받지 않으므로, claim을 읽을 때만 `aud` 검사를 뺀 디코더를 씁니다. */
+    private fun decodeWithoutAudienceCheck(token: String): Jwt =
+        DozyJwtDecoders.createWithoutAudienceCheck(serviceProperties("catalog"), publishedKeys(), clock).decode(token)
+
+    private fun serviceProperties(audience: String) =
+        DozyAuthProperties(audience = audience, acceptedRealms = setOf(Realm.INTERNAL), issuerBaseUri = issuerBaseUri.value)
+
+    private fun publishedKeys(): JWKSource<SecurityContext> =
+        ImmutableJWKSet(
+            JWKSet.parse(
+                mockMvc
+                    .get(JwksController.PATH)
+                    .andReturn()
+                    .response.contentAsString,
+            ),
+        )
 
     /** SQL 운영 절차와 같은 순서로 system principal, client, role 부여를 만듭니다. */
     private fun registerClient(
@@ -357,7 +415,6 @@ class SystemTokenIntegrationTest {
     )
 
     private companion object {
-        const val MILLIS = 1000L
         const val SUFFIX_LENGTH = 12
     }
 }

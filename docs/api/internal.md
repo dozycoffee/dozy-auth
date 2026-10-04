@@ -101,6 +101,7 @@ Pragma: no-cache
 
 - 요청 제한 대상이 아닙니다 ([conventions.md §8](conventions.md#8-요청-제한)).
 - 감사 로그를 남기지 않습니다 ([AUD-01](../domain.md#11-감사와-알림-aud)에 없음).
+- 요청마다 info 로그를 한 줄 남깁니다: client_id(CLI-01 형식일 때만, 아니면 `invalid format`), 요청 IP, 결과(`issued` 또는 위 표의 `error`). secret, 토큰, `Authorization` 헤더는 남기지 않습니다 ([SEC-03](../domain.md#12-민감정보-sec)).
 
 ### JWKS
 
