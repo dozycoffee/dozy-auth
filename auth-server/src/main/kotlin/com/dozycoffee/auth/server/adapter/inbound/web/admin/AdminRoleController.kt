@@ -40,6 +40,7 @@ import org.springframework.web.bind.annotation.RestController
  * 토큰 검증(`aud`에 `auth` 포함)과 principal type 검사는 보안 설정(`/admin/...` 체인)이 먼저 합니다 (api/conventions.md §2).
  * 엔드포인트별 필요 role은 여기서 role 이름으로 검사합니다 (GOV-14). 스타터는 `auth` audience의 role을 `ROLE_{code}` 권한으로
  * 바꾸므로 `auth:owner`는 `ROLE_owner`입니다. 메서드에 붙인 검사가 클래스의 검사보다 우선합니다.
+ * 변경 작업은 UseCase가 DB의 현재 role로 관리 등급을 다시 확인합니다 (GOV-14).
  */
 @RestController
 @PreAuthorize(AdminRoleController.OWNER_OR_ADMIN)
@@ -116,7 +117,7 @@ class AdminRoleController(
     @GetMapping(AUDIENCES_PATH, produces = [MediaType.APPLICATION_JSON_VALUE])
     fun listAudiences(): ItemsResponse<AudienceResponse> = ItemsResponse(listAudiences.listAudiences().map(AudienceResponse::of))
 
-    /** GOV-13 audience 추가는 owner만 합니다. */
+    /** GOV-13 audience 추가는 owner만 합니다. 토큰으로 먼저 거르고, UseCase가 DB의 role로 다시 확인합니다. */
     @PreAuthorize(OWNER)
     @PostMapping(AUDIENCES_PATH, consumes = [MediaType.APPLICATION_JSON_VALUE], produces = [MediaType.APPLICATION_JSON_VALUE])
     fun createAudience(

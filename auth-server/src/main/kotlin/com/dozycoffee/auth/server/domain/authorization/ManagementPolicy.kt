@@ -148,12 +148,34 @@ object ManagementPolicy {
     }
 
     /**
-     * role 정의를 수정·삭제할 수 있는지 검사합니다.
+     * role 정의를 등록할 수 있는지 검사합니다 (GOV-13: owner와 admin).
      *
-     * @throws ForbiddenException system role (GOV-13)
+     * @throws ForbiddenException 관리 등급이 없음
      */
-    fun checkCanModifyRoleDefinition(role: Role) {
+    fun checkCanDefineRole(manager: Manager) {
+        checkIsManager(manager)
+    }
+
+    /**
+     * role 정의를 수정·삭제할 수 있는지 검사합니다 (GOV-13). 관리 등급을 system role보다 먼저 봅니다.
+     *
+     * @throws ForbiddenException 관리 등급이 없음, system role
+     */
+    fun checkCanModifyRoleDefinition(
+        manager: Manager,
+        role: Role,
+    ) {
+        checkIsManager(manager)
         if (role.isSystem) throw ForbiddenException("system role은 수정하거나 삭제할 수 없습니다.")
+    }
+
+    /**
+     * audience를 추가할 수 있는지 검사합니다 (GOV-13: owner만).
+     *
+     * @throws ForbiddenException owner가 아님
+     */
+    fun checkCanCreateAudience(manager: Manager) {
+        if (manager.grade != AdminGrade.OWNER) throw ForbiddenException("audience는 owner만 추가할 수 있습니다.")
     }
 
     private fun checkIsManager(manager: Manager) {

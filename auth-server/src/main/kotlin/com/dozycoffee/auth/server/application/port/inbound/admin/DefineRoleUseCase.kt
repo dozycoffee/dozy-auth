@@ -6,6 +6,7 @@ import com.dozycoffee.auth.core.PrincipalKey
 interface DefineRoleUseCase {
     /**
      * @throws com.dozycoffee.auth.server.domain.authorization.AudienceNotFoundException audience 없음
+     * @throws com.dozycoffee.auth.server.domain.ForbiddenException DB의 현재 role에 관리 등급이 없음 (GOV-14)
      * @throws com.dozycoffee.auth.server.domain.authorization.RoleCodeDuplicatedException 같은 audience에 같은 code
      */
     fun defineRole(command: DefineRoleCommand): RoleDefinition
@@ -14,7 +15,7 @@ interface DefineRoleUseCase {
 /**
  * role 등록 요청.
  *
- * @property manager 요청한 직원. `role.created_by`와 감사 로그의 행위자입니다
+ * @property manager 요청한 직원. `role.created_by`와 감사 로그의 행위자입니다. 관리 등급은 토큰이 아니라 DB의 현재 role로 정합니다
  * @property audienceCode audience code
  * @property code audience 안의 role code (DOM-03)
  */
