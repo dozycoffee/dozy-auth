@@ -1,4 +1,4 @@
-package com.dozycoffee.auth.server.adapter.outbound.persistence
+package com.dozycoffee.auth.server.adapter.outbound.persistence.table
 
 import org.jetbrains.exposed.v1.core.ColumnType
 import org.jetbrains.exposed.v1.core.Table

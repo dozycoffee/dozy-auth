@@ -2,10 +2,10 @@ package com.dozycoffee.auth.server.adapter.inbound.web.admin
 
 import com.dozycoffee.auth.core.RoleCode
 import com.dozycoffee.auth.server.TestcontainersConfiguration
-import com.dozycoffee.auth.server.adapter.outbound.persistence.AudienceTable
-import com.dozycoffee.auth.server.adapter.outbound.persistence.AuditLogTable
-import com.dozycoffee.auth.server.adapter.outbound.persistence.PrincipalRoleTable
-import com.dozycoffee.auth.server.adapter.outbound.persistence.RoleTable
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.AudienceTable
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.AuditLogTable
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.PrincipalRoleTable
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.RoleTable
 import com.dozycoffee.auth.server.application.port.outbound.authorization.GrantRolePort
 import com.dozycoffee.auth.server.application.port.outbound.authorization.LoadPrincipalRolesPort
 import com.dozycoffee.auth.server.application.port.outbound.authorization.LoadRolePort

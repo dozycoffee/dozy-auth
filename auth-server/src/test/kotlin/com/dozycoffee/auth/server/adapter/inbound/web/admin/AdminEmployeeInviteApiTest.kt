@@ -1,7 +1,7 @@
 package com.dozycoffee.auth.server.adapter.inbound.web.admin
 
 import com.dozycoffee.auth.server.TestcontainersConfiguration
-import com.dozycoffee.auth.server.adapter.outbound.persistence.AuditLogTable
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.AuditLogTable
 import com.dozycoffee.auth.server.application.port.outbound.account.LoadEmployeePort
 import com.dozycoffee.auth.server.application.port.outbound.authorization.LoadPrincipalRolesPort
 import com.dozycoffee.auth.server.application.port.outbound.mail.EmployeeInvitationMail

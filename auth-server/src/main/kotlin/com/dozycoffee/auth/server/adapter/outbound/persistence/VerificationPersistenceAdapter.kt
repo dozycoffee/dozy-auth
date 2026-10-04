@@ -1,5 +1,6 @@
 package com.dozycoffee.auth.server.adapter.outbound.persistence
 
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.VerificationTable
 import com.dozycoffee.auth.server.application.port.outbound.verification.ConsumeVerificationPort
 import com.dozycoffee.auth.server.application.port.outbound.verification.InvalidateVerificationPort
 import com.dozycoffee.auth.server.application.port.outbound.verification.IssueVerificationPort

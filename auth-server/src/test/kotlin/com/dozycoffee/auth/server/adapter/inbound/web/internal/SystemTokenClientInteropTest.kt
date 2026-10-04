@@ -1,8 +1,8 @@
 package com.dozycoffee.auth.server.adapter.inbound.web.internal
 
 import com.dozycoffee.auth.server.TestcontainersConfiguration
-import com.dozycoffee.auth.server.adapter.outbound.persistence.PrincipalTable
-import com.dozycoffee.auth.server.adapter.outbound.persistence.SystemClientTable
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.PrincipalTable
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.SystemClientTable
 import com.dozycoffee.auth.server.domain.OpaqueSecret
 import com.dozycoffee.auth.server.domain.SecretHash
 import com.dozycoffee.auth.starter.DozySystemClientServletAutoConfiguration

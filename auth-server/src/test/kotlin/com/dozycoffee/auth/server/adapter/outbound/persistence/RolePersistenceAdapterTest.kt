@@ -1,6 +1,9 @@
 package com.dozycoffee.auth.server.adapter.outbound.persistence
 
 import com.dozycoffee.auth.core.RoleCode
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.PrincipalRoleTable
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.PrincipalTable
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.RoleTable
 import com.dozycoffee.auth.server.domain.authorization.Audience
 import com.dozycoffee.auth.server.domain.authorization.AudienceCodeDuplicatedException
 import com.dozycoffee.auth.server.domain.authorization.OwnerAlreadyAssignedException

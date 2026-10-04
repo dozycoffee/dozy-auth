@@ -1,7 +1,7 @@
 package com.dozycoffee.auth.server.adapter.inbound.web.auth
 
 import com.dozycoffee.auth.server.TestcontainersConfiguration
-import com.dozycoffee.auth.server.adapter.outbound.persistence.RefreshSessionTable
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.RefreshSessionTable
 import com.dozycoffee.auth.server.support.MutableClockConfiguration
 import com.dozycoffee.auth.server.support.TestEmployees
 import com.dozycoffee.auth.server.support.TestEmployees.Companion.PASSWORD

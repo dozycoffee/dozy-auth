@@ -1,10 +1,10 @@
 package com.dozycoffee.auth.server.adapter.inbound.web.admin
 
 import com.dozycoffee.auth.server.TestcontainersConfiguration
-import com.dozycoffee.auth.server.adapter.outbound.persistence.AuditLogTable
-import com.dozycoffee.auth.server.adapter.outbound.persistence.EmployeeProfileTable
-import com.dozycoffee.auth.server.adapter.outbound.persistence.PrincipalRoleTable
-import com.dozycoffee.auth.server.adapter.outbound.persistence.VerificationTable
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.AuditLogTable
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.EmployeeProfileTable
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.PrincipalRoleTable
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.VerificationTable
 import com.dozycoffee.auth.server.application.port.outbound.account.LoadEmployeePort
 import com.dozycoffee.auth.server.application.port.outbound.mail.EmployeeInvitationMail
 import com.dozycoffee.auth.server.domain.AuthPolicy

@@ -1,6 +1,9 @@
 package com.dozycoffee.auth.server.adapter.outbound.persistence
 
 import com.dozycoffee.auth.core.RoleCode
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.AudienceTable
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.PrincipalRoleTable
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.RoleTable
 import com.dozycoffee.auth.server.application.port.outbound.authorization.CountRoleHoldersPort
 import com.dozycoffee.auth.server.application.port.outbound.authorization.CreateAudiencePort
 import com.dozycoffee.auth.server.application.port.outbound.authorization.CreateRolePort

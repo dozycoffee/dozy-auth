@@ -1,5 +1,7 @@
 package com.dozycoffee.auth.server.adapter.outbound.persistence
 
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.PrincipalTable
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.VerificationTable
 import com.dozycoffee.auth.server.domain.AuthPolicy
 import com.dozycoffee.auth.server.domain.Email
 import com.dozycoffee.auth.server.domain.SecretHash

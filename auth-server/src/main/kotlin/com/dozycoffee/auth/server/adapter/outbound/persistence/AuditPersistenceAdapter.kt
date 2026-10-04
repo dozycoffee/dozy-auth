@@ -1,6 +1,7 @@
 package com.dozycoffee.auth.server.adapter.outbound.persistence
 
 import com.dozycoffee.auth.core.PrincipalType
+import com.dozycoffee.auth.server.adapter.outbound.persistence.table.AuditLogTable
 import com.dozycoffee.auth.server.application.port.outbound.audit.AuditLogPage
 import com.dozycoffee.auth.server.application.port.outbound.audit.AuditLogQuery
 import com.dozycoffee.auth.server.application.port.outbound.audit.LoadAuditLogsPort
