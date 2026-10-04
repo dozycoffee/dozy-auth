@@ -7,4 +7,7 @@ import java.util.UUID
 interface LoadPrincipalRolesPort {
     /** principal이 가진 role. `{audience}:{code}` 순서이며, role이 없으면 빈 목록입니다. */
     fun findRoleCodes(principalId: UUID): List<RoleCode>
+
+    /** [principalIds] 각각이 가진 role (직원 목록). 순서는 한 principal과 같고, role이 없는 principal은 빈 목록입니다. */
+    fun findRoleCodes(principalIds: Collection<UUID>): Map<UUID, List<RoleCode>>
 }

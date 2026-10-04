@@ -1,7 +1,6 @@
 package com.dozycoffee.auth.server.adapter.inbound.startup
 
 import com.dozycoffee.auth.server.TestcontainersConfiguration
-import com.dozycoffee.auth.server.adapter.outbound.mail.AfterCommitMailSender
 import com.dozycoffee.auth.server.adapter.outbound.persistence.AuditLogTable
 import com.dozycoffee.auth.server.adapter.outbound.persistence.EmployeeProfileTable
 import com.dozycoffee.auth.server.adapter.outbound.persistence.PrincipalRoleTable
@@ -13,7 +12,6 @@ import com.dozycoffee.auth.server.application.port.outbound.account.LoadEmployee
 import com.dozycoffee.auth.server.application.port.outbound.authorization.LoadOwnerPort
 import com.dozycoffee.auth.server.application.port.outbound.authorization.LoadPrincipalRolesPort
 import com.dozycoffee.auth.server.application.port.outbound.mail.EmployeeInvitationMail
-import com.dozycoffee.auth.server.application.port.outbound.mail.SendMailPort
 import com.dozycoffee.auth.server.application.port.outbound.verification.LoadVerificationPort
 import com.dozycoffee.auth.server.domain.AuthPolicy
 import com.dozycoffee.auth.server.domain.Email
@@ -21,6 +19,7 @@ import com.dozycoffee.auth.server.domain.SecretHash
 import com.dozycoffee.auth.server.domain.account.AccountStatus
 import com.dozycoffee.auth.server.domain.verification.Verification
 import com.dozycoffee.auth.server.domain.verification.VerificationPurpose
+import com.dozycoffee.auth.server.support.RecordingMailConfig
 import com.dozycoffee.auth.server.support.RecordingMailSender
 import com.dozycoffee.auth.server.support.TestEmployees
 import com.dozycoffee.auth.server.support.TestEmployees.CreatedEmployee
@@ -32,11 +31,8 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
-import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
-import org.springframework.context.annotation.Primary
 import org.springframework.http.MediaType
 import org.springframework.mock.web.MockHttpServletResponse
 import org.springframework.test.context.ActiveProfiles
@@ -65,7 +61,7 @@ import kotlin.test.assertTrue
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-@Import(TestcontainersConfiguration::class, TestEmployees::class, OwnerBootstrapIntegrationTest.RecordingMailConfig::class)
+@Import(TestcontainersConfiguration::class, TestEmployees::class, RecordingMailConfig::class)
 @ActiveProfiles("test")
 class OwnerBootstrapIntegrationTest {
     @Autowired
@@ -328,17 +324,6 @@ class OwnerBootstrapIntegrationTest {
     private fun now(): Instant = clock.instant().truncatedTo(ChronoUnit.SECONDS)
 
     private fun newEmail(): String = "owner-${UUID.randomUUID()}@dozycoffee.test"
-
-    /** 커밋 후 발송을 그대로 거치되, 보내는 대신 기록합니다. 발송 스레드 대신 커밋한 스레드에서 바로 기록합니다. */
-    @TestConfiguration(proxyBeanMethods = false)
-    class RecordingMailConfig {
-        @Bean
-        fun recordingMailSender(): RecordingMailSender = RecordingMailSender()
-
-        @Bean
-        @Primary
-        fun recordingSendMailPort(recorder: RecordingMailSender): SendMailPort = AfterCommitMailSender(recorder) { it.run() }
-    }
 
     private companion object {
         const val PASSWORD = "owner-horse-battery-staple"

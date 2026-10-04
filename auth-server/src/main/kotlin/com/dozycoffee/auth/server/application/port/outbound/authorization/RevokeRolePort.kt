@@ -12,4 +12,7 @@ interface RevokeRolePort {
 
     /** role을 가진 모든 principal에게서 회수합니다 (role 삭제의 `revokeAll`). 회수한 principal id 목록입니다. */
     fun revokeFromAll(roleId: Long): List<UUID>
+
+    /** ACC-04 비활성화할 때 principal의 모든 role을 회수합니다. 회수한 개수를 돌려줍니다. */
+    fun revokeAll(principalId: UUID): Int
 }

@@ -45,6 +45,34 @@ data class Account(
      */
     fun deactivate(now: Instant): Account = transition(from = status, to = AccountStatus.DEACTIVATED).copy(deactivatedAt = now)
 
+    /**
+     * ACC-06 초대 취소: `PENDING` → `DEACTIVATED`. 다른 상태의 비활성화는 [deactivate]입니다.
+     *
+     * @throws InvalidAccountStateException `PENDING`이 아닐 때
+     */
+    fun cancelInvitation(now: Instant): Account {
+        ensureInvitationPending()
+        return deactivate(now)
+    }
+
+    /**
+     * 초대 재발송·취소는 초대를 수락하기 전(`PENDING`)에만 할 수 있습니다 (api/admin.md 초대 재발송, ACC-06).
+     *
+     * @throws InvalidAccountStateException `PENDING`이 아닐 때
+     */
+    fun ensureInvitationPending() {
+        if (status != AccountStatus.PENDING) throw InvalidAccountStateException()
+    }
+
+    /**
+     * 정보 수정(ACC-07)은 비활성화된 계정에 할 수 없습니다. 개인정보가 이미 파기됐고(ACC-04) 되돌릴 수 없기 때문입니다.
+     *
+     * @throws InvalidAccountStateException `DEACTIVATED`일 때
+     */
+    fun ensureProfileEditable() {
+        if (status == AccountStatus.DEACTIVATED) throw InvalidAccountStateException()
+    }
+
     /** ACC-02 [now]에 로그인이 잠겨 있는지. */
     fun isLocked(now: Instant): Boolean = lockedUntil != null && now.isBefore(lockedUntil)
 

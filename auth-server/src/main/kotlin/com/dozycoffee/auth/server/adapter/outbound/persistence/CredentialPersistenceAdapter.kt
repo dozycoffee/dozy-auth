@@ -1,9 +1,11 @@
 package com.dozycoffee.auth.server.adapter.outbound.persistence
 
 import com.dozycoffee.auth.server.application.port.outbound.credential.CreatePasswordCredentialPort
+import com.dozycoffee.auth.server.application.port.outbound.credential.DeletePasswordCredentialPort
 import com.dozycoffee.auth.server.application.port.outbound.credential.LoadPasswordCredentialPort
 import com.dozycoffee.auth.server.domain.credential.PasswordHash
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.select
 import org.springframework.stereotype.Component
@@ -19,7 +21,8 @@ import java.util.UUID
 @Component
 class CredentialPersistenceAdapter :
     LoadPasswordCredentialPort,
-    CreatePasswordCredentialPort {
+    CreatePasswordCredentialPort,
+    DeletePasswordCredentialPort {
     override fun findPasswordHash(principalId: UUID): PasswordHash? =
         PasswordCredentialTable
             .select(PasswordCredentialTable.passwordHash)
@@ -39,4 +42,7 @@ class CredentialPersistenceAdapter :
             it[PasswordCredentialTable.createdAt] = createdAt
         }
     }
+
+    override fun deletePasswordCredential(principalId: UUID): Boolean =
+        PasswordCredentialTable.deleteWhere { PasswordCredentialTable.principalId eq principalId } > 0
 }

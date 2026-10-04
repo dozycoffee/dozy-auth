@@ -86,6 +86,32 @@ class AccountStatusTransitionTest {
     }
 
     @Test
+    fun `ACC-06 초대를 취소하면 PENDING 계정이 DEACTIVATED가 됨`() {
+        val cancelled = account(PENDING).cancelInvitation(NOW)
+
+        assertEquals(DEACTIVATED, cancelled.status)
+        assertEquals(NOW, cancelled.deactivatedAt)
+    }
+
+    @ParameterizedTest
+    @EnumSource(names = ["ACTIVE", "SUSPENDED", "DEACTIVATED"])
+    fun `ACC-06 PENDING이 아닌 계정의 초대 재발송·취소는 INVALID_STATE`(status: AccountStatus) {
+        assertInvalidState { account(status).ensureInvitationPending() }
+        assertInvalidState { account(status).cancelInvitation(NOW) }
+    }
+
+    @ParameterizedTest
+    @EnumSource(names = ["PENDING", "ACTIVE", "SUSPENDED"])
+    fun `DEACTIVATED가 아니면 정보를 수정할 수 있음`(status: AccountStatus) {
+        account(status).ensureProfileEditable()
+    }
+
+    @Test
+    fun `DEACTIVATED 계정의 정보 수정은 INVALID_STATE`() {
+        assertInvalidState { account(DEACTIVATED).ensureProfileEditable() }
+    }
+
+    @Test
     fun `전이에 실패하면 계정은 바뀌지 않음`() {
         val account = account(PENDING)
 

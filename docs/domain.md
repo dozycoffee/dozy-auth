@@ -287,6 +287,9 @@ stateDiagram-v2
 - **AUD-02** admin 임명·해임은 `auth` audience role 부여·회수이므로 즉시 알림입니다.
 - **AUD-08** 기록 단위
   - 요청 하나에 action 하나를 기본으로 합니다. 여러 role을 한 번에 부여하면 `ROLE_GRANTED` 한 건에 `detail.roles`로 담습니다.
+  - 정보 수정(`PROFILE_UPDATED`)은 바뀐 필드 이름만 `detail.fields`(예: `["name", "phone"]`)로 남깁니다([AUD-07](#11-감사와-알림-aud)). 보낸 값이 지금 값과 같아 바뀐 필드가 없으면 남기지 않습니다.
+  - 초대 재발송(관리자 API, [GOV-11](#8-관리-권한-규칙-gov) 부트스트랩 재발급)은 남기지 않습니다. 초대는 `EMPLOYEE_INVITED`로 이미 남았고 재발송은 계정·권한을 바꾸지 않기 때문입니다.
+  - 비활성화([ACC-04](#3-계정-상태-규칙-acc))로 함께 회수한 role은 `ROLE_REVOKED`로 따로 남기지 않습니다. 초대 취소([ACC-06](#3-계정-상태-규칙-acc))는 `ACCOUNT_DEACTIVATED`에 `detail.via = "invitation_cancelled"`를 남깁니다.
   - `SESSION_REVOKED`는 로그아웃과 재사용 탐지에만 남깁니다. 정지·비활성화·비밀번호 변경·양도로 함께 폐기된 세션은 그 작업의 action에 `detail.revokedSessions`(개수)로 남깁니다.
   - `SESSION_REVOKED`는 그 요청이 세션을 실제로 폐기했을 때만 남깁니다(이미 폐기·만료된 세션의 로그아웃은 남기지 않음). 대상은 세션의 계정이고, `detail.realm`, `detail.sessionId`, `detail.reason`(폐기 사유 `LOGOUT` 또는 `REUSE_DETECTED`)을 남깁니다. 행위자는 로그아웃이면 그 계정이고, 재사용 탐지는 토큰을 누가 제시했는지 알 수 없으므로 `NULL`입니다.
   - `LOGIN_FAILED`에서 계정을 찾지 못하면 `actor_id`, `target_id`는 `NULL`이고 `detail`에는 realm(`detail.realm`, 경로 값 예: `internal`)만 남깁니다. 입력한 이메일은 남기지 않습니다.

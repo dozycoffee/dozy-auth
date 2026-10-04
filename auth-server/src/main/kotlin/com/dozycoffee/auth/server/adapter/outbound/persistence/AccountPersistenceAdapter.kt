@@ -3,27 +3,38 @@ package com.dozycoffee.auth.server.adapter.outbound.persistence
 import com.dozycoffee.auth.core.PrincipalType
 import com.dozycoffee.auth.server.application.port.outbound.account.ChangeAccountStatusPort
 import com.dozycoffee.auth.server.application.port.outbound.account.CreateEmployeePort
+import com.dozycoffee.auth.server.application.port.outbound.account.EmployeeSearchCriteria
 import com.dozycoffee.auth.server.application.port.outbound.account.LoadAccountPort
 import com.dozycoffee.auth.server.application.port.outbound.account.LoadEmployeePort
+import com.dozycoffee.auth.server.application.port.outbound.account.LoadEmployeeRecordsPort
 import com.dozycoffee.auth.server.application.port.outbound.account.LockAccountPort
 import com.dozycoffee.auth.server.application.port.outbound.account.RecordLoginFailurePort
 import com.dozycoffee.auth.server.application.port.outbound.account.ResetLoginFailuresPort
 import com.dozycoffee.auth.server.application.port.outbound.account.ScrubEmployeeProfilePort
 import com.dozycoffee.auth.server.application.port.outbound.account.UpdateEmployeeProfilePort
 import com.dozycoffee.auth.server.domain.Email
+import com.dozycoffee.auth.server.domain.Page
+import com.dozycoffee.auth.server.domain.PageRequest
 import com.dozycoffee.auth.server.domain.account.Account
 import com.dozycoffee.auth.server.domain.account.AccountStatus
 import com.dozycoffee.auth.server.domain.account.DuplicateEmailException
 import com.dozycoffee.auth.server.domain.account.Employee
 import com.dozycoffee.auth.server.domain.account.EmployeeProfile
+import com.dozycoffee.auth.server.domain.account.EmployeeRecord
 import com.dozycoffee.auth.server.domain.account.LoginFailureResult
 import org.jetbrains.exposed.v1.core.JoinType
+import org.jetbrains.exposed.v1.core.LikePattern
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.ResultRow
+import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.core.lowerCase
+import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.core.vendors.ForUpdateOption
+import org.jetbrains.exposed.v1.jdbc.Query
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insertReturning
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -44,12 +55,15 @@ import java.util.UUID
  * - 로그인 실패 기록은 `SELECT ... FOR UPDATE`로 행을 잠그고 `Account.recordLoginFailure`로 판단한 뒤 저장합니다. 동시에 실패한
  *   요청은 앞 요청이 커밋할 때까지 기다렸다가 커밋된 값을 읽으므로 횟수를 잃지 않고, 잠금 규칙은 도메인 한 곳에만 둡니다.
  * - `updated_at`은 DB의 `now()`가 아니라 호출한 쪽이 넘긴 `Clock` 시각입니다.
+ * - 직원 목록 검색은 `lower(name)`, `lower(email)`의 `LIKE '%검색어%'`입니다. 검색어의 `%`, `_`는 이스케이프해 글자 그대로 찾습니다.
+ *   직원 수가 많지 않아 전체 검색을 감수하며, 많아지면 `pg_trgm` 인덱스를 검토합니다.
  */
 @Component
 class AccountPersistenceAdapter :
     LoadAccountPort,
     LockAccountPort,
     LoadEmployeePort,
+    LoadEmployeeRecordsPort,
     CreateEmployeePort,
     ChangeAccountStatusPort,
     UpdateEmployeeProfilePort,
@@ -76,6 +90,36 @@ class AccountPersistenceAdapter :
     override fun findEmployeeById(id: UUID): Employee? = findEmployee { EmployeeProfileTable.principalId eq id }
 
     override fun findEmployeeByEmail(email: Email): Employee? = findEmployee { EmployeeProfileTable.email.lowerCase() eq email.lookupKey }
+
+    override fun findEmployeeRecord(id: UUID): EmployeeRecord? =
+        employees()
+            .where { EmployeeProfileTable.principalId eq id }
+            .singleOrNull()
+            ?.toEmployeeRecord()
+
+    override fun lockEmployeeRecord(id: UUID): EmployeeRecord? =
+        employees()
+            .where { EmployeeProfileTable.principalId eq id }
+            // 키를 바꾸지 않으므로 FOR NO KEY UPDATE. role 부여의 외래 키 검사(FOR KEY SHARE)와 부딪히지 않습니다
+            .forUpdate(ForUpdateOption.PostgreSQL.ForNoKeyUpdate())
+            .singleOrNull()
+            ?.toEmployeeRecord()
+
+    override fun searchEmployeeRecords(
+        criteria: EmployeeSearchCriteria,
+        page: PageRequest,
+    ): Page<EmployeeRecord> {
+        if (criteria.principalIds?.isEmpty() == true) return Page.empty(page)
+        val total = employees().where { matches(criteria) }.count()
+        val items =
+            employees()
+                .where { matches(criteria) }
+                .orderBy(PrincipalTable.createdAt to SortOrder.DESC, PrincipalTable.id to SortOrder.DESC)
+                .limit(page.size)
+                .offset(page.offset)
+                .map { it.toEmployeeRecord() }
+        return Page(items, page, total)
+    }
 
     override fun createEmployee(
         email: Email,
@@ -192,12 +236,35 @@ class AccountPersistenceAdapter :
     }
 
     private fun findEmployee(condition: () -> Op<Boolean>): Employee? =
+        employees()
+            .where(condition)
+            .singleOrNull()
+            ?.toEmployee()
+
+    private fun employees(): Query =
         EmployeeProfileTable
             .join(PrincipalTable, JoinType.INNER, EmployeeProfileTable.principalId, PrincipalTable.id)
             .selectAll()
-            .where(condition)
-            .singleOrNull()
-            ?.let { Employee(it.toAccount(), it.toEmployeeProfile()) }
+
+    private fun matches(criteria: EmployeeSearchCriteria): Op<Boolean> {
+        val conditions = mutableListOf<Op<Boolean>>()
+        criteria.status?.let { conditions += PrincipalTable.status eq it.name }
+        criteria.principalIds?.let { conditions += PrincipalTable.id inList it }
+        criteria.query?.let { query ->
+            val pattern = LikePattern("%", ESCAPE) + LikePattern.ofLiteral(query.lowercase(), ESCAPE) + "%"
+            conditions += (EmployeeProfileTable.name.lowerCase() like pattern) or (EmployeeProfileTable.email.lowerCase() like pattern)
+        }
+        return conditions.fold(Op.TRUE as Op<Boolean>) { acc, op -> acc and op }
+    }
+
+    private fun ResultRow.toEmployee() = Employee(toAccount(), toEmployeeProfile())
+
+    private fun ResultRow.toEmployeeRecord() =
+        EmployeeRecord(
+            employee = toEmployee(),
+            createdAt = this[PrincipalTable.createdAt],
+            updatedAt = maxOf(this[PrincipalTable.updatedAt], this[EmployeeProfileTable.updatedAt]),
+        )
 
     private fun ResultRow.toAccount() =
         Account(
@@ -217,4 +284,9 @@ class AccountPersistenceAdapter :
             phone = this[EmployeeProfileTable.phone],
             address = this[EmployeeProfileTable.address],
         )
+
+    private companion object {
+        /** 검색어의 `%`, `_`를 글자 그대로 찾기 위한 `LIKE` 이스케이프 문자. */
+        const val ESCAPE = '\\'
+    }
 }

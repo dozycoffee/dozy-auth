@@ -9,6 +9,7 @@ import com.dozycoffee.auth.server.application.port.outbound.authorization.GrantR
 import com.dozycoffee.auth.server.application.port.outbound.authorization.LoadAudiencePort
 import com.dozycoffee.auth.server.application.port.outbound.authorization.LoadOwnerPort
 import com.dozycoffee.auth.server.application.port.outbound.authorization.LoadPrincipalRolesPort
+import com.dozycoffee.auth.server.application.port.outbound.authorization.LoadRoleHoldersPort
 import com.dozycoffee.auth.server.application.port.outbound.authorization.LoadRolePort
 import com.dozycoffee.auth.server.application.port.outbound.authorization.LockRolePort
 import com.dozycoffee.auth.server.application.port.outbound.authorization.RevokeRolePort
@@ -66,6 +67,7 @@ class RolePersistenceAdapter :
     GrantRolePort,
     RevokeRolePort,
     CountRoleHoldersPort,
+    LoadRoleHoldersPort,
     LoadOwnerPort {
     override fun findAudiences(): List<Audience> =
         AudienceTable
@@ -184,14 +186,20 @@ class RolePersistenceAdapter :
 
     override fun deleteRole(id: Long): Boolean = RoleTable.deleteWhere { RoleTable.id eq id } > 0
 
-    override fun findRoleCodes(principalId: UUID): List<RoleCode> =
-        PrincipalRoleTable
-            .join(RoleTable, JoinType.INNER, PrincipalRoleTable.roleId, RoleTable.id)
-            .join(AudienceTable, JoinType.INNER, RoleTable.audienceId, AudienceTable.id)
-            .select(AudienceTable.code, RoleTable.code)
-            .where { PrincipalRoleTable.principalId eq principalId }
-            .orderBy(AudienceTable.code to SortOrder.ASC, RoleTable.code to SortOrder.ASC)
-            .map { RoleCode(it[AudienceTable.code], it[RoleTable.code]) }
+    override fun findRoleCodes(principalId: UUID): List<RoleCode> = findRoleCodes(listOf(principalId)).getValue(principalId)
+
+    override fun findRoleCodes(principalIds: Collection<UUID>): Map<UUID, List<RoleCode>> {
+        if (principalIds.isEmpty()) return emptyMap()
+        val codes =
+            PrincipalRoleTable
+                .join(RoleTable, JoinType.INNER, PrincipalRoleTable.roleId, RoleTable.id)
+                .join(AudienceTable, JoinType.INNER, RoleTable.audienceId, AudienceTable.id)
+                .select(PrincipalRoleTable.principalId, AudienceTable.code, RoleTable.code)
+                .where { PrincipalRoleTable.principalId inList principalIds }
+                .orderBy(AudienceTable.code to SortOrder.ASC, RoleTable.code to SortOrder.ASC)
+                .groupBy({ it[PrincipalRoleTable.principalId] }, { RoleCode(it[AudienceTable.code], it[RoleTable.code]) })
+        return principalIds.associateWith { codes[it].orEmpty() }
+    }
 
     override fun grant(grant: RoleGrant): Boolean {
         val inserted =
@@ -220,6 +228,14 @@ class RolePersistenceAdapter :
         PrincipalRoleTable
             .deleteReturning(listOf(PrincipalRoleTable.principalId)) { PrincipalRoleTable.roleId eq roleId }
             .map { it[PrincipalRoleTable.principalId] }
+
+    override fun revokeAll(principalId: UUID): Int = PrincipalRoleTable.deleteWhere { PrincipalRoleTable.principalId eq principalId }
+
+    override fun findHolderIds(roleId: Long): Set<UUID> =
+        PrincipalRoleTable
+            .select(PrincipalRoleTable.principalId)
+            .where { PrincipalRoleTable.roleId eq roleId }
+            .mapTo(mutableSetOf()) { it[PrincipalRoleTable.principalId] }
 
     override fun countHolders(roleId: Long): Long = countHolders(listOf(roleId)).getValue(roleId)
 
