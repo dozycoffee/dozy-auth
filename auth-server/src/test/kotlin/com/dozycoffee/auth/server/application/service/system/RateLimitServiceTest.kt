@@ -3,7 +3,6 @@ package com.dozycoffee.auth.server.application.service.system
 import com.dozycoffee.auth.server.adapter.outbound.ratelimit.RateLimitBucket4jAdapter
 import com.dozycoffee.auth.server.domain.AuthPolicy
 import com.dozycoffee.auth.server.domain.Email
-import com.dozycoffee.auth.server.domain.RateLimit
 import com.dozycoffee.auth.server.domain.TooManyAttemptsException
 import com.dozycoffee.auth.server.support.MutableClock
 import org.junit.jupiter.api.Test
@@ -83,27 +82,24 @@ class RateLimitServiceTest {
 
     @Test
     fun `본인 확인 비밀번호 한도를 넘으면 principal마다 TOO_MANY_ATTEMPTS`() {
-        repeat(PASSWORD_CONFIRM_LIMIT.capacity) { service.checkPasswordConfirmation(PRINCIPAL_ID, PASSWORD_CONFIRM_LIMIT) }
+        repeat(AuthPolicy.RATE_LIMIT_PASSWORD_CONFIRM.capacity) { service.checkPasswordConfirmation(PRINCIPAL_ID) }
 
-        assertThrows<TooManyAttemptsException> { service.checkPasswordConfirmation(PRINCIPAL_ID, PASSWORD_CONFIRM_LIMIT) }
-        assertDoesNotThrow { service.checkPasswordConfirmation(UUID.randomUUID(), PASSWORD_CONFIRM_LIMIT) }
+        assertThrows<TooManyAttemptsException> { service.checkPasswordConfirmation(PRINCIPAL_ID) }
+        assertDoesNotThrow { service.checkPasswordConfirmation(UUID.randomUUID()) }
     }
 
     @Test
     fun `본인 확인 비밀번호 한도는 기간이 지나면 다시 허용`() {
-        repeat(PASSWORD_CONFIRM_LIMIT.capacity) { service.checkPasswordConfirmation(PRINCIPAL_ID, PASSWORD_CONFIRM_LIMIT) }
+        repeat(AuthPolicy.RATE_LIMIT_PASSWORD_CONFIRM.capacity) { service.checkPasswordConfirmation(PRINCIPAL_ID) }
 
-        clock.advance(PASSWORD_CONFIRM_LIMIT.period)
+        clock.advance(AuthPolicy.RATE_LIMIT_PASSWORD_CONFIRM.period)
 
-        assertDoesNotThrow { service.checkPasswordConfirmation(PRINCIPAL_ID, PASSWORD_CONFIRM_LIMIT) }
+        assertDoesNotThrow { service.checkPasswordConfirmation(PRINCIPAL_ID) }
     }
 
     private companion object {
         const val IP = "198.51.100.1"
         val EMAIL = Email("kim@dozycoffee.test")
         val PRINCIPAL_ID: UUID = UUID.fromString("0199a3c4-7b2e-7c1a-9f3d-2b6e8a1c4d5f")
-
-        /** `policy.rate-limit-password-confirm`이 정해지기 전이라 테스트용 한도를 씁니다. */
-        val PASSWORD_CONFIRM_LIMIT = RateLimit(capacity = 5, period = Duration.ofMinutes(15))
     }
 }

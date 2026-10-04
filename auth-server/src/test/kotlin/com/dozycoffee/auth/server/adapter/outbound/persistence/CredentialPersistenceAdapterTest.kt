@@ -61,8 +61,31 @@ class CredentialPersistenceAdapterTest {
         assertFalse(adapter.deletePasswordCredential(id))
     }
 
+    @Test
+    fun `PWD-06 비밀번호를 바꾸면 해시와 변경 시각만 바뀌고 생성 시각은 그대로`() {
+        val id = accounts.createEmployee(Email("kim@dozycoffee.com"), "김도윤", null, null, NOW).account.id
+        adapter.createPasswordCredential(id, PasswordHash(HASH), NOW)
+        val changedAt = Instant.parse("2026-09-26T01:02:03Z")
+
+        assertTrue(adapter.updatePasswordHash(id, PasswordHash(NEW_HASH), changedAt))
+
+        assertEquals(PasswordHash(NEW_HASH), adapter.findPasswordHash(id))
+        val row = PasswordCredentialTable.selectAll().where { PasswordCredentialTable.principalId eq id }.single()
+        assertEquals(changedAt, row[PasswordCredentialTable.changedAt])
+        assertEquals(NOW, row[PasswordCredentialTable.createdAt])
+    }
+
+    @Test
+    fun `비밀번호가 없는 principal의 비밀번호 변경은 false`() {
+        val id = accounts.createEmployee(Email("kim@dozycoffee.com"), "김도윤", null, null, NOW).account.id
+
+        assertFalse(adapter.updatePasswordHash(id, PasswordHash(NEW_HASH), NOW))
+        assertNull(adapter.findPasswordHash(id))
+    }
+
     private companion object {
         val NOW: Instant = Instant.parse("2026-09-25T00:00:00Z")
         const val HASH = "\$argon2id\$v=19\$m=1024,t=1,p=1\$c2FsdA\$aGFzaA"
+        const val NEW_HASH = "\$argon2id\$v=19\$m=1024,t=1,p=1\$bmV3c2FsdA\$bmV3aGFzaA"
     }
 }
