@@ -246,7 +246,9 @@ sequenceDiagram
 
 **규칙** [LGN-04](../domain.md#5-로그인-규칙-lgn), [VER-01](../domain.md#7-verification-규칙-ver) (`PASSWORD_RESET`), [VER-03](../domain.md#7-verification-규칙-ver)
 
-- `ACTIVE` 계정에만 보냅니다.
+- `ACTIVE` 계정에만 보냅니다. 로그인 실패로 잠긴 계정도 `ACTIVE`이므로 보냅니다. 형식이 틀린 이메일은 없는 계정과 같습니다.
+- 같은 이메일의 반복 요청은 [conventions.md §8](conventions.md#8-요청-제한)의 이메일 단위 제한을 따릅니다. 계정이 없어도 셉니다.
+- 감사 로그는 남기지 않습니다 ([AUD-08](../domain.md#11-감사와-알림-aud)).
 
 ### 비밀번호 재설정
 
@@ -273,8 +275,11 @@ sequenceDiagram
 
 **규칙** [PWD-07](../domain.md#4-비밀번호-규칙-pwd)
 
-- 토큰의 principal이 경로의 realm과 맞지 않으면 `VERIFICATION_EXPIRED`입니다.
-- 감사 로그: `PASSWORD_RESET`
+- 토큰의 principal이 경로의 realm과 맞지 않으면 `VERIFICATION_EXPIRED`입니다. 토큰의 계정이 `ACTIVE`가 아니어도(정지, 비활성화) 같은 응답이며, 정지 중에는 비밀번호를 바꿀 수 없습니다.
+- 토큰을 먼저 확인하고 비밀번호 규칙을 검사합니다. 규칙 위반(`VALIDATION_FAILED`)이면 토큰을 소비하지 않으므로 같은 링크로 다시 시도할 수 있습니다.
+- 비밀번호 교체, 세션 폐기, 잠금 해제, verification 소비를 한 트랜잭션에서 처리합니다. 같은 토큰을 동시에 쓰면 하나만 성공하고 나머지는 `VERIFICATION_EXPIRED`입니다.
+- 자동 로그인하지 않습니다. 앱은 로그인 화면으로 보냅니다.
+- 감사 로그: `PASSWORD_RESET` (`detail.revokedSessions`, [AUD-08](../domain.md#11-감사와-알림-aud))
 
 ### 내 정보 수정
 
