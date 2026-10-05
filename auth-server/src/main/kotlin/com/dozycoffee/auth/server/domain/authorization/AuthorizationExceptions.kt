@@ -41,3 +41,14 @@ class AudienceNotFoundException : AuthException("NOT_FOUND", 404, "audience가 �
 class RoleInUseException(
     holders: Long,
 ) : AuthException("ROLE_IN_USE", 409, "부여된 principal이 있는 role입니다 (${holders}명). 일괄 회수를 확인한 뒤 다시 요청해 주세요.")
+
+/**
+ * owner 양도를 요청할 수 없음 (GOV-09). 대상이 자기 자신이거나 `ACTIVE` 직원이 아니거나, 진행 중인 양도가 이미 있는 경우입니다.
+ * 메시지에 대상의 이메일 같은 개인정보를 넣지 않습니다 (SEC-03).
+ */
+class OwnerTransferNotAllowedException(
+    message: String,
+) : AuthException("INVALID_STATE", 409, message)
+
+/** 취소할 진행 중인 owner 양도가 없음 (api/admin.md owner 양도 취소). */
+class OwnerTransferNotFoundException : AuthException("NOT_FOUND", 404, "진행 중인 owner 양도가 없습니다.")

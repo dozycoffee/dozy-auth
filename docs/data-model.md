@@ -109,7 +109,7 @@ erDiagram
 | `method` | varchar(10) | | | `EMAIL` (`SMS`는 추후) |
 | `target` | varchar(254) | | | 발송한 주소 스냅샷 ([VER-08](domain.md#7-verification-규칙-ver)) |
 | `token_hash` | char(64) | | | UNIQUE |
-| `payload` | jsonb | ✅ | | 목적별 추가 데이터 |
+| `payload` | jsonb | ✅ | | 목적별 추가 데이터. `OWNER_TRANSFER`는 `requestedBy`(요청한 owner의 principal id, [GOV-09](domain.md#8-관리-권한-규칙-gov)) |
 | `attempt_count` | int | | 0 | 검증 시도 횟수 |
 | `max_attempts` | int | ✅ | | 링크 토큰은 NULL |
 | `expires_at` | timestamptz | | | |

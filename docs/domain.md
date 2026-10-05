@@ -224,6 +224,8 @@ stateDiagram-v2
   - `OWNER_TRANSFER` verification은 **대상** principal에 발급합니다. 진행 중인 양도는 전체에서 하나만 있을 수 있으며, 새 요청 때 살아 있는(만료 전, 미사용, 미무효) `OWNER_TRANSFER`가 있으면 `INVALID_STATE`입니다.
   - 대상이 **본인으로 로그인한 상태에서** 수락해야 합니다. 링크만 가로챈 사람이 owner가 되는 것을 막기 위해서입니다.
   - 수락하면 한 트랜잭션에서 기존 owner의 `auth:owner` 회수, 대상에게 부여, 감사 로그 기록, 기존 owner의 모든 세션 폐기(`OWNER_TRANSFERRED`)를 처리합니다.
+  - 수락할 때 요청한 owner가 지금도 owner인지, 대상이 지금도 `ACTIVE` 직원인지 다시 확인합니다. 요청 뒤 바뀌었으면(대상 정지, [GOV-12](#8-관리-권한-규칙-gov) 복구 등) `VERIFICATION_EXPIRED`이며 아무것도 바꾸지 않습니다. 요청한 owner는 verification `payload`에 남깁니다 ([data-model.md §3.6](data-model.md#36-verification)).
+  - 요청, 취소, 수락이 동시에 와도 차례로 처리합니다. 동시에 요청해도 진행 중인 양도는 하나만 생기고, 수락과 취소가 겹치면 먼저 끝난 쪽만 성공합니다.
   - 기존 owner는 role 없는 직원이 됩니다. 현재 owner는 수락 전까지 취소할 수 있습니다.
 - **GOV-10** owner는 DB 부분 UNIQUE 인덱스로 한 명만 존재하도록 보장합니다. owner가 없어지는 상황(비활성화, 회수)은 허용하지 않습니다. 이미 owner가 있는데 `auth:owner`를 부여하려 하면 `INVALID_STATE`입니다 (동시 부트스트랩, 기존 owner를 회수하지 않은 양도).
 - **GOV-11** 부트스트랩: Auth가 기동할 때 owner가 없으면 `BOOTSTRAP_OWNER_EMAIL`로 직원(`PENDING`)을 만들고 `auth:owner`를 부여한 뒤 초대를 보냅니다.
@@ -296,6 +298,7 @@ stateDiagram-v2
   - 비활성화([ACC-04](#3-계정-상태-규칙-acc))로 함께 회수한 role은 `ROLE_REVOKED`로 따로 남기지 않습니다. 초대 취소([ACC-06](#3-계정-상태-규칙-acc))는 `ACCOUNT_DEACTIVATED`에 `detail.via = "invitation_cancelled"`를 남깁니다.
   - 본인의 비밀번호 찾기(재설정 메일 요청)는 남기지 않습니다. 누구나 보낼 수 있고 계정을 바꾸지 않기 때문입니다. 관리자의 발송은 `PASSWORD_RESET_REQUESTED`, 실제 재설정은 `PASSWORD_RESET`입니다.
   - 본인이 자기 계정에 하는 작업(초대 수락 `INVITATION_ACCEPTED`, 비밀번호 변경 `PASSWORD_CHANGED`, 재설정 `PASSWORD_RESET`)은 행위자와 대상이 모두 그 계정입니다.
+  - owner 양도([GOV-09](#8-관리-권한-규칙-gov))의 요청(`OWNER_TRANSFER_REQUESTED`)과 취소(`OWNER_TRANSFER_CANCELLED`)는 행위자가 owner, 대상이 양도 대상 직원입니다. 수락(`OWNER_TRANSFERRED`)은 행위자가 수락한 새 owner, 대상이 이전 owner이며, 함께 폐기한 이전 owner의 세션이 있으면 그 수를 `detail.revokedSessions`로 남깁니다. 세 action 모두 그 밖의 `detail`은 남기지 않습니다.
   - `SESSION_REVOKED`는 로그아웃과 재사용 탐지에만 남깁니다. 정지·비활성화·비밀번호 변경·재설정·양도로 함께 폐기된 세션은 그 작업의 action에 `detail.revokedSessions`(개수)로 남깁니다.
   - `SESSION_REVOKED`는 그 요청이 세션을 실제로 폐기했을 때만 남깁니다(이미 폐기·만료된 세션의 로그아웃은 남기지 않음). 대상은 세션의 계정이고, `detail.realm`, `detail.sessionId`, `detail.reason`(폐기 사유 `LOGOUT` 또는 `REUSE_DETECTED`)을 남깁니다. 행위자는 로그아웃이면 그 계정이고, 재사용 탐지는 토큰을 누가 제시했는지 알 수 없으므로 `NULL`입니다.
   - `LOGIN_FAILED`에서 계정을 찾지 못하면 `actor_id`, `target_id`는 `NULL`이고 `detail`에는 realm(`detail.realm`, 경로 값 예: `internal`)만 남깁니다. 입력한 이메일은 남기지 않습니다.
