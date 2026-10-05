@@ -138,7 +138,7 @@ class SessionPersistenceAdapter :
             RefreshSessionTable
                 .select(RefreshSessionTable.id)
                 .where {
-                    (RefreshSessionTable.absoluteExpiresAt lessEq endedAtOrBefore) or
+                    (RefreshSessionTable.expiresAt lessEq endedAtOrBefore) or
                         (RefreshSessionTable.revokedAt lessEq endedAtOrBefore)
                 }.limit(limit)
         return RefreshSessionTable.deleteWhere { RefreshSessionTable.id inSubQuery targets }

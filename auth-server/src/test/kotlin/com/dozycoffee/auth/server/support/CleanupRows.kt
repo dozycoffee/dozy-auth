@@ -33,14 +33,18 @@ object CleanupRows {
                 it[status] = "ACTIVE"
             }.single()[PrincipalTable.id]
 
-    /** [principalId]의 세션 [count]개를 넣고 id를 돌려줍니다. 최초 로그인과 idle 만료는 절대 만료보다 앞입니다. */
+    /**
+     * [principalId]의 세션 [count]개를 넣고 id를 돌려줍니다. 로그인 뒤 갱신 없이 [expiresAt]에 idle 만료되는 세션이며,
+     * 절대 만료는 그보다 뒤입니다.
+     */
     fun insertSessions(
         principalId: UUID,
-        absoluteExpiresAt: Instant,
+        expiresAt: Instant,
         revokedAt: Instant? = null,
         count: Int = 1,
     ): List<UUID> {
-        val createdAt = absoluteExpiresAt.minus(Duration.ofDays(7))
+        val createdAt = expiresAt.minus(Duration.ofHours(8))
+        val absoluteExpiresAt = createdAt.plus(Duration.ofDays(7))
         val hashes = List(count) { randomHash() }
         // id는 DB가 만들고 batchInsert는 돌려주지 않으므로 토큰 해시로 다시 찾습니다
         RefreshSessionTable.batchInsert(hashes, shouldReturnGeneratedValues = false) { hash ->
@@ -49,7 +53,7 @@ object CleanupRows {
             this[RefreshSessionTable.currentTokenHash] = hash
             this[RefreshSessionTable.createdAt] = createdAt
             this[RefreshSessionTable.lastUsedAt] = createdAt
-            this[RefreshSessionTable.expiresAt] = createdAt.plus(Duration.ofHours(8))
+            this[RefreshSessionTable.expiresAt] = expiresAt
             this[RefreshSessionTable.absoluteExpiresAt] = absoluteExpiresAt
             this[RefreshSessionTable.revokedAt] = revokedAt
             this[RefreshSessionTable.revokeReason] = revokedAt?.let { "LOGOUT" }
