@@ -503,7 +503,8 @@ class AdminOwnerTransferApiTest {
         val accepted = accepting.get(WAIT_SECONDS, TimeUnit.SECONDS).status
         val cancelled = cancelling.get(WAIT_SECONDS, TimeUnit.SECONDS).status
         if (accepted == 204) {
-            assertEquals(404, cancelled)
+            // 수락이 먼저 끝나면 요청한 직원은 이미 owner가 아니므로 취소는 FORBIDDEN (admin.md owner 양도 취소의 에러 순서)
+            assertEquals(403, cancelled)
             assertEquals(setOf(SystemRoles.OWNER.value), rolesOf(target.id))
         } else {
             assertEquals(410, accepted)
