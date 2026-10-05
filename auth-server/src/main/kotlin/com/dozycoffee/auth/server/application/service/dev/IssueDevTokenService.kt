@@ -8,6 +8,8 @@ import com.dozycoffee.auth.server.application.port.inbound.dev.IssueDevTokenComm
 import com.dozycoffee.auth.server.application.port.inbound.dev.IssueDevTokenUseCase
 import com.dozycoffee.auth.server.application.port.inbound.dev.IssuedDevToken
 import com.dozycoffee.auth.server.application.port.outbound.jwt.SignTokenPort
+import com.dozycoffee.auth.server.application.port.outbound.metrics.RecordMetricsPort
+import com.dozycoffee.auth.server.application.port.outbound.metrics.TokenIssueKind
 import com.dozycoffee.auth.server.domain.token.AccessTokenFactory
 import com.dozycoffee.auth.server.domain.token.InvalidTokenRequestException
 import com.dozycoffee.auth.server.domain.token.IssuerBaseUri
@@ -22,10 +24,12 @@ import java.util.UUID
  * - DB의 계정·role 등록 여부를 보지 않으므로 트랜잭션이 없습니다. 감사 로그와 refresh 세션도 없습니다.
  * - 세션이 없으므로 직원 토큰에도 `sid`를 넣지 않습니다 (token.md §3에서 `sid`는 선택).
  * - 엔드포인트는 `local`·`dev` 프로필에서만 등록하므로 다른 프로필에서는 호출되지 않습니다.
+ * - 발급 지표는 실제 발급과 구분해 `kind=dev`로 셉니다 (configuration.md §10).
  */
 @Service
 class IssueDevTokenService(
     private val signToken: SignTokenPort,
+    private val recordMetrics: RecordMetricsPort,
     private val issuerBaseUri: IssuerBaseUri,
     private val clock: Clock,
 ) : IssueDevTokenUseCase {
@@ -61,7 +65,9 @@ class IssueDevTokenService(
                 issuedAt = clock.instant(),
                 tokenId = UUID.randomUUID().toString(),
             )
-        return IssuedDevToken(signToken.sign(claims), Duration.between(claims.issuedAt, claims.expiresAt))
+        val token = signToken.sign(claims)
+        recordMetrics.tokenIssued(TokenIssueKind.DEV, realm)
+        return IssuedDevToken(token, Duration.between(claims.issuedAt, claims.expiresAt))
     }
 
     private companion object {

@@ -1,11 +1,13 @@
 package com.dozycoffee.auth.server.adapter.inbound.web.error
 
+import com.dozycoffee.auth.server.adapter.outbound.metrics.MetricsMicrometerAdapter
 import com.dozycoffee.auth.server.adapter.outbound.ratelimit.RateLimitBucket4jAdapter
 import com.dozycoffee.auth.server.application.service.system.RateLimitService
 import com.dozycoffee.auth.server.config.ClockConfig
 import com.dozycoffee.auth.server.config.JwtConfig
 import com.dozycoffee.auth.server.config.security.SecurityConfig
 import com.dozycoffee.auth.server.config.security.TokenVerificationConfig
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
@@ -30,6 +32,8 @@ import org.springframework.test.web.servlet.get
         // 인증 없는 경로 체인의 IP 요청 제한
         RateLimitService::class,
         RateLimitBucket4jAdapter::class,
+        MetricsMicrometerAdapter::class,
+        SimpleMeterRegistry::class,
     ],
 )
 @ActiveProfiles("test")

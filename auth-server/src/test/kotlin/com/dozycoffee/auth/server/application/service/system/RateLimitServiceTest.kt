@@ -1,10 +1,13 @@
 package com.dozycoffee.auth.server.application.service.system
 
+import com.dozycoffee.auth.server.adapter.outbound.metrics.MetricsMicrometerAdapter
 import com.dozycoffee.auth.server.adapter.outbound.ratelimit.RateLimitBucket4jAdapter
 import com.dozycoffee.auth.server.domain.AuthPolicy
 import com.dozycoffee.auth.server.domain.Email
 import com.dozycoffee.auth.server.domain.TooManyAttemptsException
 import com.dozycoffee.auth.server.support.MutableClock
+import com.dozycoffee.auth.server.support.counted
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.assertThrows
@@ -20,7 +23,8 @@ import kotlin.test.assertTrue
  */
 class RateLimitServiceTest {
     private val clock = MutableClock()
-    private val service = RateLimitService(RateLimitBucket4jAdapter(clock))
+    private val meters = SimpleMeterRegistry()
+    private val service = RateLimitService(RateLimitBucket4jAdapter(clock), MetricsMicrometerAdapter(meters))
 
     @Test
     fun `IP 요청 제한을 넘으면 TOO_MANY_ATTEMPTS와 다시 시도할 수 있는 시간`() {
@@ -31,6 +35,7 @@ class RateLimitServiceTest {
         assertEquals("TOO_MANY_ATTEMPTS", ex.code)
         assertEquals(429, ex.status)
         assertTrue(ex.retryAfter > Duration.ZERO && ex.retryAfter <= AuthPolicy.RATE_LIMIT_IP.period, "retryAfter: ${ex.retryAfter}")
+        assertEquals(1.0, meters.counted("dozy.auth.ratelimit.rejected", "limit", "ip"))
     }
 
     @Test
@@ -54,6 +59,7 @@ class RateLimitServiceTest {
         val results = List(AuthPolicy.RATE_LIMIT_EMAIL.capacity + 1) { service.tryAcquireMailSend(EMAIL) }
 
         assertEquals(List(AuthPolicy.RATE_LIMIT_EMAIL.capacity) { true } + false, results)
+        assertEquals(1.0, meters.counted("dozy.auth.ratelimit.rejected", "limit", "email"))
     }
 
     @Test
@@ -86,6 +92,7 @@ class RateLimitServiceTest {
 
         assertThrows<TooManyAttemptsException> { service.checkPasswordConfirmation(PRINCIPAL_ID) }
         assertDoesNotThrow { service.checkPasswordConfirmation(UUID.randomUUID()) }
+        assertEquals(1.0, meters.counted("dozy.auth.ratelimit.rejected", "limit", "password_confirm"))
     }
 
     @Test

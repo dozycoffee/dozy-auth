@@ -78,11 +78,11 @@ class ArchitectureTest {
     }
 
     @Test
-    fun `application은 Exposed와 웹 클래스를 import하지 않음`() {
+    fun `application은 Exposed, 웹 클래스, Micrometer를 import하지 않음`() {
         serverFiles
             .filter { it.packageName.isInPackage("$ROOT.application") }
             .assertFalse(testName = "application의 기술 의존") { file ->
-                file.imports.any { it.name.startsWithAny(EXPOSED, *WEB) }
+                file.imports.any { it.name.startsWithAny(EXPOSED, MICROMETER, *WEB) }
             }
     }
 
@@ -130,6 +130,9 @@ class ArchitectureTest {
 
         const val SPRING = "org.springframework."
         const val EXPOSED = "org.jetbrains.exposed."
+
+        /** 지표는 `RecordMetricsPort`로 남깁니다 (architecture.md §9). */
+        const val MICROMETER = "io.micrometer."
         val WEB = arrayOf("org.springframework.web.", "org.springframework.http.", "jakarta.servlet.")
         val TRANSACTIONAL =
             setOf("org.springframework.transaction.annotation.Transactional", "jakarta.transaction.Transactional")

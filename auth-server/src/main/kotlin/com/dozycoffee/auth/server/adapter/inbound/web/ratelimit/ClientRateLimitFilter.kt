@@ -55,7 +55,7 @@ class ClientRateLimitFilter(
          *
          * - JWKS: 서비스가 캐시가 비거나 모르는 `kid`를 만났을 때 받아 갑니다.
          * - 서비스 토큰 발급: client secret이 난수라 대입이 의미 없습니다.
-         * - 상태 확인: 로드 밸런서·오케스트레이터가 주기적으로 호출합니다.
+         * - Actuator(상태 확인, Prometheus 수집): 로드 밸런서·오케스트레이터·수집기가 주기적으로 호출합니다.
          * - 개발용 API: `local`·`dev` 전용이고 비밀값을 확인하지 않아 대입할 것이 없습니다.
          */
         val EXCLUDED_PATHS: List<String> =

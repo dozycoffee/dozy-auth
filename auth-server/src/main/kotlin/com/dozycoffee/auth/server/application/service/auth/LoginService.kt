@@ -13,6 +13,8 @@ import com.dozycoffee.auth.server.application.port.outbound.authorization.LoadPr
 import com.dozycoffee.auth.server.application.port.outbound.credential.LoadPasswordCredentialPort
 import com.dozycoffee.auth.server.application.port.outbound.crypto.VerifyPasswordPort
 import com.dozycoffee.auth.server.application.port.outbound.jwt.SignTokenPort
+import com.dozycoffee.auth.server.application.port.outbound.metrics.RecordMetricsPort
+import com.dozycoffee.auth.server.application.port.outbound.metrics.TokenIssueKind
 import com.dozycoffee.auth.server.application.port.outbound.session.CreateRefreshSessionPort
 import com.dozycoffee.auth.server.domain.AuthException
 import com.dozycoffee.auth.server.domain.AuthPolicy
@@ -43,6 +45,8 @@ import java.util.UUID
  * 이 예외들은 상태 변경과 감사 기록을 마친 뒤 마지막에 던지고, 그 경로에는 커밋돼도 되는 변경만 둡니다.
  *
  * 잠긴 계정의 거부(`TOO_MANY_ATTEMPTS`)는 아무것도 바꾸지 않고 기록도 남기지 않습니다 (AUD-08).
+ *
+ * 성공과 실패(응답의 에러 code별)는 지표로도 셉니다 (configuration.md §10).
  */
 @Service
 class LoginService(
@@ -55,6 +59,7 @@ class LoginService(
     private val loadPrincipalRoles: LoadPrincipalRolesPort,
     private val signToken: SignTokenPort,
     private val recordAuditLog: RecordAuditLogPort,
+    private val recordMetrics: RecordMetricsPort,
     private val issuerBaseUri: IssuerBaseUri,
     private val clock: Clock,
 ) : LoginUseCase {
@@ -63,6 +68,19 @@ class LoginService(
     )
     override fun login(command: LoginCommand): LoginResult {
         require(command.realm == Realm.INTERNAL) { "${command.realm.pathValue} realm 로그인은 아직 제공하지 않습니다" }
+        val result =
+            try {
+                authenticate(command)
+            } catch (ex: AuthException) {
+                recordMetrics.loginFailed(command.realm, ex.code)
+                throw ex
+            }
+        recordMetrics.loginSucceeded(command.realm)
+        recordMetrics.tokenIssued(TokenIssueKind.LOGIN, command.realm)
+        return result
+    }
+
+    private fun authenticate(command: LoginCommand): LoginResult {
         val now = clock.instant()
 
         // LGN-01 2. realm에 맞는 profile에서 이메일로 조회. 형식이 틀린 이메일은 없는 계정과 같습니다 (LGN-02)

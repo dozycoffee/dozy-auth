@@ -3,6 +3,7 @@ package com.dozycoffee.auth.server.application.service.auth
 import com.dozycoffee.auth.core.PrincipalType
 import com.dozycoffee.auth.core.Realm
 import com.dozycoffee.auth.core.RoleCode
+import com.dozycoffee.auth.server.adapter.outbound.metrics.MetricsMicrometerAdapter
 import com.dozycoffee.auth.server.application.port.inbound.auth.RefreshTokenCommand
 import com.dozycoffee.auth.server.application.port.outbound.account.LoadAccountPort
 import com.dozycoffee.auth.server.application.port.outbound.audit.RecordAuditLogPort
@@ -29,6 +30,8 @@ import com.dozycoffee.auth.server.support.SessionFixtures.ROTATED_AT
 import com.dozycoffee.auth.server.support.SessionFixtures.SESSION_ID
 import com.dozycoffee.auth.server.support.SessionFixtures.rotatedSession
 import com.dozycoffee.auth.server.support.TokenFixtures.ISSUER_BASE
+import com.dozycoffee.auth.server.support.counted
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -54,6 +57,7 @@ class RefreshTokenServiceTest {
     private val loadPrincipalRoles = mockk<LoadPrincipalRolesPort>()
     private val signToken = mockk<SignTokenPort>()
     private val recordAuditLog = mockk<RecordAuditLogPort>(relaxed = true)
+    private val meters = SimpleMeterRegistry()
 
     private val inGrace: Instant = ROTATED_AT.plusSeconds(1)
     private val afterGrace: Instant = ROTATED_AT.plus(AuthPolicy.ROTATION_GRACE).plusSeconds(1)
@@ -77,6 +81,7 @@ class RefreshTokenServiceTest {
         assertEquals(LOGIN_AT.plus(AuthPolicy.REFRESH_ABSOLUTE_TTL).epochSecond - inGrace.epochSecond, result.refreshTokenMaxAge.seconds)
         assertEquals(listOf(FakeSessionPorts.Rotation(CURRENT_TOKEN_HASH, result.refreshToken.hash(), inGrace)), sessions.rotations)
         verify(exactly = 0) { recordAuditLog.record(any()) }
+        assertEquals(1.0, meters.counted("dozy.auth.token.issued", "kind", "refresh", "realm", "internal"))
     }
 
     @Test
@@ -108,6 +113,8 @@ class RefreshTokenServiceTest {
             event.captured.detail,
         )
         assertEquals(IP, event.captured.ip)
+        assertEquals(1.0, meters.counted("dozy.auth.refresh.reuse.detected", "realm", "internal"))
+        assertEquals(0.0, meters.counted("dozy.auth.token.issued"))
     }
 
     @Test
@@ -118,6 +125,7 @@ class RefreshTokenServiceTest {
         assertFailsWith<SessionExpiredException> { service(afterGrace).refresh(command(PREVIOUS_TOKEN)) }
 
         verify(exactly = 0) { recordAuditLog.record(any()) }
+        assertEquals(0.0, meters.counted("dozy.auth.refresh.reuse.detected"))
     }
 
     @Test
@@ -196,6 +204,7 @@ class RefreshTokenServiceTest {
             loadPrincipalRoles = loadPrincipalRoles,
             signToken = signToken,
             recordAuditLog = recordAuditLog,
+            recordMetrics = MetricsMicrometerAdapter(meters),
             issuerBaseUri = ISSUER_BASE,
             clock = Clock.fixed(now, ZoneOffset.UTC),
         )

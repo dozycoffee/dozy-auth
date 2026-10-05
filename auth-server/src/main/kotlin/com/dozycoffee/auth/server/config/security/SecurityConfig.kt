@@ -44,7 +44,7 @@ import org.springframework.web.servlet.HandlerExceptionResolver
  *
  * | 순서 | 경로 | 인증 |
  * |---|---|---|
- * | 1 | [PUBLIC_PATHS] (로그인, 초대 조회·수락, 비밀번호 찾기·재설정, 서비스 토큰 발급, JWKS, 상태 확인) | 없음 (서비스 토큰 발급의 client 인증은 컨트롤러). IP 단위 요청 제한 ([ClientRateLimitFilter]) |
+ * | 1 | [PUBLIC_PATHS] (로그인, 초대 조회·수락, 비밀번호 찾기·재설정, 서비스 토큰 발급, JWKS, 상태 확인, Prometheus 수집) | 없음 (서비스 토큰 발급의 client 인증은 컨트롤러). IP 단위 요청 제한 ([ClientRateLimitFilter]) |
  * | 2 | [SessionController.REFRESH_COOKIE_PATHS] (토큰 갱신, 로그아웃) | refresh 쿠키 (서비스가 확인). `Origin` 검사 ([RefreshCookieOriginFilter]). 요청 제한 없음 |
  * | 3 | `/realms/...` | 사용자 access token. `aud`는 보지 않고 `iss`의 realm이 경로와 같아야 함. system token은 403 |
  * | 4 | `/admin/...`, `/internal/...` | access token(관리)·system token. `aud`에 `auth` 포함 |
@@ -225,6 +225,8 @@ class SecurityConfig {
             arrayOf(
                 JwksController.PATH,
                 "/actuator/health",
+                // Prometheus 수집. 내부망에서만 닿게 하는 것은 배포 환경이 맡음 (configuration.md §10)
+                "/actuator/prometheus",
                 SessionController.LOGIN_PATH,
                 InvitationController.VERIFY_PATH,
                 InvitationController.ACCEPT_PATH,

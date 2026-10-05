@@ -36,6 +36,9 @@ dependencies {
 
     // 운영
     implementation(libs.spring.boot.starter.actuator)
+    // 로그와 X-Trace-Id의 trace id (configuration.md §10)
+    implementation(libs.spring.boot.micrometer.tracing.brave)
+    runtimeOnly(libs.micrometer.tracing.bridge.brave)
     runtimeOnly(libs.micrometer.prometheus)
     developmentOnly(libs.spring.boot.docker.compose)
 

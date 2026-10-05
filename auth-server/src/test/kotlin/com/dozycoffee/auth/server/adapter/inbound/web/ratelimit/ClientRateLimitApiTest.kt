@@ -108,12 +108,13 @@ class ClientRateLimitApiTest {
     }
 
     @Test
-    fun `JWKS, 서비스 토큰 발급, 상태 확인은 요청 제한 대상이 아님`() {
+    fun `JWKS, 서비스 토큰 발급, Actuator는 요청 제한 대상이 아님`() {
         val excluded =
             listOf(
                 HttpMethod.GET to "/.well-known/jwks.json",
                 HttpMethod.POST to "/realms/internal/token",
                 HttpMethod.GET to "/actuator/health",
+                HttpMethod.GET to "/actuator/prometheus",
             )
 
         excluded.forEach { (method, path) ->
@@ -193,6 +194,6 @@ class ClientRateLimitApiTest {
         const val UNKNOWN_ACCOUNT = """{"email": "nobody@dozycoffee.test", "password": "password-1234"}"""
 
         /** 명세가 요청 제한에서 뺀 인증 없는 경로 (api/conventions.md §8). */
-        val SPEC_EXCLUDED_PATHS = setOf("/.well-known/jwks.json", "/realms/internal/token", "/actuator/health")
+        val SPEC_EXCLUDED_PATHS = setOf("/.well-known/jwks.json", "/realms/internal/token", "/actuator/health", "/actuator/prometheus")
     }
 }

@@ -1,6 +1,8 @@
 package com.dozycoffee.auth.server.application.service.system
 
 import com.dozycoffee.auth.server.application.port.inbound.system.CheckClientRateLimitUseCase
+import com.dozycoffee.auth.server.application.port.outbound.metrics.RateLimitKind
+import com.dozycoffee.auth.server.application.port.outbound.metrics.RecordMetricsPort
 import com.dozycoffee.auth.server.application.port.outbound.ratelimit.ConsumeRateLimitPort
 import com.dozycoffee.auth.server.application.port.outbound.ratelimit.RateLimitKey
 import com.dozycoffee.auth.server.application.port.outbound.ratelimit.RateLimitResult
@@ -21,13 +23,15 @@ import java.util.UUID
  * | 본인 확인용 비밀번호를 받는 API | [checkPasswordConfirmation] (UseCase) | `policy.rate-limit-password-confirm` | `429 TOO_MANY_ATTEMPTS` |
  *
  * 카운터는 인스턴스 메모리에 있습니다 (ADR-0024). 트랜잭션과 관계없이 호출한 순간 1회를 쓰고, 업무가 롤백돼도 되돌리지 않습니다.
+ * 한도를 넘은 요청은 종류별로 지표에 셉니다 (configuration.md §10).
  */
 @Service
 class RateLimitService(
     private val consumeRateLimit: ConsumeRateLimitPort,
+    private val recordMetrics: RecordMetricsPort,
 ) : CheckClientRateLimitUseCase {
     override fun check(clientIp: String?) {
-        consume(RateLimitKey.ClientIp(clientIp ?: UNKNOWN_IP), AuthPolicy.RATE_LIMIT_IP)
+        consume(RateLimitKey.ClientIp(clientIp ?: UNKNOWN_IP), AuthPolicy.RATE_LIMIT_IP, RateLimitKind.IP)
     }
 
     /**
@@ -38,8 +42,11 @@ class RateLimitService(
      *
      * @return 이 이메일로 메일을 보내도 되면 `true`
      */
-    fun tryAcquireMailSend(email: Email): Boolean =
-        consumeRateLimit.tryConsume(RateLimitKey.MailRecipient(email), AuthPolicy.RATE_LIMIT_EMAIL) is RateLimitResult.Allowed
+    fun tryAcquireMailSend(email: Email): Boolean {
+        val allowed = consumeRateLimit.tryConsume(RateLimitKey.MailRecipient(email), AuthPolicy.RATE_LIMIT_EMAIL) is RateLimitResult.Allowed
+        if (!allowed) recordMetrics.rateLimitRejected(RateLimitKind.EMAIL)
+        return allowed
+    }
 
     /**
      * 본인 확인용 비밀번호를 받는 UseCase(비밀번호 변경, 파트너 탈퇴)가 비밀번호를 검증하기 **전에** 호출합니다.
@@ -48,15 +55,19 @@ class RateLimitService(
      * 비밀번호가 맞았는지와 관계없이 호출할 때마다 1회를 씁니다. 성공한 확인도 셉니다 (api/conventions.md §8).
      */
     fun checkPasswordConfirmation(principalId: UUID) {
-        consume(RateLimitKey.PasswordConfirmation(principalId), AuthPolicy.RATE_LIMIT_PASSWORD_CONFIRM)
+        consume(RateLimitKey.PasswordConfirmation(principalId), AuthPolicy.RATE_LIMIT_PASSWORD_CONFIRM, RateLimitKind.PASSWORD_CONFIRM)
     }
 
     private fun consume(
         key: RateLimitKey,
         limit: RateLimit,
+        kind: RateLimitKind,
     ) {
         val result = consumeRateLimit.tryConsume(key, limit)
-        if (result is RateLimitResult.Limited) throw TooManyAttemptsException(result.retryAfter)
+        if (result is RateLimitResult.Limited) {
+            recordMetrics.rateLimitRejected(kind)
+            throw TooManyAttemptsException(result.retryAfter)
+        }
     }
 
     private companion object {
