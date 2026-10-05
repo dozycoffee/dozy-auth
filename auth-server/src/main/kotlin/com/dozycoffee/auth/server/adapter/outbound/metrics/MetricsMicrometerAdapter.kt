@@ -3,6 +3,7 @@ package com.dozycoffee.auth.server.adapter.outbound.metrics
 import com.dozycoffee.auth.core.Realm
 import com.dozycoffee.auth.server.application.port.outbound.metrics.CleanupOutcome
 import com.dozycoffee.auth.server.application.port.outbound.metrics.CleanupTarget
+import com.dozycoffee.auth.server.application.port.outbound.metrics.MailKind
 import com.dozycoffee.auth.server.application.port.outbound.metrics.RateLimitKind
 import com.dozycoffee.auth.server.application.port.outbound.metrics.RecordMetricsPort
 import com.dozycoffee.auth.server.application.port.outbound.metrics.TokenIssueKind
@@ -55,6 +56,10 @@ class MetricsMicrometerAdapter(
         registry.counter(CLEANUP_RUNS, OUTCOME, outcome.tagValue()).increment()
     }
 
+    override fun mailFailed(kind: MailKind) {
+        registry.counter(MAIL_FAILED, KIND, kind.tagValue()).increment()
+    }
+
     private fun Enum<*>.tagValue(): String = name.lowercase()
 
     companion object {
@@ -65,6 +70,7 @@ class MetricsMicrometerAdapter(
         const val RATE_LIMIT_REJECTED = "dozy.auth.ratelimit.rejected"
         const val CLEANUP_DELETED = "dozy.auth.cleanup.deleted"
         const val CLEANUP_RUNS = "dozy.auth.cleanup.runs"
+        const val MAIL_FAILED = "dozy.auth.mail.failed"
 
         private const val REALM = "realm"
         private const val REASON = "reason"

@@ -47,7 +47,7 @@ class RoleAssignment(
         )
     }
 
-    /** AUD-08 `ROLE_GRANTED`·`ROLE_REVOKED` 한 건. [roles]는 이번에 실제로 부여·회수한 role입니다. */
+    /** AUD-08 `ROLE_GRANTED`·`ROLE_REVOKED` 한 건. [roles]는 이번에 실제로 부여·회수한 role입니다. 남긴 기록을 돌려줍니다. */
     fun record(
         action: AuditAction,
         manager: PrincipalKey,
@@ -56,8 +56,8 @@ class RoleAssignment(
         occurredAt: Instant,
         ip: String?,
         userAgent: String?,
-    ) {
-        recordAuditLog.record(
+    ): AuditEvent {
+        val event =
             AuditEvent(
                 occurredAt = occurredAt,
                 action = action,
@@ -66,8 +66,9 @@ class RoleAssignment(
                 detail = mapOf("roles" to roles.map { it.value }),
                 ip = ip,
                 userAgent = userAgent,
-            ),
-        )
+            )
+        recordAuditLog.record(event)
+        return event
     }
 
     /** 관리 작업의 두 쪽. */

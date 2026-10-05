@@ -5,7 +5,9 @@ import com.dozycoffee.auth.server.adapter.outbound.mail.ConsoleMailAdapter
 import com.dozycoffee.auth.server.adapter.outbound.mail.MailSenderProperties
 import com.dozycoffee.auth.server.adapter.outbound.mail.MailSenderType
 import com.dozycoffee.auth.server.adapter.outbound.mail.SmtpMailAdapter
+import com.dozycoffee.auth.server.adapter.outbound.metrics.MetricsMicrometerAdapter
 import com.dozycoffee.auth.server.support.MailFixtures.APP_URL
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.support.StaticListableBeanFactory
 import org.springframework.mail.javamail.JavaMailSender
@@ -58,7 +60,13 @@ class MailConfigTest {
 
     @Test
     fun `메일 포트는 커밋 후 발송으로 감쌈`() {
-        val port = MailConfig().sendMailPort(properties(MailSenderType.CONSOLE), emptyProvider(), environment("local"))
+        val port =
+            MailConfig().sendMailPort(
+                properties(MailSenderType.CONSOLE),
+                emptyProvider(),
+                environment("local"),
+                MetricsMicrometerAdapter(SimpleMeterRegistry()),
+            )
 
         assertIs<ConsoleMailAdapter>(assertIs<AfterCommitMailSender>(port).delegate)
         (port as AutoCloseable).close()

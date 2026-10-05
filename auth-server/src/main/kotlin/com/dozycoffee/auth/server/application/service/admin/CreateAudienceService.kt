@@ -22,13 +22,14 @@ import java.time.Clock
  * audience 추가 (api/admin.md audience 추가, GOV-13). owner만 할 수 있습니다. 웹 계층이 토큰의 role로 먼저 검사하고,
  * 여기서 DB의 현재 role로 다시 검사합니다 (GOV-14). 토큰이 만료 전이어도 회수된 owner 권한으로는 추가하지 못합니다.
  *
- * 감사 로그는 `AUDIENCE_CREATED`이고 `detail.audience`에 code를 남깁니다.
+ * 감사 로그는 `AUDIENCE_CREATED`이고 `detail.audience`에 code를 남깁니다. owner에게 즉시 알립니다 (AUD-01, [OwnerAlerts]).
  */
 @Service
 class CreateAudienceService(
     private val loadPrincipalRoles: LoadPrincipalRolesPort,
     private val createAudience: CreateAudiencePort,
     private val recordAuditLog: RecordAuditLogPort,
+    private val ownerAlerts: OwnerAlerts,
     private val clock: Clock,
 ) : CreateAudienceUseCase {
     @Transactional
@@ -40,7 +41,7 @@ class CreateAudienceService(
         val now = clock.instant()
         val audience = createAudience.createAudience(command.code, command.name, command.description, now)
 
-        recordAuditLog.record(
+        val event =
             AuditEvent(
                 occurredAt = now,
                 action = AuditAction.AUDIENCE_CREATED,
@@ -49,8 +50,9 @@ class CreateAudienceService(
                 detail = mapOf("audience" to audience.code),
                 ip = command.ip,
                 userAgent = command.userAgent,
-            ),
-        )
+            )
+        recordAuditLog.record(event)
+        ownerAlerts.notifyIfRequired(event)
         return audience
     }
 }

@@ -7,6 +7,7 @@ import com.dozycoffee.auth.server.adapter.outbound.mail.MailSenderProperties
 import com.dozycoffee.auth.server.adapter.outbound.mail.MailSenderType
 import com.dozycoffee.auth.server.adapter.outbound.mail.SmtpMailAdapter
 import com.dozycoffee.auth.server.application.port.outbound.mail.SendMailPort
+import com.dozycoffee.auth.server.application.port.outbound.metrics.RecordMetricsPort
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
@@ -32,7 +33,8 @@ class MailConfig {
         properties: MailSenderProperties,
         javaMailSender: ObjectProvider<JavaMailSender>,
         environment: Environment,
-    ): SendMailPort = AfterCommitMailSender(delivery(properties, javaMailSender.ifAvailable, environment), mailExecutor())
+        metrics: RecordMetricsPort,
+    ): SendMailPort = AfterCommitMailSender(delivery(properties, javaMailSender.ifAvailable, environment), metrics, mailExecutor())
 
     internal fun delivery(
         properties: MailSenderProperties,

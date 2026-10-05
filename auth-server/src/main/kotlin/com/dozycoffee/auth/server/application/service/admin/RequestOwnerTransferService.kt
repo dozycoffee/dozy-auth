@@ -32,7 +32,7 @@ import java.time.Instant
  *    (`INVALID_STATE`) → 살아 있는 `OWNER_TRANSFER`가 있음(`INVALID_STATE`)
  * 3. 대상 principal에 `OWNER_TRANSFER`를 발급합니다. `payload.requestedBy`에 요청한 owner의 id를 남겨 수락할 때 다시 확인합니다.
  *    수락 메일은 대상의 지금 이메일로 커밋 후 보냅니다 (architecture.md §9.3)
- * 4. 감사 로그 `OWNER_TRANSFER_REQUESTED`: 행위자는 owner, 대상은 양도 대상 직원 (AUD-08)
+ * 4. 감사 로그 `OWNER_TRANSFER_REQUESTED`: 행위자는 owner, 대상은 양도 대상 직원 (AUD-08). owner 본인에게 즉시 알림 (AUD-01, [OwnerAlerts])
  *
  * 관리자가 고른 계정에 보내는 것이므로 이메일 단위 요청 제한(api/conventions.md §8)은 적용하지 않습니다.
  */
@@ -45,6 +45,7 @@ class RequestOwnerTransferService(
     private val issueVerification: IssueVerificationPort,
     private val sendMail: SendMailPort,
     private val principals: PrincipalAdministration,
+    private val ownerAlerts: OwnerAlerts,
     private val clock: Clock,
 ) : RequestOwnerTransferUseCase {
     @Transactional
@@ -78,7 +79,8 @@ class RequestOwnerTransferService(
         sendMail.send(OwnerTransferRequestMail(profile.email, profile.name, issued.token, saved.expiresAt))
 
         // 4. AUD-08
-        principals.record(AuditAction.OWNER_TRANSFER_REQUESTED, command.ownerId, target.id, now, command.ip, command.userAgent)
+        val event = principals.record(AuditAction.OWNER_TRANSFER_REQUESTED, command.ownerId, target.id, now, command.ip, command.userAgent)
+        ownerAlerts.notifyIfRequired(event)
         return saved.expiresAt
     }
 }

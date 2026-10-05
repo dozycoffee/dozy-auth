@@ -2,6 +2,7 @@ package com.dozycoffee.auth.server.support
 
 import com.dozycoffee.auth.server.adapter.outbound.mail.AfterCommitMailSender
 import com.dozycoffee.auth.server.application.port.outbound.mail.SendMailPort
+import com.dozycoffee.auth.server.application.port.outbound.metrics.RecordMetricsPort
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Primary
@@ -17,5 +18,8 @@ class RecordingMailConfig {
 
     @Bean
     @Primary
-    fun recordingSendMailPort(recorder: RecordingMailSender): SendMailPort = AfterCommitMailSender(recorder) { it.run() }
+    fun recordingSendMailPort(
+        recorder: RecordingMailSender,
+        metrics: RecordMetricsPort,
+    ): SendMailPort = AfterCommitMailSender(recorder, metrics) { it.run() }
 }

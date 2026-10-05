@@ -38,6 +38,18 @@ interface RecordMetricsPort {
 
     /** AUD-05 정리 배치 한 번의 실행이 끝남. */
     fun cleanupFinished(outcome: CleanupOutcome)
+
+    /** 메일을 보내지 못함 (발송 실패, 발송 대기열 가득 참). architecture.md §9.3에 따라 다시 시도하지 않습니다. */
+    fun mailFailed(kind: MailKind)
+}
+
+/** 메일 종류 (application/port/outbound/mail의 `Mail` 하위 타입). */
+enum class MailKind {
+    EMPLOYEE_INVITATION,
+    PASSWORD_RESET,
+    OWNER_TRANSFER_REQUEST,
+    OWNER_TRANSFER_COMPLETED,
+    OWNER_NOTIFICATION,
 }
 
 /** access token을 발급한 경로. */

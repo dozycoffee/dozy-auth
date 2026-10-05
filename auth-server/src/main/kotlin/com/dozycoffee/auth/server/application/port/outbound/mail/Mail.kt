@@ -5,7 +5,6 @@ import com.dozycoffee.auth.server.domain.Email
 import com.dozycoffee.auth.server.domain.OpaqueSecret
 import com.dozycoffee.auth.server.domain.audit.AuditAction
 import java.time.Instant
-import java.time.LocalDate
 
 /**
  * 보낼 메일의 종류와 값 (architecture.md §8). 문구와 템플릿은 메일 어댑터가 가집니다.
@@ -84,18 +83,4 @@ data class OwnerNotificationMail(
     override val to: Email,
     val action: AuditAction,
     val occurredAt: Instant,
-) : Mail
-
-/**
- * owner 일일 요약 (AUD-01의 "일일 요약", AUD-03). 하루 동안의 알림 대상 action을 종류별 건수로 담습니다.
- *
- * 집계 기준(하루의 경계, 포함할 action)은 일일 요약 배치를 만들 때 정합니다.
- *
- * @property date 요약한 날짜
- * @property counts action별 건수. 비어 있으면 "변경 없음"으로 보냅니다
- */
-data class OwnerDailySummaryMail(
-    override val to: Email,
-    val date: LocalDate,
-    val counts: Map<AuditAction, Int>,
 ) : Mail

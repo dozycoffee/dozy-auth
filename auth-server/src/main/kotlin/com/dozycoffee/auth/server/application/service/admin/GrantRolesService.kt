@@ -20,11 +20,12 @@ import java.time.Clock
  * - 이미 가진 role은 무시합니다 (GOV-08). 감사 로그 `ROLE_GRANTED`(`detail.roles`)에는 새로 부여한 role만 담고, 새로 부여한 role이
  *   없으면 남기지 않습니다 (AUD-08).
  * - role 정의를 부여용으로 잠가, 동시에 삭제된 role의 부여가 외래 키 위반(500)이 되지 않고 `NOT_FOUND`가 되게 합니다 (LockRolePort).
- * - 세션은 건드리지 않습니다. 대상의 다음 토큰 갱신부터 반영됩니다 (SES-05). owner 알림(AUD-01, AUD-02)은 알림 기능 전까지 감사 기록만 남깁니다.
+ * - 세션은 건드리지 않습니다. 대상의 다음 토큰 갱신부터 반영됩니다 (SES-05). `auth` audience role을 부여하면(admin 임명) owner에게 즉시 알립니다 (AUD-02, [OwnerAlerts]).
  */
 @Service
 class GrantRolesService(
     private val roleAssignment: RoleAssignment,
+    private val ownerAlerts: OwnerAlerts,
     private val lockRole: LockRolePort,
     private val grantRole: GrantRolePort,
     private val clock: Clock,
@@ -43,6 +44,7 @@ class GrantRolesService(
                 .map { it.code }
                 .sortedBy { it.value }
         if (granted.isEmpty()) return
-        roleAssignment.record(AuditAction.ROLE_GRANTED, command.manager, target.id, granted, now, command.ip, command.userAgent)
+        val event = roleAssignment.record(AuditAction.ROLE_GRANTED, command.manager, target.id, granted, now, command.ip, command.userAgent)
+        ownerAlerts.notifyIfRequired(event)
     }
 }

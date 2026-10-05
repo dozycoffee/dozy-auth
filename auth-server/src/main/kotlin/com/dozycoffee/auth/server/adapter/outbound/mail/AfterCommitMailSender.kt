@@ -1,7 +1,14 @@
 package com.dozycoffee.auth.server.adapter.outbound.mail
 
+import com.dozycoffee.auth.server.application.port.outbound.mail.EmployeeInvitationMail
 import com.dozycoffee.auth.server.application.port.outbound.mail.Mail
+import com.dozycoffee.auth.server.application.port.outbound.mail.OwnerNotificationMail
+import com.dozycoffee.auth.server.application.port.outbound.mail.OwnerTransferCompletedMail
+import com.dozycoffee.auth.server.application.port.outbound.mail.OwnerTransferRequestMail
+import com.dozycoffee.auth.server.application.port.outbound.mail.PasswordResetMail
 import com.dozycoffee.auth.server.application.port.outbound.mail.SendMailPort
+import com.dozycoffee.auth.server.application.port.outbound.metrics.MailKind
+import com.dozycoffee.auth.server.application.port.outbound.metrics.RecordMetricsPort
 import org.slf4j.LoggerFactory
 import org.springframework.transaction.support.TransactionSynchronization
 import org.springframework.transaction.support.TransactionSynchronizationManager
@@ -18,11 +25,12 @@ import java.util.concurrent.TimeUnit
  * - 트랜잭션 밖에서 호출하면 바로 보냅니다.
  * - 발송은 [executor]에서 합니다. 요청 응답이 SMTP 지연을 기다리지 않고, 메일을 보냈는지가 응답 시간으로 드러나지 않습니다
  *   (예: 비밀번호 찾기는 계정이 있을 때만 메일을 보냄).
- * - 실패하면 메일 종류와 예외만 경고 로그로 남기고 다시 시도하지 않습니다. 본문과 링크는 남기지 않습니다 (SEC-03).
- *   대기열이 가득 차 받지 못한 메일도 같습니다.
+ * - 실패하면 메일 종류와 예외만 경고 로그로 남기고 `dozy.auth.mail.failed`([RecordMetricsPort.mailFailed])로 센 뒤 다시 시도하지 않습니다.
+ *   본문, 링크, 받는 주소는 남기지 않습니다 (SEC-03). 대기열이 가득 차 받지 못한 메일도 같습니다.
  */
 class AfterCommitMailSender(
     internal val delegate: SendMailPort,
+    private val metrics: RecordMetricsPort,
     private val executor: Executor,
 ) : SendMailPort,
     AutoCloseable {
@@ -43,6 +51,7 @@ class AfterCommitMailSender(
             executor.execute { deliver(mail) }
         } catch (e: RejectedExecutionException) {
             log.warn("메일 발송 대기열이 가득 차 보내지 못했습니다: kind={}", mail.kind, e)
+            metrics.mailFailed(mail.kind)
         }
     }
 
@@ -51,6 +60,7 @@ class AfterCommitMailSender(
             delegate.send(mail)
         } catch (e: Exception) {
             log.warn("메일 발송 실패: kind={}", mail.kind, e)
+            metrics.mailFailed(mail.kind)
         }
     }
 
@@ -63,8 +73,15 @@ class AfterCommitMailSender(
         }
     }
 
-    private val Mail.kind: String
-        get() = this::class.simpleName.orEmpty()
+    private val Mail.kind: MailKind
+        get() =
+            when (this) {
+                is EmployeeInvitationMail -> MailKind.EMPLOYEE_INVITATION
+                is PasswordResetMail -> MailKind.PASSWORD_RESET
+                is OwnerTransferRequestMail -> MailKind.OWNER_TRANSFER_REQUEST
+                is OwnerTransferCompletedMail -> MailKind.OWNER_TRANSFER_COMPLETED
+                is OwnerNotificationMail -> MailKind.OWNER_NOTIFICATION
+            }
 
     private companion object {
         val log = LoggerFactory.getLogger(AfterCommitMailSender::class.java)
