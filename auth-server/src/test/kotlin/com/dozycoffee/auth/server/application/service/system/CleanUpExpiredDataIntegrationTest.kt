@@ -64,14 +64,14 @@ class CleanUpExpiredDataIntegrationTest {
                 val principal = CleanupRows.insertPrincipal().also { principals += it }
                 Rows(
                     // 묶음 크기를 넘게 넣어 두 번 이상 지우게 합니다
-                    endedSessions = CleanupRows.insertSessions(principal, absoluteExpiresAt = sessionCutoff, count = BATCH_SIZE + 1),
+                    endedSessions = CleanupRows.insertSessions(principal, expiresAt = sessionCutoff, count = BATCH_SIZE + 1),
                     revokedSession =
                         CleanupRows
-                            .insertSessions(principal, absoluteExpiresAt = NOW.plus(Duration.ofDays(1)), revokedAt = sessionCutoff)
+                            .insertSessions(principal, expiresAt = NOW.plus(Duration.ofDays(1)), revokedAt = sessionCutoff)
                             .single(),
                     recentlyEndedSession =
-                        CleanupRows.insertSessions(principal, absoluteExpiresAt = sessionCutoff.plus(MICROSECOND)).single(),
-                    liveSession = CleanupRows.insertSessions(principal, absoluteExpiresAt = NOW.plus(Duration.ofDays(1))).single(),
+                        CleanupRows.insertSessions(principal, expiresAt = sessionCutoff.plus(MICROSECOND)).single(),
+                    liveSession = CleanupRows.insertSessions(principal, expiresAt = NOW.plus(Duration.ofDays(1))).single(),
                     expiredVerification = verification(expiresAt = verificationCutoff),
                     consumedVerification = verification(expiresAt = NOW.plus(Duration.ofHours(1)), consumedAt = verificationCutoff),
                     recentlyExpiredVerification = verification(expiresAt = verificationCutoff.plus(MICROSECOND)),
@@ -107,7 +107,7 @@ class CleanUpExpiredDataIntegrationTest {
     @Test
     fun `AUD-05 principal은 지우지 않음`() {
         val principal = inTransaction { CleanupRows.insertPrincipal().also { principals += it } }
-        inTransaction { CleanupRows.insertSessions(principal, absoluteExpiresAt = NOW.minus(AuthPolicy.SESSION_RETENTION)) }
+        inTransaction { CleanupRows.insertSessions(principal, expiresAt = NOW.minus(AuthPolicy.SESSION_RETENTION)) }
 
         service().cleanUp()
 
