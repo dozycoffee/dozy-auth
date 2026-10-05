@@ -778,10 +778,13 @@ sequenceDiagram
 | code | 조건 |
 |---|---|
 | `NOT_FOUND` | 대상 없음 |
+| `FORBIDDEN` | DB의 현재 role로 owner가 아님 ([GOV-14](../domain.md#8-관리-권한-규칙-gov)) |
 | `INVALID_STATE` | 대상이 `ACTIVE` 직원이 아님, 자기 자신, 진행 중인 양도가 있음 |
 
 **규칙** [GOV-09](../domain.md#8-관리-권한-규칙-gov), [VER-01](../domain.md#7-verification-규칙-ver) (`OWNER_TRANSFER`)
 
+- 에러는 `NOT_FOUND`, `FORBIDDEN`, `INVALID_STATE` 순서로 판단합니다.
+- 관리자가 고른 직원에게 보내는 메일이라 이메일 단위 요청 제한([conventions.md §8](conventions.md#8-요청-제한))은 적용하지 않습니다.
 - 감사 로그: `OWNER_TRANSFER_REQUESTED`
 
 ### owner 양도 수락
@@ -805,11 +808,13 @@ sequenceDiagram
 | code | 조건 |
 |---|---|
 | `FORBIDDEN` | 로그인한 사용자가 양도 대상이 아님 |
-| `VERIFICATION_EXPIRED` | 만료, 사용, 취소된 양도 |
+| `VERIFICATION_EXPIRED` | 만료, 사용, 취소된 양도. 요청한 owner가 지금 owner가 아니거나 대상이 `ACTIVE`가 아니게 된 양도 ([GOV-09](../domain.md#8-관리-권한-규칙-gov)) |
 
 **규칙** [GOV-09](../domain.md#8-관리-권한-규칙-gov), [GOV-10](../domain.md#8-관리-권한-규칙-gov)
 
+- 토큰이 쓸 수 없으면(없음, 만료, 사용, 취소) 로그인한 사용자와 관계없이 `VERIFICATION_EXPIRED`입니다. 쓸 수 있는 토큰이면 양도 대상인지(`FORBIDDEN`)를 본 뒤 요청 이후 바뀐 것이 없는지 확인합니다. `FORBIDDEN`이면 토큰을 소비하지 않습니다.
 - 새 owner는 다음 토큰 갱신부터 owner 권한을 갖습니다.
+- 이전 owner에게 완료 메일을 보냅니다 ([AUD-03](../domain.md#11-감사와-알림-aud)).
 - 감사 로그: `OWNER_TRANSFERRED`
 
 ### owner 양도 취소
@@ -826,8 +831,10 @@ sequenceDiagram
 
 | code | 조건 |
 |---|---|
-| `NOT_FOUND` | 진행 중인 양도 없음 |
+| `FORBIDDEN` | DB의 현재 role로 owner가 아님 ([GOV-14](../domain.md#8-관리-권한-규칙-gov)) |
+| `NOT_FOUND` | 진행 중인 양도 없음 (만료된 양도 포함) |
 
+- 에러는 `FORBIDDEN`, `NOT_FOUND` 순서로 판단합니다.
 - 발송된 수락 링크는 무효가 됩니다.
 - 감사 로그: `OWNER_TRANSFER_CANCELLED`
 

@@ -4,6 +4,7 @@ import com.dozycoffee.auth.core.AuthenticatedPrincipal
 import com.dozycoffee.auth.core.PrincipalType
 import com.dozycoffee.auth.server.adapter.inbound.web.account.InvitationController
 import com.dozycoffee.auth.server.adapter.inbound.web.account.PasswordResetController
+import com.dozycoffee.auth.server.adapter.inbound.web.admin.AdminOwnerTransferController
 import com.dozycoffee.auth.server.adapter.inbound.web.auth.SessionController
 import com.dozycoffee.auth.server.adapter.inbound.web.csrf.RefreshCookieOriginFilter
 import com.dozycoffee.auth.server.adapter.inbound.web.error.ProblemAccessDeniedHandler
@@ -47,10 +48,11 @@ import org.springframework.web.servlet.HandlerExceptionResolver
  * | 1 | [PUBLIC_PATHS] (로그인, 초대 조회·수락, 비밀번호 찾기·재설정, 서비스 토큰 발급, JWKS, 상태 확인, Prometheus 수집) | 없음 (서비스 토큰 발급의 client 인증은 컨트롤러). IP 단위 요청 제한 ([ClientRateLimitFilter]) |
  * | 2 | [SessionController.REFRESH_COOKIE_PATHS] (토큰 갱신, 로그아웃) | refresh 쿠키 (서비스가 확인). `Origin` 검사 ([RefreshCookieOriginFilter]). 요청 제한 없음 |
  * | 3 | `/realms/...` | 사용자 access token. `aud`는 보지 않고 `iss`의 realm이 경로와 같아야 함. system token은 403 |
- * | 4 | `/admin/...`, `/internal/...` | access token(관리)·system token. `aud`에 `auth` 포함 |
- * | 5 | 그 밖의 모든 경로 | 거부 |
+ * | 4 | [AdminOwnerTransferController.ACCEPT_PATH] (owner 양도 수락) | internal realm의 직원 access token. `aud`는 보지 않음 |
+ * | 5 | `/admin/...`, `/internal/...` | access token(관리)·system token. `aud`에 `auth` 포함 |
+ * | 6 | 그 밖의 모든 경로 | 거부 |
  *
- * 개발용 API(`/dev/...`)는 `local`·`dev` 프로필에서만 [DevApiConfig]가 인증 없이 엽니다. 다른 프로필에서는 5번 체인이 거부합니다.
+ * 개발용 API(`/dev/...`)는 `local`·`dev` 프로필에서만 [DevApiConfig]가 인증 없이 엽니다. 다른 프로필에서는 6번 체인이 거부합니다.
  *
  * - 토큰 검증은 스타터의 디코더와 권한 변환기를 씁니다 ([TokenVerificationConfig]). 스타터의 기본 필터 체인과 401·403 처리기는
  *   이 설정과 `adapter/inbound/web/error`의 처리기가 있어 만들어지지 않습니다.
@@ -130,13 +132,37 @@ class SecurityConfig {
     }
 
     /**
-     * 4. 관리·내부 API. 엔드포인트별 필요 role은 각 API에서 검사합니다.
-     *
-     * owner 양도 수락(`POST /admin/owner/transfer/accept`)은 `aud`를 검사하지 않는 예외라(api/conventions.md §2), owner 양도 작업에서
-     * 이 체인보다 앞선 체인에 연결합니다.
+     * 4. owner 양도 수락. `/admin/...` 아래지만 `aud`를 검사하지 않는 예외입니다 (api/conventions.md §2). 양도 대상이 `auth` role이 없는
+     * 직원일 수 있기 때문입니다. `aud`만 빼고 관리 체인과 같은 규칙으로 검증하며(허용 realm `internal`), principal type은 `employee`여야
+     * 합니다. 필요 role은 없고, 양도 대상 본인인지는 UseCase가 확인합니다 (GOV-09).
      */
     @Bean
     @Order(4)
+    fun ownerTransferAcceptSecurityFilterChain(
+        http: HttpSecurity,
+        entryPoint: ProblemAuthenticationEntryPoint,
+        accessDeniedHandler: ProblemAccessDeniedHandler,
+        @Qualifier(TokenVerificationConfig.USER_DECODER) decoder: JwtDecoder,
+        @Qualifier(DOZY_CONVERTER) converter: Converter<Jwt, AbstractAuthenticationToken>,
+    ): SecurityFilterChain {
+        http {
+            securityMatcher(AdminOwnerTransferController.ACCEPT_PATH)
+            authorizeHttpRequests { authorize(anyRequest, principalTypeIn(PrincipalType.EMPLOYEE)) }
+            oauth2ResourceServer {
+                jwt {
+                    jwtDecoder = decoder
+                    jwtAuthenticationConverter = converter
+                }
+                authenticationEntryPoint = entryPoint
+            }
+            common(entryPoint, accessDeniedHandler)
+        }
+        return http.build()
+    }
+
+    /** 5. 관리·내부 API. 엔드포인트별 필요 role은 각 API에서 검사합니다. */
+    @Bean
+    @Order(5)
     fun managementSecurityFilterChain(
         http: HttpSecurity,
         entryPoint: ProblemAuthenticationEntryPoint,
@@ -162,9 +188,9 @@ class SecurityConfig {
         return http.build()
     }
 
-    /** 5. 위에 없는 경로는 모두 거부합니다. 인증 없는 요청은 401, 그 밖에는 403입니다. */
+    /** 6. 위에 없는 경로는 모두 거부합니다. 인증 없는 요청은 401, 그 밖에는 403입니다. */
     @Bean
-    @Order(5)
+    @Order(6)
     fun defaultSecurityFilterChain(
         http: HttpSecurity,
         entryPoint: ProblemAuthenticationEntryPoint,
