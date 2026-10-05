@@ -14,6 +14,9 @@ dozy:
     # 테스트끼리 DB를 함께 쓰므로 기동할 때 owner를 만들지 않습니다. 부트스트랩 테스트만 켭니다 (configuration.md §4)
     bootstrap:
       enabled: false
+    # 같은 이유로 정리 배치 스케줄러를 등록하지 않습니다. 정리 테스트는 UseCase를 직접 부릅니다 (configuration.md §11)
+    cleanup:
+      enabled: false
 
 ---
 # 메일은 보내지 않고 로그로 출력합니다(링크의 토큰은 가림). 보낸 메일을 확인하는 테스트는 support/RecordingMailSender를 씁니다.

@@ -244,3 +244,12 @@ Flyway 마이그레이션으로 넣습니다.
 ## 5. 정리
 
 정리 배치의 삭제 조건은 [AUD-05](domain.md#11-감사와-알림-aud)를 따릅니다. 한 번에 지우는 건수를 제한해 긴 트랜잭션을 피합니다.
+
+| 항목 | 규칙 |
+|---|---|
+| 한 번에 지우는 행 | 테이블마다 1000행. 지울 id를 `LIMIT`으로 골라 `DELETE ... WHERE id IN (SELECT id ... LIMIT 1000)` 한 문장으로 지움 |
+| 트랜잭션 | 묶음 하나가 트랜잭션 하나. 지운 행이 1000보다 적으면 그 테이블을 마침. 중간에 실패해도 앞서 커밋한 묶음은 남고 다음 실행이 이어서 지움 |
+| 순서 | `refresh_session`, `verification`, `audit_log`. 세 테이블을 참조하는 FK가 없어 순서에 제약은 없음 |
+| 조건 컬럼 | `refresh_session`: `absolute_expires_at`, `revoked_at` / `verification`: `expires_at`, `consumed_at`, `invalidated_at` / `audit_log`: `occurred_at` |
+
+- 인덱스: `audit_log`는 `occurred_at` 인덱스(§3.11)를 씁니다. `refresh_session`과 `verification`은 조건 컬럼에 인덱스를 두지 않습니다. 두 테이블은 이 배치로 보관 기간만큼의 행만 남아 작고, 하루 한 번 순차 스캔이면 충분하기 때문입니다. 인덱스를 더하면 로그인·갱신·발급마다 쓰기 비용이 늘어납니다. 고객 realm 도입 등으로 행이 크게 늘면 다시 검토합니다.

@@ -29,6 +29,15 @@ interface RecordMetricsPort {
 
     /** 요청 제한(api/conventions.md §8)에 걸림. */
     fun rateLimitRejected(limit: RateLimitKind)
+
+    /** AUD-05 정리 배치가 [table]에서 [rows]행을 지우고 커밋함. 묶음마다 부릅니다. */
+    fun cleanupDeleted(
+        table: CleanupTarget,
+        rows: Int,
+    )
+
+    /** AUD-05 정리 배치 한 번의 실행이 끝남. */
+    fun cleanupFinished(outcome: CleanupOutcome)
 }
 
 /** access token을 발급한 경로. */
@@ -44,6 +53,19 @@ enum class TokenIssueKind {
 
     /** 개발용 토큰 (`local`·`dev` 전용) */
     DEV,
+}
+
+/** 정리 배치가 지우는 테이블 (data-model.md §5). */
+enum class CleanupTarget {
+    REFRESH_SESSION,
+    VERIFICATION,
+    AUDIT_LOG,
+}
+
+/** 정리 배치 실행 결과. */
+enum class CleanupOutcome {
+    SUCCESS,
+    FAILURE,
 }
 
 /** 요청 제한의 종류 (architecture.md §9.4). */

@@ -2,6 +2,7 @@ package com.dozycoffee.auth.server.adapter.outbound.persistence
 
 import com.dozycoffee.auth.server.adapter.outbound.persistence.table.VerificationTable
 import com.dozycoffee.auth.server.application.port.outbound.verification.ConsumeVerificationPort
+import com.dozycoffee.auth.server.application.port.outbound.verification.DeleteEndedVerificationsPort
 import com.dozycoffee.auth.server.application.port.outbound.verification.InvalidateVerificationPort
 import com.dozycoffee.auth.server.application.port.outbound.verification.IssueVerificationPort
 import com.dozycoffee.auth.server.application.port.outbound.verification.LoadVerificationPort
@@ -17,9 +18,13 @@ import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
+import org.jetbrains.exposed.v1.core.inSubQuery
 import org.jetbrains.exposed.v1.core.isNull
+import org.jetbrains.exposed.v1.core.lessEq
 import org.jetbrains.exposed.v1.core.or
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insertReturning
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.update
 import org.springframework.stereotype.Component
@@ -40,6 +45,7 @@ import java.util.UUID
  * - **소비**: 살아 있을 때만 바꾸는 `UPDATE ... WHERE` 한 문장입니다. 동시에 소비하면 늦은 쪽은 앞 트랜잭션이 끝날 때까지
  *   기다렸다가 바뀐 행으로 조건을 다시 평가하므로 하나만 성공합니다.
  * - 해시로 찾는 비교는 DB의 `=`입니다. 요청 값의 해시로 찾는 것이라 원문 비교가 아닙니다.
+ * - 정리(AUD-05)는 지울 id를 `LIMIT`으로 골라 `DELETE ... WHERE id IN (SELECT ...)` 한 문장으로 지웁니다 (data-model.md §5).
  * - 빈 `payload`는 `NULL`로 저장하고, `NULL`은 빈 payload로 읽습니다.
  */
 @Component
@@ -47,7 +53,8 @@ class VerificationPersistenceAdapter :
     IssueVerificationPort,
     LoadVerificationPort,
     ConsumeVerificationPort,
-    InvalidateVerificationPort {
+    InvalidateVerificationPort,
+    DeleteEndedVerificationsPort {
     override fun issue(verification: NewVerification): Verification {
         repeat(MAX_ISSUE_ATTEMPTS) {
             invalidateAll(verification.principalId, verification.purpose, verification.createdAt)
@@ -67,6 +74,21 @@ class VerificationPersistenceAdapter :
             if (inserted != null) return inserted.toVerification()
         }
         error("verification을 저장하지 못했습니다. 같은 principal과 purpose로 동시에 발급이 계속 충돌합니다")
+    }
+
+    override fun deleteEndedVerifications(
+        endedAtOrBefore: Instant,
+        limit: Int,
+    ): Int {
+        val targets =
+            VerificationTable
+                .select(VerificationTable.id)
+                .where {
+                    (VerificationTable.expiresAt lessEq endedAtOrBefore) or
+                        (VerificationTable.consumedAt lessEq endedAtOrBefore) or
+                        (VerificationTable.invalidatedAt lessEq endedAtOrBefore)
+                }.limit(limit)
+        return VerificationTable.deleteWhere { VerificationTable.id inSubQuery targets }
     }
 
     override fun findByTokenHash(tokenHash: SecretHash): Verification? =

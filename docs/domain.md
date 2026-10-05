@@ -311,6 +311,7 @@ stateDiagram-v2
   - verification: `expires_at`, `consumed_at`, `invalidated_at` 중 하나 후 `policy.verification-retention` 경과
   - 감사 로그: 발생 후 `policy.audit-retention` 경과
   - principal: 삭제하지 않음 ([ACC-05](#3-계정-상태-규칙-acc))
+  - "경과"는 기준 시각 + 보관 기간이 배치 실행 시각 이하인 것입니다. 보관 기간이 정확히 끝난 행도 지웁니다. 실행 시각은 배치를 시작할 때 한 번 읽습니다.
 - **AUD-06** 감사 로그에는 FK를 두지 않습니다. 계정 개인정보가 파기돼도 기록은 남아야 합니다.
 - **AUD-07** 감사 로그 `detail`에 비밀번호, 토큰 원문, 수정 전후 개인정보 값을 넣지 않습니다. 정보 수정은 바뀐 필드 이름만 남깁니다.
 

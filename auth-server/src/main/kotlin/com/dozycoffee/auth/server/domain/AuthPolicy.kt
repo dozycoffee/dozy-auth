@@ -8,8 +8,7 @@ import java.time.Duration
  *
  * 값을 바꿀 일이 생기면 `dozy.auth.policy.*` 속성으로 노출합니다 (configuration.md §1).
  *
- * 서비스만 쓰는 값(`policy.clock-skew`, `policy.jwks-refetch-min-interval`)은 스타터에 있고,
- * 배치 일정인 `policy.cleanup-schedule`은 해당 작업에서 추가합니다.
+ * 서비스만 쓰는 값(`policy.clock-skew`, `policy.jwks-refetch-min-interval`)은 스타터에 있습니다.
  */
 object AuthPolicy {
     /** `policy.access-token-ttl`. access token, system token 공통. */
@@ -71,6 +70,15 @@ object AuthPolicy {
 
     /** `policy.audit-query-default-range`. 감사 로그 조회 기간을 주지 않았을 때의 기간. */
     val AUDIT_QUERY_DEFAULT_RANGE: Duration = Duration.ofDays(7)
+
+    /**
+     * `policy.cleanup-schedule`의 실행 시각 (AUD-05). Spring `@Scheduled` cron 형식(초 분 시 일 월 요일)이며
+     * [CLEANUP_SCHEDULE_ZONE] 기준입니다. 애노테이션 값으로 쓰므로 상수입니다.
+     */
+    const val CLEANUP_SCHEDULE_CRON: String = "0 0 4 * * *"
+
+    /** `policy.cleanup-schedule`의 시간대 (KST). */
+    const val CLEANUP_SCHEDULE_ZONE: String = "Asia/Seoul"
 
     /**
      * `policy.rate-limit-ip`. 인증 없이 호출하는 API의 클라이언트 IP 단위 한도 (api/conventions.md §8).
