@@ -79,6 +79,12 @@ class AuthPolicyTest {
     }
 
     @Test
+    fun `정리 배치는 매일 04시 KST에 실행`() {
+        assertEquals("0 0 4 * * *", AuthPolicy.CLEANUP_SCHEDULE_CRON)
+        assertEquals("Asia/Seoul", AuthPolicy.CLEANUP_SCHEDULE_ZONE)
+    }
+
+    @Test
     fun `인증 없는 API는 IP당 1분에 20회, 메일을 보내는 API는 이메일당 10분에 3회`() {
         assertEquals(RateLimit(capacity = 20, period = Duration.ofMinutes(1)), AuthPolicy.RATE_LIMIT_IP)
         assertEquals(RateLimit(capacity = 3, period = Duration.ofMinutes(10)), AuthPolicy.RATE_LIMIT_EMAIL)

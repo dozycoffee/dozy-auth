@@ -79,7 +79,7 @@ owner가 없는데 `BOOTSTRAP_OWNER_EMAIL`이 없으면 **모든 프로필에서
 | `local` | 개발자 PC | Docker Compose 지원으로 PostgreSQL·Mailpit 자동 기동. 서명 키가 없으면 `.local/signing-keys/`에 생성해 재사용. `/dev/**` 활성. 부트스트랩 이메일 기본값 `owner@dozycoffee.local` |
 | `dev` | 공용 개발 서버 | `/dev/**` 활성. 서명 키는 설정으로 주입 (자동 생성 없음) |
 | `prod` | 운영 | [§2](#2-기동-시-검사) 검사. `/dev/**` 비활성. JSON 로그 ([§10](#10-지표추적로그)) |
-| `test` | 자동 테스트 | Testcontainers PostgreSQL. 서명 키는 `auth-server/build/test-signing-keys/`에 자동 생성. 메일은 `console`(링크의 토큰은 가림)이고, 보낸 메일을 확인하는 테스트는 기록용 테스트 대역을 씀. 비밀번호 해시는 가벼운 파라미터 ([§6](#6-비밀번호-해시)). 테스트끼리 DB를 함께 쓰므로 owner 부트스트랩을 끄고, 부트스트랩 테스트에서만 켬 |
+| `test` | 자동 테스트 | Testcontainers PostgreSQL. 서명 키는 `auth-server/build/test-signing-keys/`에 자동 생성. 메일은 `console`(링크의 토큰은 가림)이고, 보낸 메일을 확인하는 테스트는 기록용 테스트 대역을 씀. 비밀번호 해시는 가벼운 파라미터 ([§6](#6-비밀번호-해시)). 테스트끼리 DB를 함께 쓰므로 owner 부트스트랩을 끄고, 부트스트랩 테스트에서만 켬. 같은 이유로 정리 배치 스케줄러도 끔 ([§11](#11-정리-배치)) |
 
 - 개발용 API는 `@Profile("local", "dev")`로만 등록합니다.
 - `.local/`은 git에 올리지 않습니다.
@@ -200,6 +200,8 @@ Micrometer counter입니다. Prometheus에서는 이름의 `.`이 `_`로 바뀌�
 | `dozy.auth.token.issued` | `kind`, `realm` | access token 발급. `kind`는 `login`, `refresh`, `client_credentials`(서비스 토큰), `dev`(개발용 API, `local`·`dev`만) |
 | `dozy.auth.refresh.reuse.detected` | `realm` | 재사용 탐지로 세션을 폐기함 ([SES-03](domain.md#6-세션-규칙-ses)) |
 | `dozy.auth.ratelimit.rejected` | `limit` | 요청 제한 초과 ([api/conventions.md §8](api/conventions.md#8-요청-제한)). `limit`은 `ip`, `email`(같은 `202`로 응답하고 메일만 보내지 않음), `password_confirm` |
+| `dozy.auth.cleanup.deleted` | `table` | 정리 배치([§11](#11-정리-배치))가 지우고 커밋한 행 수. `table`은 `refresh_session`, `verification`, `audit_log`. 묶음마다 더하므로 실패한 실행에서 앞서 커밋한 묶음도 셈 |
+| `dozy.auth.cleanup.runs` | `outcome` | 정리 배치 실행이 끝남. `outcome`은 `success`, `failure` |
 
 - 이름은 `dozy.auth.`로 시작하는 점 구분 소문자입니다. 지표를 추가하면 이 표에 먼저 넣습니다.
 - 태그 값은 정해진 몇 가지만 씁니다 (realm, 에러 code, 위 표의 값). 이메일, principal id, 세션 id, IP, client_id처럼 값이 계속 늘어나는 것은 태그에 넣지 않습니다. 지표 저장소가 커지지 않게 하고, 개인정보가 지표로 나가지 않게 하기 위해서입니다 ([SEC-03](domain.md#12-민감정보-sec)).
@@ -221,3 +223,15 @@ Micrometer counter입니다. Prometheus에서는 이름의 `.`이 `_`로 바뀌�
 | 그 밖 | Spring Boot 기본 텍스트 형식. 줄마다 `[{traceId}-{spanId}]`가 들어감 |
 
 - 로그에 남기지 않는 값은 [SEC-03](domain.md#12-민감정보-sec)을 따릅니다. 서버 코드와 Spring Web·Security 로그를 디버그로 올려도 비밀번호, 토큰, 쿠키 값, `Authorization` 헤더가 남지 않는지 테스트(`ObservabilityApiTest`)로 확인합니다.
+
+## 11. 정리 배치
+
+[AUD-05](domain.md#11-감사와-알림-aud) 정리 배치는 `policy.cleanup-schedule`마다 실행합니다 (`@Scheduled`, [ADR-0024](adr/0024-in-memory-rate-limit-and-scheduler.md)). 실행 시각은 정책 상수(`domain.AuthPolicy`)이며 속성으로 노출하지 않습니다. 삭제 방식은 [data-model.md §5](data-model.md#5-정리)를 따릅니다.
+
+| 속성 | 설명 |
+|---|---|
+| `dozy.auth.cleanup.enabled` | 스케줄러를 등록할지. 기본값 `true`이고 `test` 프로필만 `false`([§4](#4-프로필)) |
+
+- 실행이 끝나면 테이블별 삭제 건수만 `INFO` 로그로 남깁니다. 지운 행의 값은 남기지 않습니다 ([SEC-03](domain.md#12-민감정보-sec)).
+- 실패하면 `ERROR` 로그를 남기고 다음 실행을 기다립니다. 다시 시도하지 않습니다.
+- 지표는 [§10.2](#102-지표)의 `dozy.auth.cleanup.*`입니다.

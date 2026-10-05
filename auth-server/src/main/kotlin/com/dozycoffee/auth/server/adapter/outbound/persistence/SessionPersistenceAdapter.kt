@@ -3,6 +3,7 @@ package com.dozycoffee.auth.server.adapter.outbound.persistence
 import com.dozycoffee.auth.core.Realm
 import com.dozycoffee.auth.server.adapter.outbound.persistence.table.RefreshSessionTable
 import com.dozycoffee.auth.server.application.port.outbound.session.CreateRefreshSessionPort
+import com.dozycoffee.auth.server.application.port.outbound.session.DeleteEndedSessionsPort
 import com.dozycoffee.auth.server.application.port.outbound.session.LoadRefreshSessionPort
 import com.dozycoffee.auth.server.application.port.outbound.session.RevokeSessionsPort
 import com.dozycoffee.auth.server.application.port.outbound.session.RotateRefreshSessionPort
@@ -17,10 +18,14 @@ import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
+import org.jetbrains.exposed.v1.core.inSubQuery
 import org.jetbrains.exposed.v1.core.isNull
+import org.jetbrains.exposed.v1.core.lessEq
 import org.jetbrains.exposed.v1.core.neq
 import org.jetbrains.exposed.v1.core.or
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insertReturning
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.update
 import org.jetbrains.exposed.v1.jdbc.updateReturning
@@ -40,13 +45,15 @@ import java.util.UUID
  *   애플리케이션에서 계산해 넘깁니다.
  * - 시각은 모두 DB의 `now()`가 아니라 호출한 쪽이 넘긴 `Clock` 시각입니다. `created_at`도 절대 만료와 같은 기준이 되도록 넘긴 값을 씁니다.
  * - 폐기는 살아 있는(폐기되지 않고 만료 전인) 세션만 바꿉니다.
+ * - 정리(AUD-05)는 지울 id를 `LIMIT`으로 골라 `DELETE ... WHERE id IN (SELECT ...)` 한 문장으로 지웁니다 (data-model.md §5).
  */
 @Component
 class SessionPersistenceAdapter :
     CreateRefreshSessionPort,
     LoadRefreshSessionPort,
     RotateRefreshSessionPort,
-    RevokeSessionsPort {
+    RevokeSessionsPort,
+    DeleteEndedSessionsPort {
     override fun createSession(session: NewRefreshSession): RefreshSession =
         RefreshSessionTable
             .insertReturning {
@@ -122,6 +129,20 @@ class SessionPersistenceAdapter :
             it[revokedAt] = now
             it[revokeReason] = reason.name
         }
+
+    override fun deleteEndedSessions(
+        endedAtOrBefore: Instant,
+        limit: Int,
+    ): Int {
+        val targets =
+            RefreshSessionTable
+                .select(RefreshSessionTable.id)
+                .where {
+                    (RefreshSessionTable.absoluteExpiresAt lessEq endedAtOrBefore) or
+                        (RefreshSessionTable.revokedAt lessEq endedAtOrBefore)
+                }.limit(limit)
+        return RefreshSessionTable.deleteWhere { RefreshSessionTable.id inSubQuery targets }
+    }
 
     /** 폐기되지 않았고 [now]에 만료 전인 세션 (`RefreshSession.isAlive`와 같은 조건). */
     private fun live(now: Instant): Op<Boolean> = RefreshSessionTable.revokedAt.isNull() and (RefreshSessionTable.expiresAt greater now)
