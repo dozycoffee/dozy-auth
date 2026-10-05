@@ -276,12 +276,12 @@ stateDiagram-v2
   | `LOGIN_SUCCEEDED`, `LOGIN_FAILED`, `ACCOUNT_LOCKED` | 로그인 | - |
   | `SESSION_REVOKED` | 로그아웃, 재사용 탐지 등 세션 폐기 | - |
   | `PASSWORD_CHANGED`, `PASSWORD_RESET` | 비밀번호 변경·재설정 | - |
-  | `PASSWORD_RESET_REQUESTED` | 관리자의 재설정 메일 발송 | 일일 요약 |
-  | `EMPLOYEE_INVITED` | 직원 초대 | 일일 요약 (`auth` audience role 포함 시 즉시) |
+  | `PASSWORD_RESET_REQUESTED` | 관리자의 재설정 메일 발송 | - |
+  | `EMPLOYEE_INVITED` | 직원 초대 | `auth` audience role 포함 시 즉시 |
   | `INVITATION_ACCEPTED`, `PARTNER_SIGNED_UP`, `EMAIL_VERIFIED` | 계정 생성 | - |
   | `PROFILE_UPDATED` | 본인·관리자의 정보 수정 | - |
-  | `ACCOUNT_SUSPENDED`, `ACCOUNT_REACTIVATED`, `ACCOUNT_DEACTIVATED` | 상태 변경 | 일일 요약 |
-  | `ROLE_GRANTED`, `ROLE_REVOKED` | role 부여·회수 | 일일 요약 (`auth` audience role이면 즉시) |
+  | `ACCOUNT_SUSPENDED`, `ACCOUNT_REACTIVATED`, `ACCOUNT_DEACTIVATED` | 상태 변경 | - |
+  | `ROLE_GRANTED`, `ROLE_REVOKED` | role 부여·회수 | `auth` audience role이면 즉시 |
   | `ROLE_DEFINED`, `ROLE_UPDATED` | role 정의 등록·수정 | - |
   | `ROLE_DELETED` | role 정의 삭제 (일괄 회수 포함) | 즉시 |
   | `AUDIENCE_CREATED` | audience 추가 | 즉시 |
@@ -307,7 +307,13 @@ stateDiagram-v2
   - 이번 실패로 잠기면 `LOGIN_FAILED`와 `ACCOUNT_LOCKED`를 함께 남깁니다.
   - 잠긴 계정이나 IP 요청 제한으로 거부한 요청([LGN-01](#5-로그인-규칙-lgn) 1번)은 남기지 않습니다.
   - role 부여·회수 API는 실제로 바뀐 role만 `detail.roles`에 담습니다. 요청한 role을 이미 모두 가졌거나(부여) 가지지 않았으면(회수) 바뀐 것이 없으므로 남기지 않습니다([GOV-08](#8-관리-권한-규칙-gov)).
-- **AUD-03** 즉시 알림은 발생하는 대로 메일을 보내고, 일일 요약은 하루 한 번 모아서 보냅니다. 받는 사람은 owner입니다. owner 양도가 완료되면 이전 owner에게도 완료 메일을 보냅니다.
+- **AUD-03** owner 알림은 즉시 알림뿐이며, 발생하는 대로 메일을 보냅니다. 표에서 `-`인 일상 운영 기록(일반 role 부여·회수, 직원 초대, 상태 변경, 관리자의 재설정 메일 발송 등)은 알리지 않고 감사 로그 조회([AUD-04](#11-감사와-알림-aud))로 봅니다.
+  - 받는 사람은 그 작업이 커밋될 때의 owner(`ACTIVE`)입니다. owner 본인이 한 작업도 보냅니다. 본인이 하지 않은 알림은 계정 탈취 신호이기 때문입니다. `ACTIVE` owner가 없으면 보내지 않습니다.
+  - 요청 하나가 알림 대상 기록을 여러 건 남겨도 알림은 한 통이며, 메일의 action은 그 요청의 주 action입니다. 예: `auth` audience role을 포함한 직원 초대는 `EMPLOYEE_INVITED` 한 통, role 정의 삭제의 일괄 회수는 `ROLE_DELETED` 한 통입니다.
+  - 메일에는 action과 발생 시각만 담고 행위자·대상의 이름이나 이메일 같은 개인정보는 넣지 않습니다. 자세한 내용은 감사 로그에서 봅니다.
+  - 업무가 롤백되면 보내지 않고, 발송에 실패해도 다시 보내지 않습니다. 감사 로그에 기록이 남아 있고, 실패는 로그와 지표(`dozy.auth.mail.failed`, [configuration.md §10.2](configuration.md#102-지표))로 봅니다.
+  - owner 양도가 완료되면(`OWNER_TRANSFERRED`) 즉시 알림은 이미 owner가 된 새 owner가 받고, 이전 owner에게는 양도 완료 메일을 보냅니다.
+  - 부트스트랩([GOV-11](#8-관리-권한-규칙-gov))은 알리지 않습니다.
 - **AUD-04** 감사 로그는 owner만 조회합니다. 최신순이며 조회 기간은 `policy.audit-query-max-range` 이하입니다.
 - **AUD-05** 정리 배치(`policy.cleanup-schedule`)
   - refresh 세션: `expires_at` 또는 `revoked_at` 후 `policy.session-retention` 경과. `expires_at`은 `absolute_expires_at`을 넘지 않으므로 idle 만료와 절대 만료를 모두 끝난 시각부터 셉니다

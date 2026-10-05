@@ -1,10 +1,17 @@
 package com.dozycoffee.auth.server.adapter.outbound.mail
 
+import com.dozycoffee.auth.server.adapter.outbound.metrics.MetricsMicrometerAdapter
 import com.dozycoffee.auth.server.application.port.outbound.mail.Mail
+import com.dozycoffee.auth.server.application.port.outbound.mail.OwnerNotificationMail
 import com.dozycoffee.auth.server.application.port.outbound.mail.SendMailPort
+import com.dozycoffee.auth.server.domain.audit.AuditAction
+import com.dozycoffee.auth.server.support.MailFixtures.EXPIRES_AT
+import com.dozycoffee.auth.server.support.MailFixtures.RECIPIENT
 import com.dozycoffee.auth.server.support.MailFixtures.invitationMail
 import com.dozycoffee.auth.server.support.PersistenceTestConfiguration
 import com.dozycoffee.auth.server.support.RecordingMailSender
+import com.dozycoffee.auth.server.support.counted
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -75,21 +82,32 @@ class AfterCommitMailSenderTest {
     }
 
     @Test
-    fun `발송이 실패해도 호출한 쪽에 예외를 던지지 않음`() {
+    fun `발송이 실패해도 호출한 쪽에 예외를 던지지 않고 실패를 지표로 셈`() {
         val broken =
             object : SendMailPort {
                 override fun send(mail: Mail) = error("SMTP 연결 실패")
             }
-        val failing = AfterCommitMailSender(broken, Executor { it.run() })
+        val registry = SimpleMeterRegistry()
+        val failing = AfterCommitMailSender(broken, MetricsMicrometerAdapter(registry), Executor { it.run() })
 
         failing.send(invitationMail())
+
+        assertEquals(1.0, registry.counted("dozy.auth.mail.failed", "kind", "employee_invitation"))
     }
 
     @Test
-    fun `발송 대기열이 가득 차도 호출한 쪽에 예외를 던지지 않음`() {
-        val full = AfterCommitMailSender(RecordingMailSender(), Executor { throw RejectedExecutionException() })
+    fun `발송 대기열이 가득 차도 호출한 쪽에 예외를 던지지 않고 실패를 지표로 셈`() {
+        val registry = SimpleMeterRegistry()
+        val full =
+            AfterCommitMailSender(
+                RecordingMailSender(),
+                MetricsMicrometerAdapter(registry),
+                Executor { throw RejectedExecutionException() },
+            )
 
-        full.send(invitationMail())
+        full.send(OwnerNotificationMail(RECIPIENT, AuditAction.ROLE_DELETED, EXPIRES_AT))
+
+        assertEquals(1.0, registry.counted("dozy.auth.mail.failed", "kind", "owner_notification"))
     }
 
     @TestConfiguration(proxyBeanMethods = false)
@@ -98,7 +116,8 @@ class AfterCommitMailSenderTest {
         fun recordingMailSender(): RecordingMailSender = RecordingMailSender()
 
         @Bean
-        fun sendMailPort(recorder: RecordingMailSender): SendMailPort = AfterCommitMailSender(recorder, Executor { it.run() })
+        fun sendMailPort(recorder: RecordingMailSender): SendMailPort =
+            AfterCommitMailSender(recorder, MetricsMicrometerAdapter(SimpleMeterRegistry()), Executor { it.run() })
     }
 
     /** 메일을 보내는 UseCase 구현을 흉내 냅니다. */

@@ -35,7 +35,7 @@ import java.util.UUID
  * - 직원(`PENDING`) 생성, role 부여, 초대 발급, 감사 기록을 한 트랜잭션에서 하므로 하나라도 실패하면 아무것도 남지 않고(GOV-08),
  *   메일은 커밋 후 보냅니다 (architecture.md §9.3). role 정의를 부여용으로 잠가 동시에 삭제된 role은 `NOT_FOUND`가 됩니다 (LockRolePort).
  * - 감사 로그는 `EMPLOYEE_INVITED`와, role을 지정했으면 `ROLE_GRANTED`(`detail.roles`)입니다 (AUD-08). owner 부트스트랩(GOV-11)과 같습니다.
- *   owner 알림(AUD-01)은 알림 기능 전까지 감사 기록만 남깁니다.
+ *   `auth` audience role을 포함하면 owner에게 즉시 한 통 알립니다 (AUD-01, [OwnerAlerts]). 부트스트랩은 알리지 않습니다.
  */
 @Service
 class InviteEmployeeService(
@@ -46,6 +46,7 @@ class InviteEmployeeService(
     private val issueVerification: IssueVerificationPort,
     private val sendMail: SendMailPort,
     private val recordAuditLog: RecordAuditLogPort,
+    private val ownerAlerts: OwnerAlerts,
     private val clock: Clock,
 ) : InviteEmployeeUseCase {
     @Transactional
@@ -65,11 +66,15 @@ class InviteEmployeeService(
         val saved = issueVerification.issue(issued.verification)
         sendMail.send(EmployeeInvitationMail(profile.email, profile.name, issued.token, saved.expiresAt))
 
-        record(command, AuditAction.EMPLOYEE_INVITED, account.id, now)
-        if (roles.isNotEmpty()) {
-            val granted = roles.map { it.code.value }.sorted()
-            record(command, AuditAction.ROLE_GRANTED, account.id, now, mapOf("roles" to granted))
-        }
+        val invited = record(command, AuditAction.EMPLOYEE_INVITED, account.id, now)
+        val granted =
+            if (roles.isEmpty()) {
+                emptyList()
+            } else {
+                listOf(record(command, AuditAction.ROLE_GRANTED, account.id, now, mapOf("roles" to roles.map { it.code.value }.sorted())))
+            }
+        // AUD-08 auth audience role 포함 여부는 함께 남긴 ROLE_GRANTED로 판단합니다
+        ownerAlerts.notifyIfRequired(invited, granted)
         return InvitedEmployee(account.id, account.status, saved.expiresAt)
     }
 
@@ -79,8 +84,8 @@ class InviteEmployeeService(
         principalId: UUID,
         now: Instant,
         detail: Map<String, Any?> = emptyMap(),
-    ) {
-        recordAuditLog.record(
+    ): AuditEvent {
+        val event =
             AuditEvent(
                 occurredAt = now,
                 action = action,
@@ -89,7 +94,8 @@ class InviteEmployeeService(
                 detail = detail,
                 ip = command.ip,
                 userAgent = command.userAgent,
-            ),
-        )
+            )
+        recordAuditLog.record(event)
+        return event
     }
 }

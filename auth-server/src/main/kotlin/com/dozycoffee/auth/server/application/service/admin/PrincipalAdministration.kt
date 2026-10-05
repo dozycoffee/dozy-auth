@@ -48,7 +48,7 @@ class PrincipalAdministration(
         return account
     }
 
-    /** 관리자가 대상 계정에 한 작업의 감사 기록 한 건 (AUD-08). */
+    /** 관리자가 대상 계정에 한 작업의 감사 기록 한 건 (AUD-08). 남긴 기록을 돌려주므로 owner 알림([OwnerAlerts])에 넘길 수 있습니다. */
     fun record(
         action: AuditAction,
         managerId: UUID,
@@ -57,8 +57,8 @@ class PrincipalAdministration(
         ip: String?,
         userAgent: String?,
         detail: Map<String, Any?> = emptyMap(),
-    ) {
-        recordAuditLog.record(
+    ): AuditEvent {
+        val event =
             AuditEvent(
                 occurredAt = occurredAt,
                 action = action,
@@ -67,7 +67,8 @@ class PrincipalAdministration(
                 detail = detail,
                 ip = ip,
                 userAgent = userAgent,
-            ),
-        )
+            )
+        recordAuditLog.record(event)
+        return event
     }
 }

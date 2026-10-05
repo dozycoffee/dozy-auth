@@ -68,9 +68,9 @@ flowchart LR
 | 관리 API | 계정·role·system client 관리, owner 양도, 감사 로그 | [api/admin.md](api/admin.md) |
 | 서비스용 API | 서비스 토큰, JWKS, 파트너 조회 | [api/internal.md](api/internal.md) |
 | 개발용 API | 개발용 토큰 (local·dev만) | [api/dev.md](api/dev.md) |
-| 스케줄러 | 정리 배치, owner 일일 요약 알림 | [AUD-03](domain.md#11-감사와-알림-aud), [AUD-05](domain.md#11-감사와-알림-aud) |
+| 스케줄러 | 정리 배치 | [AUD-05](domain.md#11-감사와-알림-aud) |
 | 기동 작업 | owner 부트스트랩 | [GOV-11](domain.md#8-관리-권한-규칙-gov) |
-| 메일 | 초대, 가입 인증, 재설정, 양도, owner 알림 | [configuration.md](configuration.md#1-환경-변수) |
+| 메일 | 초대, 가입 인증, 재설정, 양도, owner 즉시 알림([AUD-03](domain.md#11-감사와-알림-aud)) | [configuration.md](configuration.md#1-환경-변수) |
 
 - Auth는 토큰을 발급하는 인가 서버이면서, 관리 API를 자기 토큰으로 보호하는 리소스 서버입니다.
 - 서비스는 요청마다 Auth를 호출하지 않습니다. JWKS를 캐시해 직접 검증합니다.
@@ -118,7 +118,7 @@ com.dozycoffee.auth.server
 │   └─ service/               UseCase 구현 (port/inbound와 같은 영역으로 나눔)
 ├─ adapter/
 │   ├─ inbound/web/           컨트롤러 (auth, account, admin, internal, dev), error, csrf, ratelimit(IP 요청 제한 필터)
-│   ├─ inbound/scheduler/     정리 배치, 일일 요약
+│   ├─ inbound/scheduler/     정리 배치
 │   ├─ inbound/startup/       owner 부트스트랩
 │   └─ outbound/              persistence(Exposed, 테이블 정의는 persistence/table), mail, jwt(Nimbus), crypto(Argon2), ratelimit(Bucket4j), metrics(Micrometer)
 └─ config/                    빈 조립과 기술 설정. Spring Security 설정은 config/security
@@ -224,12 +224,12 @@ com.dozycoffee.auth.server
 | DB 접근 | Exposed DSL만, `adapter/outbound/persistence` 안에서만 | 실행되는 SQL을 코드에 드러내기 위해 |
 | 트랜잭션 | `application/service`에만 `@Transactional`. 여러 테이블을 바꾸면 한 트랜잭션. 영속성 어댑터는 트랜잭션을 열지 않고 호출한 UseCase의 트랜잭션 안에서 실행됨 (Exposed `SpringTransactionManager`) | 중간 상태 방지 |
 | 감사 로그 | 업무와 같은 트랜잭션에서 기록. 에러로 끝나도 남아야 하는 기록은 [§9.2](#92-감사-기록과-트랜잭션) | 업무와 기록이 함께 반영되거나 함께 사라지게 |
-| 메일 발송 | 트랜잭션 커밋 후, 별도 스레드에서. 실패는 로그만 남김 ([§9.3](#93-메일-발송)) | 롤백된 작업의 메일 방지 |
+| 메일 발송 | 트랜잭션 커밋 후, 별도 스레드에서. 실패는 로그와 지표만 남김 ([§9.3](#93-메일-발송)) | 롤백된 작업의 메일 방지 |
 | 현재 시각 | `Clock` 주입. `Instant.now()` 직접 호출 금지. 서버 `Clock`은 마이크로초 단위 | 만료·유예 시간 테스트. DB(`timestamptz`)가 마이크로초 아래를 반올림해 저장하므로 메모리와 DB 값을 맞춤 |
 | 난수 | `SecureRandom`만 | 예측 방지 |
 | 비교 | 토큰·해시는 상수 시간 비교 (`MessageDigest.isEqual`) | 타이밍 공격 방지 |
 | 로그 | [SEC-03](domain.md#12-민감정보-sec) | |
-| 지표 | UseCase가 결과를 `RecordMetricsPort`로 알리고, Micrometer는 `adapter/outbound/metrics`만 씀. 이름·태그는 [configuration.md §10.2](configuration.md#102-지표) | 지표 기술을 바꿔도 UseCase가 바뀌지 않게. 지표 이름을 한곳에서 관리 |
+| 지표 | UseCase가 결과를 `RecordMetricsPort`로 알리고(메일 발송 실패만 메일 어댑터가 알림), Micrometer는 `adapter/outbound/metrics`만 씀. 이름·태그는 [configuration.md §10.2](configuration.md#102-지표) | 지표 기술을 바꿔도 UseCase가 바뀌지 않게. 지표 이름을 한곳에서 관리 |
 | 테스트 | [testing.md](testing.md) | |
 | 포맷 | ktlint | |
 
@@ -264,7 +264,7 @@ UseCase는 `SendMailPort.send`를 트랜잭션 안에서 호출하고, 발송 �
 - 트랜잭션 안에서 호출하면 그 트랜잭션에 `TransactionSynchronization`을 등록하고 **커밋 뒤(`afterCommit`)에** 보냅니다. 롤백되면 보내지 않습니다. 어댑터는 트랜잭션을 열지 않습니다.
 - 트랜잭션 밖에서 호출하면 커밋을 기다리지 않고 보냅니다. 기동 작업(owner 부트스트랩)도 UseCase 트랜잭션 안에서 호출하므로 커밋 뒤에 보냅니다.
 - 발송은 요청 스레드가 아니라 메일 전용 스레드에서 합니다. 응답이 SMTP 지연을 기다리지 않고, 메일을 보냈는지가 응답 시간으로 드러나지 않게 하기 위해서입니다 (예: 비밀번호 찾기는 `ACTIVE` 계정이 있을 때만 보냄).
-- 발송에 실패하면 메일 종류와 예외만 경고 로그로 남기고 **다시 시도하지 않습니다.** 호출한 쪽에는 예외를 던지지 않으므로 업무는 그대로 성공합니다. 받는 사람은 재발송(초대 재발송, 비밀번호 찾기 다시 요청)으로 복구합니다. 대기열이 가득 차 받지 못한 메일도 같습니다.
+- 발송에 실패하면 메일 종류와 예외만 경고 로그로 남기고 `dozy.auth.mail.failed`로 센 뒤 **다시 시도하지 않습니다.** 호출한 쪽에는 예외를 던지지 않으므로 업무는 그대로 성공합니다. 받는 사람은 재발송(초대 재발송, 비밀번호 찾기 다시 요청)으로 복구합니다. owner 즉시 알림은 감사 로그로 확인합니다. 대기열이 가득 차 받지 못한 메일도 같습니다.
 - 로그에는 본문과 링크를 남기지 않습니다 ([SEC-03](domain.md#12-민감정보-sec)). 메일 값 객체의 토큰(`OpaqueSecret`)은 `toString`에서 가려집니다.
 - 발송 대기 중인 메일은 메모리에만 있어 서버가 비정상 종료되면 사라집니다. 정상 종료할 때는 잠시 기다려 보냅니다. 발송 보장이 필요해지면 outbox 테이블을 검토합니다.
 

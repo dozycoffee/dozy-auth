@@ -16,11 +16,13 @@ import java.time.Clock
  *
  * - 검사 순서: 없는 principal, 없는 role 정의(`NOT_FOUND`) → GOV-05 → GOV-02. 대상의 상태와 principal type은 보지 않습니다.
  * - 가지지 않은 role을 회수해도 성공이며(GOV-08), 감사 로그 `ROLE_REVOKED`(`detail.roles`)는 실제로 회수했을 때만 남깁니다 (AUD-08).
+ * - `auth` audience role을 회수하면(admin 해임) owner에게 즉시 알립니다 (AUD-02, [OwnerAlerts]).
  * - 세션은 폐기하지 않습니다. 대상의 다음 토큰 갱신부터 반영되고, 이미 발급된 access token은 만료까지 유효합니다 (SES-05, SES-07).
  */
 @Service
 class RevokeRoleService(
     private val roleAssignment: RoleAssignment,
+    private val ownerAlerts: OwnerAlerts,
     private val loadRole: LoadRolePort,
     private val revokeRole: RevokeRolePort,
     private val clock: Clock,
@@ -32,14 +34,16 @@ class RevokeRoleService(
         ManagementPolicy.checkCanRevoke(manager, target, role.code)
 
         if (!revokeRole.revoke(target.id, role.id)) return
-        roleAssignment.record(
-            AuditAction.ROLE_REVOKED,
-            command.manager,
-            target.id,
-            listOf(role.code),
-            clock.instant(),
-            command.ip,
-            command.userAgent,
-        )
+        val event =
+            roleAssignment.record(
+                AuditAction.ROLE_REVOKED,
+                command.manager,
+                target.id,
+                listOf(role.code),
+                clock.instant(),
+                command.ip,
+                command.userAgent,
+            )
+        ownerAlerts.notifyIfRequired(event)
     }
 }

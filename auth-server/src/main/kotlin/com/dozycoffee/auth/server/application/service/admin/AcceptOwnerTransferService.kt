@@ -42,7 +42,7 @@ import java.time.Clock
  * 6. 한 트랜잭션에서 기존 owner의 `auth:owner` 회수, 대상에게 부여(GOV-10 부분 UNIQUE 인덱스가 마지막 방어), 기존 owner의 모든 세션 폐기
  *    (`OWNER_TRANSFERRED`), 감사 로그 `OWNER_TRANSFERRED`. 행위자는 수락한 새 owner, 대상은 이전 owner이며, 함께 폐기한 세션이 있으면
  *    `detail.revokedSessions`(개수)를 남깁니다 (AUD-08)
- * 7. 이전 owner에게 완료 메일을 커밋 후 보냅니다 (AUD-03)
+ * 7. 이전 owner에게 완료 메일을 커밋 후 보냅니다 (AUD-03). owner 즉시 알림(AUD-01)은 이미 owner가 된 새 owner가 받습니다 ([OwnerAlerts])
  *
  * 새 owner의 토큰에는 다음 토큰 갱신부터 `auth:owner`가 담깁니다. 이전 owner의 access token은 만료까지 남지만(SES-07), 관리 API는
  * DB의 현재 role로 등급을 정하므로(GOV-14) owner 작업은 거부됩니다.
@@ -60,6 +60,7 @@ class AcceptOwnerTransferService(
     private val loadEmployee: LoadEmployeePort,
     private val sendMail: SendMailPort,
     private val principals: PrincipalAdministration,
+    private val ownerAlerts: OwnerAlerts,
     private val clock: Clock,
 ) : AcceptOwnerTransferUseCase {
     @Transactional
@@ -92,15 +93,18 @@ class AcceptOwnerTransferService(
         grantRole.grant(RoleGrant(newOwner.id, ownerRole.id, grantedBy = previousOwnerId, grantedAt = now))
         val revokedSessions = revokeSessions.revokeAllSessions(previousOwnerId, RevokeReason.OWNER_TRANSFERRED, now)
 
-        principals.record(
-            action = AuditAction.OWNER_TRANSFERRED,
-            managerId = newOwner.id,
-            principalId = previousOwnerId,
-            occurredAt = now,
-            ip = command.ip,
-            userAgent = command.userAgent,
-            detail = if (revokedSessions > 0) mapOf(REVOKED_SESSIONS to revokedSessions) else emptyMap(),
-        )
+        val event =
+            principals.record(
+                action = AuditAction.OWNER_TRANSFERRED,
+                managerId = newOwner.id,
+                principalId = previousOwnerId,
+                occurredAt = now,
+                ip = command.ip,
+                userAgent = command.userAgent,
+                detail = if (revokedSessions > 0) mapOf(REVOKED_SESSIONS to revokedSessions) else emptyMap(),
+            )
+        // AUD-01 받는 사람은 지금의 owner, 곧 새 owner입니다
+        ownerAlerts.notifyIfRequired(event)
 
         // 7. AUD-03
         val previousOwner = loadEmployee.findEmployeeById(previousOwnerId)

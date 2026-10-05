@@ -3,7 +3,6 @@ package com.dozycoffee.auth.server.adapter.outbound.mail
 import com.dozycoffee.auth.core.Realm
 import com.dozycoffee.auth.server.application.port.outbound.mail.EmployeeInvitationMail
 import com.dozycoffee.auth.server.application.port.outbound.mail.Mail
-import com.dozycoffee.auth.server.application.port.outbound.mail.OwnerDailySummaryMail
 import com.dozycoffee.auth.server.application.port.outbound.mail.OwnerNotificationMail
 import com.dozycoffee.auth.server.application.port.outbound.mail.OwnerTransferCompletedMail
 import com.dozycoffee.auth.server.application.port.outbound.mail.OwnerTransferRequestMail
@@ -105,21 +104,6 @@ class MailRenderer(
                             "consoleUrl" to base(appUrl.internal),
                         ),
                 )
-
-            is OwnerDailySummaryMail ->
-                Content(
-                    template = "owner-daily-summary",
-                    subject = "일일 관리 요약 (${mail.date})",
-                    variables =
-                        mapOf(
-                            "date" to mail.date.toString(),
-                            "rows" to
-                                mail.counts.entries
-                                    .sortedBy { it.key.ordinal }
-                                    .map { SummaryRow(describe(it.key), it.value) },
-                            "consoleUrl" to base(appUrl.internal),
-                        ),
-                )
         }
 
     private fun appBaseOf(realm: Realm): URI =
@@ -144,12 +128,6 @@ class MailRenderer(
         val template: String,
         val subject: String,
         val variables: Map<String, Any>,
-    )
-
-    /** 일일 요약 표의 한 줄. 템플릿에서 프로퍼티로 읽습니다. */
-    data class SummaryRow(
-        val action: String,
-        val count: Int,
     )
 
     companion object {

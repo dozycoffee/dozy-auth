@@ -26,7 +26,7 @@ import java.time.Clock
  *   system client가 아닌 principal은 없는 system client로 봅니다. system client는 system role을 가질 수 없어(GOV-06) GOV-02에 걸리지 않습니다.
  * - 대상 계정을 잠가 같은 client의 비활성화(ACC-04)·정지와 차례로 처리합니다. 비활성화가 먼저 끝나면 `INVALID_STATE`입니다.
  * - 해시를 바꾸는 즉시 기존 secret은 무효입니다 (CLI-03). 이미 발급된 system token은 만료까지 유효합니다.
- * - 감사 로그는 `CLIENT_SECRET_ROTATED`입니다. owner 즉시 알림(AUD-01)은 알림 기능 전까지 감사 기록만 남깁니다.
+ * - 감사 로그는 `CLIENT_SECRET_ROTATED`입니다. owner에게 즉시 알립니다 (AUD-01, [OwnerAlerts]).
  */
 @Service
 class RotateClientSecretService(
@@ -34,6 +34,7 @@ class RotateClientSecretService(
     private val loadPrincipalRoles: LoadPrincipalRolesPort,
     private val rotateClientSecret: RotateClientSecretPort,
     private val principals: PrincipalAdministration,
+    private val ownerAlerts: OwnerAlerts,
     private val clock: Clock,
 ) : RotateClientSecretUseCase {
     @Transactional
@@ -50,7 +51,8 @@ class RotateClientSecretService(
         val now = clock.instant()
         val secret = OpaqueSecret.generate()
         if (!rotateClientSecret.rotateSecret(account.id, secret.hash(), now)) throw SystemClientNotFoundException()
-        principals.record(AuditAction.CLIENT_SECRET_ROTATED, manager.id, account.id, now, command.ip, command.userAgent)
+        val event = principals.record(AuditAction.CLIENT_SECRET_ROTATED, manager.id, account.id, now, command.ip, command.userAgent)
+        ownerAlerts.notifyIfRequired(event)
         return secret
     }
 }

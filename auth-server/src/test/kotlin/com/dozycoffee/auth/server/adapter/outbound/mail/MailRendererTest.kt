@@ -1,7 +1,6 @@
 package com.dozycoffee.auth.server.adapter.outbound.mail
 
 import com.dozycoffee.auth.core.Realm
-import com.dozycoffee.auth.server.application.port.outbound.mail.OwnerDailySummaryMail
 import com.dozycoffee.auth.server.application.port.outbound.mail.OwnerNotificationMail
 import com.dozycoffee.auth.server.application.port.outbound.mail.OwnerTransferCompletedMail
 import com.dozycoffee.auth.server.application.port.outbound.mail.OwnerTransferRequestMail
@@ -16,7 +15,6 @@ import com.dozycoffee.auth.server.support.MailFixtures.TOKEN
 import com.dozycoffee.auth.server.support.MailFixtures.invitationMail
 import org.junit.jupiter.api.Test
 import java.net.URI
-import java.time.LocalDate
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -87,23 +85,6 @@ class MailRendererTest {
         assertContains(rendered.text, "시각: 2026-09-27 14:00")
         assertContains(rendered.text, INTERNAL_APP)
         assertContains(rendered.html, "href=\"$INTERNAL_APP\"")
-    }
-
-    @Test
-    fun `AUD-03 일일 요약 메일에 action별 건수를 담고 없으면 변경 없음으로 보냄`() {
-        val date = LocalDate.parse("2026-09-26")
-        val withCounts =
-            renderer.render(
-                OwnerDailySummaryMail(RECIPIENT, date, mapOf(AuditAction.ROLE_GRANTED to 3, AuditAction.EMPLOYEE_INVITED to 1)),
-            )
-        val empty = renderer.render(OwnerDailySummaryMail(RECIPIENT, date, emptyMap()))
-
-        assertEquals("[Dozy Coffee] 일일 관리 요약 (2026-09-26)", withCounts.subject)
-        assertContains(withCounts.text, "- 직원 초대: 1건")
-        assertContains(withCounts.text, "- role 부여: 3건")
-        assertContains(withCounts.html, "3건")
-        assertContains(empty.text, "알릴 작업이 없었습니다.")
-        assertContains(empty.html, "알릴 작업이 없었습니다.")
     }
 
     @Test

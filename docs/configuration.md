@@ -202,11 +202,12 @@ Micrometer counter입니다. Prometheus에서는 이름의 `.`이 `_`로 바뀌�
 | `dozy.auth.ratelimit.rejected` | `limit` | 요청 제한 초과 ([api/conventions.md §8](api/conventions.md#8-요청-제한)). `limit`은 `ip`, `email`(같은 `202`로 응답하고 메일만 보내지 않음), `password_confirm` |
 | `dozy.auth.cleanup.deleted` | `table` | 정리 배치([§11](#11-정리-배치))가 지우고 커밋한 행 수. `table`은 `refresh_session`, `verification`, `audit_log`. 묶음마다 더하므로 실패한 실행에서 앞서 커밋한 묶음도 셈 |
 | `dozy.auth.cleanup.runs` | `outcome` | 정리 배치 실행이 끝남. `outcome`은 `success`, `failure` |
+| `dozy.auth.mail.failed` | `kind` | 메일을 보내지 못함 (발송 실패, 발송 대기열 가득 참. [architecture.md §9.3](architecture.md#93-메일-발송)). `kind`는 `employee_invitation`, `password_reset`, `owner_transfer_request`, `owner_transfer_completed`, `owner_notification`. 커밋 뒤 메일 발송기가 셈 |
 
 - 이름은 `dozy.auth.`로 시작하는 점 구분 소문자입니다. 지표를 추가하면 이 표에 먼저 넣습니다.
 - 태그 값은 정해진 몇 가지만 씁니다 (realm, 에러 code, 위 표의 값). 이메일, principal id, 세션 id, IP, client_id처럼 값이 계속 늘어나는 것은 태그에 넣지 않습니다. 지표 저장소가 커지지 않게 하고, 개인정보가 지표로 나가지 않게 하기 위해서입니다 ([SEC-03](domain.md#12-민감정보-sec)).
 - 결과가 정해진 시점에 세며 트랜잭션 커밋을 기다리지 않습니다. counter는 처음 일어날 때 생기므로, 한 번도 일어나지 않은 조합은 수집 결과에 없습니다.
-- 코드에서는 UseCase가 `RecordMetricsPort`로 남깁니다 ([architecture.md §9](architecture.md#9-코드-규칙)).
+- 코드에서는 UseCase가 `RecordMetricsPort`로 남깁니다 ([architecture.md §9](architecture.md#9-코드-규칙)). `dozy.auth.mail.failed`만 커밋 뒤 발송을 맡는 메일 어댑터(`AfterCommitMailSender`)가 같은 포트로 남깁니다.
 - Spring Boot 기본 지표(HTTP 요청 `http.server.requests`, JVM, DB 연결 풀 등)도 함께 나옵니다.
 
 ### 10.3 추적

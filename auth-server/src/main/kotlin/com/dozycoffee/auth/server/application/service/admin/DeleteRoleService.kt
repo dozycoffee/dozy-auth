@@ -28,7 +28,7 @@ import java.time.Clock
  * - `revokeAll`이면 한 트랜잭션에서 모든 principal에게서 회수하고 삭제합니다. 회수할 principal이 owner·admin이어도 GOV-02를
  *   적용하지 않습니다. 계정 하나에 대한 변경이 아니라 role 정의를 없애는 작업이며, role 정의 관리는 admin의 권한이기 때문입니다 (GOV-13).
  * - 감사 로그: 회수한 principal마다 `ROLE_REVOKED`(`detail.roles`, `detail.via = "role_deleted"`), 마지막에 `ROLE_DELETED`
- *   (`detail.role`, `detail.revokedPrincipals` 개수). 세션은 폐기하지 않습니다 (SES-05).
+ *   (`detail.role`, `detail.revokedPrincipals` 개수). 세션은 폐기하지 않습니다 (SES-05). owner에게 즉시 한 통 알립니다 (AUD-01, [OwnerAlerts]).
  * - 관리 등급은 토큰이 아니라 DB의 현재 role로 정합니다 (GOV-14).
  */
 @Service
@@ -39,6 +39,7 @@ class DeleteRoleService(
     private val revokeRole: RevokeRolePort,
     private val deleteRole: DeleteRolePort,
     private val recordAuditLog: RecordAuditLogPort,
+    private val ownerAlerts: OwnerAlerts,
     private val clock: Clock,
 ) : DeleteRoleUseCase {
     @Transactional
@@ -69,7 +70,7 @@ class DeleteRoleService(
             )
         }
         if (!deleteRole.deleteRole(role.id)) throw RoleNotFoundException()
-        recordAuditLog.record(
+        val deleted =
             AuditEvent(
                 occurredAt = now,
                 action = AuditAction.ROLE_DELETED,
@@ -78,8 +79,10 @@ class DeleteRoleService(
                 detail = mapOf("role" to role.code.value, "revokedPrincipals" to revoked.size),
                 ip = command.ip,
                 userAgent = command.userAgent,
-            ),
-        )
+            )
+        recordAuditLog.record(deleted)
+        // AUD-01 일괄 회수가 있어도 알림은 ROLE_DELETED 한 통입니다
+        ownerAlerts.notifyIfRequired(deleted)
     }
 
     private companion object {

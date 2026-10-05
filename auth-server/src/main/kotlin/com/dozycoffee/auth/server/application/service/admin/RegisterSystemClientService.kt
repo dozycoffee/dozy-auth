@@ -27,7 +27,7 @@ import java.time.Clock
  *   (GOV-08). role 정의를 부여용으로 잠가 동시에 삭제된 role은 `NOT_FOUND`가 됩니다 (LockRolePort).
  * - secret은 `policy.secret-bytes` 난수이며 해시만 저장하고 원문은 결과로 한 번만 돌려줍니다 (CLI-02, SEC-01). 로그에 쓰지 않습니다 (SEC-03).
  * - 감사 로그는 `SYSTEM_CLIENT_REGISTERED`(`detail.clientId`)와, role을 지정했으면 `ROLE_GRANTED`(`detail.roles`)입니다 (AUD-08).
- *   owner 즉시 알림(AUD-01)은 알림 기능 전까지 감사 기록만 남깁니다.
+ *   owner에게 즉시 알립니다. 알림은 `ROLE_GRANTED`가 있어도 한 통입니다 (AUD-01, [OwnerAlerts]).
  */
 @Service
 class RegisterSystemClientService(
@@ -36,6 +36,7 @@ class RegisterSystemClientService(
     private val createSystemClient: CreateSystemClientPort,
     private val grantRole: GrantRolePort,
     private val principals: PrincipalAdministration,
+    private val ownerAlerts: OwnerAlerts,
     private val clock: Clock,
 ) : RegisterSystemClientUseCase {
     @Transactional
@@ -52,27 +53,33 @@ class RegisterSystemClientService(
         roles.forEach { grantRole.grant(RoleGrant(client.principalId, it.id, manager.id, now)) }
 
         val clientDetail = mapOf("clientId" to command.clientId.value)
-        principals.record(
-            AuditAction.SYSTEM_CLIENT_REGISTERED,
-            manager.id,
-            client.principalId,
-            now,
-            command.ip,
-            command.userAgent,
-            clientDetail,
-        )
-        if (roles.isNotEmpty()) {
-            val granted = roles.map { it.code.value }.sorted()
+        val registered =
             principals.record(
-                AuditAction.ROLE_GRANTED,
+                AuditAction.SYSTEM_CLIENT_REGISTERED,
                 manager.id,
                 client.principalId,
                 now,
                 command.ip,
                 command.userAgent,
-                mapOf("roles" to granted),
+                clientDetail,
             )
-        }
+        val granted =
+            if (roles.isEmpty()) {
+                emptyList()
+            } else {
+                listOf(
+                    principals.record(
+                        AuditAction.ROLE_GRANTED,
+                        manager.id,
+                        client.principalId,
+                        now,
+                        command.ip,
+                        command.userAgent,
+                        mapOf("roles" to roles.map { it.code.value }.sorted()),
+                    ),
+                )
+            }
+        ownerAlerts.notifyIfRequired(registered, granted)
         return RegisteredSystemClient(client.principalId, command.clientId, secret)
     }
 }

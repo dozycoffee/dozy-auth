@@ -24,7 +24,7 @@ import java.time.Clock
  * - 검사 순서: DB의 현재 role로 owner인지(`FORBIDDEN`, GOV-14) → 진행 중인(살아 있는) 양도가 있는지(`NOT_FOUND`).
  *   만료된 양도는 진행 중이 아니므로 `NOT_FOUND`입니다.
  * - 양도를 무효화하면 발송된 수락 링크는 `VERIFICATION_EXPIRED`가 됩니다 (VER-04).
- * - 감사 로그 `OWNER_TRANSFER_CANCELLED`: 행위자는 owner, 대상은 양도 대상 직원 (AUD-08)
+ * - 감사 로그 `OWNER_TRANSFER_CANCELLED`: 행위자는 owner, 대상은 양도 대상 직원 (AUD-08). owner 본인에게 즉시 알림 (AUD-01, [OwnerAlerts])
  */
 @Service
 class CancelOwnerTransferService(
@@ -33,6 +33,7 @@ class CancelOwnerTransferService(
     private val loadVerification: LoadVerificationPort,
     private val invalidateVerification: InvalidateVerificationPort,
     private val principals: PrincipalAdministration,
+    private val ownerAlerts: OwnerAlerts,
     private val clock: Clock,
 ) : CancelOwnerTransferUseCase {
     @Transactional
@@ -45,8 +46,8 @@ class CancelOwnerTransferService(
         if (live.isEmpty()) throw OwnerTransferNotFoundException()
 
         // GOV-09 진행 중인 양도는 하나이지만, 있으면 모두 무효화합니다
-        live.forEach { transfer ->
-            if (invalidateVerification.invalidate(transfer.id, now)) {
+        val cancelled =
+            live.filter { invalidateVerification.invalidate(it.id, now) }.map { transfer ->
                 principals.record(
                     AuditAction.OWNER_TRANSFER_CANCELLED,
                     command.ownerId,
@@ -56,6 +57,6 @@ class CancelOwnerTransferService(
                     command.userAgent,
                 )
             }
-        }
+        cancelled.firstOrNull()?.let { ownerAlerts.notifyIfRequired(it, cancelled.drop(1)) }
     }
 }

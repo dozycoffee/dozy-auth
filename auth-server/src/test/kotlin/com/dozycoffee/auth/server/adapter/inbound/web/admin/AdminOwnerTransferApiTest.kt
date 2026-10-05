@@ -137,7 +137,7 @@ class AdminOwnerTransferApiTest {
         assertEquals("OWNER_TRANSFER", verification[VerificationTable.purpose])
         assertEquals(target.email, verification[VerificationTable.target])
         assertEquals(mapOf("requestedBy" to owner.id.toString()), verification[VerificationTable.payload])
-        val mail = mails.sent.single() as OwnerTransferRequestMail
+        val mail = mails.sent.filterIsInstance<OwnerTransferRequestMail>().single()
         assertEquals(Email(target.email), mail.to)
         assertEquals("이서연", mail.name)
         assertEquals(verification[VerificationTable.tokenHash], SecretHash.of(mail.token.value).hex)
@@ -157,7 +157,7 @@ class AdminOwnerTransferApiTest {
         assertEquals(409, response.status)
         assertEquals("INVALID_STATE", json(response)["code"])
         assertTrue(verificationRows(second.id).isEmpty())
-        assertEquals(1, mails.sent.size)
+        assertEquals(1, mails.sent.filterIsInstance<OwnerTransferRequestMail>().size)
     }
 
     @Test
@@ -282,7 +282,7 @@ class AdminOwnerTransferApiTest {
         assertEquals(listOf(null), revokeReasons(target.id))
         val consumedAt = assertNotNull(verificationRows(target.id).single()[VerificationTable.consumedAt])
         assertEquals(AuditRow("OWNER_TRANSFERRED", target.id, mapOf("revokedSessions" to 2)), audits(owner.id).single())
-        val mail = mails.sent.single() as OwnerTransferCompletedMail
+        val mail = mails.sent.filterIsInstance<OwnerTransferCompletedMail>().single()
         assertEquals(Email(owner.email), mail.to)
         assertEquals("이서연", mail.newOwnerName)
         assertEquals(consumedAt, mail.transferredAt)
@@ -533,7 +533,11 @@ class AdminOwnerTransferApiTest {
         val owner = owner()
         val target = employees.create()
         val requested = request(ownerToken(owner), target.id)
-        val transferToken = (mails.sent.single() as OwnerTransferRequestMail).token.value
+        val transferToken =
+            mails.sent
+                .filterIsInstance<OwnerTransferRequestMail>()
+                .single()
+                .token.value
         val forbidden = accept(tokens.issue(employees.create().key), transferToken)
         val accepted = accept(tokens.issue(target.key), transferToken)
         val reused = accept(tokens.issue(target.key), transferToken)
@@ -555,7 +559,11 @@ class AdminOwnerTransferApiTest {
     ): String {
         mails.sent.clear()
         check(request(ownerToken(owner), target.id).status == 202)
-        return (mails.sent.single() as OwnerTransferRequestMail).token.value.also { mails.sent.clear() }
+        return mails.sent
+            .filterIsInstance<OwnerTransferRequestMail>()
+            .single()
+            .token.value
+            .also { mails.sent.clear() }
     }
 
     /** [owner]가 [target]에게 [issuedAt]에 요청한 것과 같은 `OWNER_TRANSFER`를 저장하고 토큰 원문을 돌려줍니다. */
