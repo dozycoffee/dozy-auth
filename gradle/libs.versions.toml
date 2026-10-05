@@ -76,6 +76,9 @@ caffeine = { module = "com.github.ben-manes.caffeine:caffeine" }
 # 운영
 micrometer-prometheus = { module = "io.micrometer:micrometer-registry-prometheus" }
 micrometer-tracing = { module = "io.micrometer:micrometer-tracing" }
+# 서버의 Micrometer Tracing 자동 설정과 Brave 브리지. 스팬을 내보내는 곳(exporter)은 아직 두지 않음 (configuration.md §10)
+spring-boot-micrometer-tracing-brave = { module = "org.springframework.boot:spring-boot-micrometer-tracing-brave" }
+micrometer-tracing-bridge-brave = { module = "io.micrometer:micrometer-tracing-bridge-brave" }
 
 # 테스트
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }

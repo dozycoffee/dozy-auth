@@ -2,6 +2,7 @@ package com.dozycoffee.auth.server.application.service.auth
 
 import com.dozycoffee.auth.core.PrincipalType
 import com.dozycoffee.auth.core.Realm
+import com.dozycoffee.auth.server.adapter.outbound.metrics.MetricsMicrometerAdapter
 import com.dozycoffee.auth.server.application.port.inbound.auth.LoginCommand
 import com.dozycoffee.auth.server.application.port.outbound.account.LoadEmployeePort
 import com.dozycoffee.auth.server.application.port.outbound.account.RecordLoginFailurePort
@@ -23,6 +24,8 @@ import com.dozycoffee.auth.server.domain.credential.RawPassword
 import com.dozycoffee.auth.server.support.TokenFixtures.FIXED_CLOCK
 import com.dozycoffee.auth.server.support.TokenFixtures.ISSUER_BASE
 import com.dozycoffee.auth.server.support.TokenFixtures.NOW
+import com.dozycoffee.auth.server.support.counted
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -39,6 +42,7 @@ class LoginServiceTest {
     private val verifyPassword = mockk<VerifyPasswordPort>()
     private val recordLoginFailure = mockk<RecordLoginFailurePort>()
     private val recordAuditLog = mockk<RecordAuditLogPort>(relaxed = true)
+    private val meters = SimpleMeterRegistry()
 
     private val service =
         LoginService(
@@ -51,6 +55,7 @@ class LoginServiceTest {
             loadPrincipalRoles = mockk(),
             signToken = mockk(),
             recordAuditLog = recordAuditLog,
+            recordMetrics = MetricsMicrometerAdapter(meters),
             issuerBaseUri = ISSUER_BASE,
             clock = FIXED_CLOCK,
         )
@@ -64,6 +69,7 @@ class LoginServiceTest {
         assertEquals(AuthPolicy.LOGIN_LOCK_DURATION, error.retryAfter)
         verify(exactly = 0) { verifyPassword.verify(any(), any()) }
         verify(exactly = 0) { recordAuditLog.record(any()) }
+        assertEquals(1.0, meters.counted("dozy.auth.login.failed", "realm", "internal", "reason", "TOO_MANY_ATTEMPTS"))
     }
 
     @Test
@@ -101,6 +107,8 @@ class LoginServiceTest {
         assertFailsWith<InvalidCredentialsException> { service.login(command()) }
 
         verify(exactly = 1) { recordLoginFailure.recordLoginFailure(employee.account.id, NOW) }
+        assertEquals(1.0, meters.counted("dozy.auth.login.failed", "realm", "internal", "reason", "INVALID_CREDENTIALS"))
+        assertEquals(0.0, meters.counted("dozy.auth.login.succeeded"))
     }
 
     private fun command() = LoginCommand(Realm.INTERNAL, EMAIL, RawPassword(PASSWORD), "203.0.113.7", "DozyConsole/1.0")

@@ -8,6 +8,8 @@ import com.dozycoffee.auth.server.application.port.outbound.account.LoadAccountP
 import com.dozycoffee.auth.server.application.port.outbound.audit.RecordAuditLogPort
 import com.dozycoffee.auth.server.application.port.outbound.authorization.LoadPrincipalRolesPort
 import com.dozycoffee.auth.server.application.port.outbound.jwt.SignTokenPort
+import com.dozycoffee.auth.server.application.port.outbound.metrics.RecordMetricsPort
+import com.dozycoffee.auth.server.application.port.outbound.metrics.TokenIssueKind
 import com.dozycoffee.auth.server.application.port.outbound.session.LoadRefreshSessionPort
 import com.dozycoffee.auth.server.application.port.outbound.session.RevokeSessionsPort
 import com.dozycoffee.auth.server.application.port.outbound.session.RotateRefreshSessionPort
@@ -41,6 +43,8 @@ import java.util.UUID
  * 재사용 탐지(`SESSION_REVOKED`)는 에러 응답이어도 세션 폐기와 감사 기록이 남아야 하므로 `noRollbackFor`로 커밋합니다
  * (architecture.md §9.2). 그 예외는 폐기와 기록을 마친 뒤 마지막에 던지고, 그 경로에는 다른 변경이 없습니다.
  * 다른 에러(`TOKEN_ROTATED`, `SESSION_EXPIRED`)로 끝나는 경로는 아무것도 바꾸지 않습니다.
+ *
+ * 발급과 재사용 탐지는 지표로도 셉니다 (configuration.md §10).
  */
 @Service
 class RefreshTokenService(
@@ -51,6 +55,7 @@ class RefreshTokenService(
     private val loadPrincipalRoles: LoadPrincipalRolesPort,
     private val signToken: SignTokenPort,
     private val recordAuditLog: RecordAuditLogPort,
+    private val recordMetrics: RecordMetricsPort,
     private val issuerBaseUri: IssuerBaseUri,
     private val clock: Clock,
 ) : RefreshTokenUseCase {
@@ -73,8 +78,10 @@ class RefreshTokenService(
                 issuedAt = now,
                 tokenId = UUID.randomUUID().toString(),
             )
+        val accessToken = signToken.sign(claims)
+        recordMetrics.tokenIssued(TokenIssueKind.REFRESH, session.realm)
         return LoginResult(
-            accessToken = signToken.sign(claims),
+            accessToken = accessToken,
             expiresIn = AuthPolicy.ACCESS_TOKEN_TTL,
             refreshToken = newToken,
             refreshTokenMaxAge = session.remainingAbsoluteLifetime(now),
@@ -137,6 +144,7 @@ class RefreshTokenService(
                 userAgent = command.userAgent,
             ),
         )
+        recordMetrics.refreshReuseDetected(session.realm)
         throw SessionRevokedException()
     }
 

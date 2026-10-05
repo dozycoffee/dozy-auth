@@ -114,13 +114,13 @@ com.dozycoffee.auth.server
 │   └─ audit/                 감사 이벤트
 ├─ application/
 │   ├─ port/inbound/          UseCase 인터페이스와 Command (auth, admin, internal, system, dev)
-│   ├─ port/outbound/         외부로 나가는 인터페이스 (도메인별, mail, jwt, crypto, ratelimit)
+│   ├─ port/outbound/         외부로 나가는 인터페이스 (도메인별, mail, jwt, crypto, ratelimit, metrics)
 │   └─ service/               UseCase 구현 (port/inbound와 같은 영역으로 나눔)
 ├─ adapter/
 │   ├─ inbound/web/           컨트롤러 (auth, account, admin, internal, dev), error, csrf, ratelimit(IP 요청 제한 필터)
 │   ├─ inbound/scheduler/     정리 배치, 일일 요약
 │   ├─ inbound/startup/       owner 부트스트랩
-│   └─ outbound/              persistence(Exposed, 테이블 정의는 persistence/table), mail, jwt(Nimbus), crypto(Argon2), ratelimit(Bucket4j)
+│   └─ outbound/              persistence(Exposed, 테이블 정의는 persistence/table), mail, jwt(Nimbus), crypto(Argon2), ratelimit(Bucket4j), metrics(Micrometer)
 └─ config/                    빈 조립과 기술 설정. Spring Security 설정은 config/security
 ```
 
@@ -155,7 +155,7 @@ com.dozycoffee.auth.server
 | 계층 | 의존 가능 | 의존 금지 |
 |---|---|---|
 | `domain` | `auth-core` | Spring, Exposed, 다른 모든 계층 |
-| `application` | `domain`, Spring의 `@Service`·`@Transactional` | `adapter`, Exposed, 웹 클래스 |
+| `application` | `domain`, Spring의 `@Service`·`@Transactional` | `adapter`, Exposed, 웹 클래스, Micrometer |
 | `adapter/inbound` | `application/port/inbound`, `domain` | `adapter/outbound`, `application/service` |
 | `adapter/outbound` | `application/port/outbound`, `domain` | `adapter/inbound`, `application/service` |
 | `config` | 전부 | |
@@ -180,7 +180,7 @@ com.dozycoffee.auth.server
 아래 규칙을 Konsist로 CI에서 검사합니다 ([ADR-0025](adr/0025-konsist-architecture-tests.md)). 테스트는 `auth-server/src/test/kotlin/com/dozycoffee/auth/server/architecture/ArchitectureTest.kt`에 있고, production 소스만 검사합니다.
 
 - 6.1의 계층 의존 (`config`는 제외)
-- `domain`은 Spring·Exposed를, `application`은 Exposed와 웹 클래스(`org.springframework.web`, `org.springframework.http`, `jakarta.servlet`)를 import하지 않음
+- `domain`은 Spring·Exposed를, `application`은 Exposed, 웹 클래스(`org.springframework.web`, `org.springframework.http`, `jakarta.servlet`), Micrometer(`io.micrometer`)를 import하지 않음
 - `domain`의 하위 패키지끼리 import 금지 (6.2)
 - `@Transactional`은 `application/service`에만
 - 이름 규칙 (§7): 접미사가 `UseCase`·`Command`면 `port/inbound`, `Port`면 `port/outbound`, `Adapter`면 `adapter/outbound`, `Table`이면 `adapter/outbound/persistence`, `Controller`면 `adapter/inbound/web`에 있어야 함
@@ -229,6 +229,7 @@ com.dozycoffee.auth.server
 | 난수 | `SecureRandom`만 | 예측 방지 |
 | 비교 | 토큰·해시는 상수 시간 비교 (`MessageDigest.isEqual`) | 타이밍 공격 방지 |
 | 로그 | [SEC-03](domain.md#12-민감정보-sec) | |
+| 지표 | UseCase가 결과를 `RecordMetricsPort`로 알리고, Micrometer는 `adapter/outbound/metrics`만 씀. 이름·태그는 [configuration.md §10.2](configuration.md#102-지표) | 지표 기술을 바꿔도 UseCase가 바뀌지 않게. 지표 이름을 한곳에서 관리 |
 | 테스트 | [testing.md](testing.md) | |
 | 포맷 | ktlint | |
 
@@ -236,7 +237,7 @@ com.dozycoffee.auth.server
 
 - 규칙 위반은 도메인 예외로 던집니다. 예외는 에러 code와 HTTP 상태(숫자)를 가집니다. 도메인은 Spring에 의존하지 않으므로 `HttpStatus`를 쓰지 않습니다.
 - `adapter/inbound/web/error`에서 모든 예외를 Problem Details로 변환합니다 ([api/conventions.md §4](api/conventions.md#4-에러-응답)).
-- `message`는 응답의 `detail`이 되므로 민감정보를 넣지 않습니다. 예외 처리기(`GlobalExceptionHandler`)는 도메인 예외, 검증 오류, Spring Security의 401·403(`AuthenticationEntryPoint`, `AccessDeniedHandler`가 처리기로 넘김), 그 밖의 예외(500, 내부 정보 비노출)를 같은 형식으로 응답하고, `TraceIdFilter`가 `X-Trace-Id`를 정합니다.
+- `message`는 응답의 `detail`이 되므로 민감정보를 넣지 않습니다. 예외 처리기(`GlobalExceptionHandler`)는 도메인 예외, 검증 오류, Spring Security의 401·403(`AuthenticationEntryPoint`, `AccessDeniedHandler`가 처리기로 넘김), 그 밖의 예외(500, 내부 정보 비노출)를 같은 형식으로 응답하고, `TraceIdFilter`가 `X-Trace-Id`를 정합니다 (Micrometer Tracing의 trace id, [configuration.md §10.3](configuration.md#103-추적)).
 - 에러 code는 [api/conventions.md §11](api/conventions.md#11-에러-코드)의 목록과 같은 이름을 씁니다.
 - 결과가 여러 갈래인 정상 흐름(예: 토큰 갱신 판정)은 예외 대신 sealed class로 반환하고, UseCase에서 응답이나 예외로 바꿉니다.
 

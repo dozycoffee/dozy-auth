@@ -78,7 +78,7 @@ owner가 없는데 `BOOTSTRAP_OWNER_EMAIL`이 없으면 **모든 프로필에서
 |---|---|---|
 | `local` | 개발자 PC | Docker Compose 지원으로 PostgreSQL·Mailpit 자동 기동. 서명 키가 없으면 `.local/signing-keys/`에 생성해 재사용. `/dev/**` 활성. 부트스트랩 이메일 기본값 `owner@dozycoffee.local` |
 | `dev` | 공용 개발 서버 | `/dev/**` 활성. 서명 키는 설정으로 주입 (자동 생성 없음) |
-| `prod` | 운영 | [§2](#2-기동-시-검사) 검사. `/dev/**` 비활성. JSON 로그 |
+| `prod` | 운영 | [§2](#2-기동-시-검사) 검사. `/dev/**` 비활성. JSON 로그 ([§10](#10-지표추적로그)) |
 | `test` | 자동 테스트 | Testcontainers PostgreSQL. 서명 키는 `auth-server/build/test-signing-keys/`에 자동 생성. 메일은 `console`(링크의 토큰은 가림)이고, 보낸 메일을 확인하는 테스트는 기록용 테스트 대역을 씀. 비밀번호 해시는 가벼운 파라미터 ([§6](#6-비밀번호-해시)). 테스트끼리 DB를 함께 쓰므로 owner 부트스트랩을 끄고, 부트스트랩 테스트에서만 켬 |
 
 - 개발용 API는 `@Profile("local", "dev")`로만 등록합니다.
@@ -175,3 +175,49 @@ Auth 서버가 받는 토큰(`/realms/{realm}` 아래 본인 API, `/admin/**`, `
 - 신뢰할 프록시가 아닌 곳에서 온 요청은 헤더를 무시하고 연결한 주소를 씁니다. 아무나 보낸 `X-Forwarded-For`로 요청 제한을 피하거나 기록을 속일 수 없게 하기 위해서입니다.
 - `prod`는 로드 밸런서 뒤에 두고, 서버 포트는 로드 밸런서에서만 접근할 수 있게 합니다. 로드 밸런서는 받은 `X-Forwarded-For` 끝에 연결한 클라이언트 주소를 붙이거나 덮어써야 합니다. 클라이언트가 보낸 값 앞부분은 위 규칙대로 무시됩니다.
 - 운영 배포 환경을 정할 때 신뢰할 프록시를 로드 밸런서 주소 대역으로 좁힙니다 (예: 환경 변수 `SERVER_TOMCAT_REMOTEIP_INTERNAL_PROXIES`). 기본값처럼 넓은 사설 대역을 믿으면 같은 대역에서 직접 접속한 클라이언트가 주소를 속일 수 있습니다.
+
+## 10. 지표·추적·로그
+
+### 10.1 Actuator
+
+| 경로 | 인증 | 용도 |
+|---|---|---|
+| `/actuator/health` | 없음 | 로드 밸런서·오케스트레이터의 상태 확인. 상세(구성요소별 상태)는 보이지 않음 |
+| `/actuator/prometheus` | 없음 | Prometheus 수집 ([§10.2](#102-지표)) |
+
+- 그 밖의 Actuator 엔드포인트는 HTTP로 열지 않습니다 (`management.endpoints.web.exposure.include: health, prometheus`). 열지 않은 경로는 보안 설정의 마지막 체인이 거부합니다.
+- 둘 다 요청 제한 대상이 아닙니다 ([api/conventions.md §8](api/conventions.md#8-요청-제한)). 주기적으로 호출되기 때문입니다.
+- `/actuator/prometheus`는 서버에서 인증 없이 열고, **외부에서 닿지 않게 하는 것은 배포 환경이 맡습니다.** 로드 밸런서는 `/actuator/prometheus`를 외부로 라우팅하지 않고, Prometheus는 내부망에서 인스턴스 주소로 직접 수집합니다. 수집기가 짧은 수명의 토큰을 주기적으로 갱신하기 어렵고, 지표에는 비밀값·개인정보가 없기 때문입니다([§10.2](#102-지표)의 태그 규칙). 요청 수, JVM 상태 같은 운영 정보는 보이므로 외부에 공개하지 않습니다.
+
+### 10.2 지표
+
+Micrometer counter입니다. Prometheus에서는 이름의 `.`이 `_`로 바뀌고 `_total`이 붙습니다 (예: `dozy_auth_login_failed_total`).
+
+| 지표 | 태그 | 세는 때 |
+|---|---|---|
+| `dozy.auth.login.succeeded` | `realm` | 로그인 성공 |
+| `dozy.auth.login.failed` | `realm`, `reason` | 로그인 실패. `reason`은 응답의 에러 code (`INVALID_CREDENTIALS`, `EMAIL_NOT_VERIFIED`, `ACCOUNT_SUSPENDED`, 계정 잠금의 `TOO_MANY_ATTEMPTS`). IP 요청 제한으로 컨트롤러 전에 거부된 요청은 여기 세지 않고 `dozy.auth.ratelimit.rejected`로 셈 |
+| `dozy.auth.token.issued` | `kind`, `realm` | access token 발급. `kind`는 `login`, `refresh`, `client_credentials`(서비스 토큰), `dev`(개발용 API, `local`·`dev`만) |
+| `dozy.auth.refresh.reuse.detected` | `realm` | 재사용 탐지로 세션을 폐기함 ([SES-03](domain.md#6-세션-규칙-ses)) |
+| `dozy.auth.ratelimit.rejected` | `limit` | 요청 제한 초과 ([api/conventions.md §8](api/conventions.md#8-요청-제한)). `limit`은 `ip`, `email`(같은 `202`로 응답하고 메일만 보내지 않음), `password_confirm` |
+
+- 이름은 `dozy.auth.`로 시작하는 점 구분 소문자입니다. 지표를 추가하면 이 표에 먼저 넣습니다.
+- 태그 값은 정해진 몇 가지만 씁니다 (realm, 에러 code, 위 표의 값). 이메일, principal id, 세션 id, IP, client_id처럼 값이 계속 늘어나는 것은 태그에 넣지 않습니다. 지표 저장소가 커지지 않게 하고, 개인정보가 지표로 나가지 않게 하기 위해서입니다 ([SEC-03](domain.md#12-민감정보-sec)).
+- 결과가 정해진 시점에 세며 트랜잭션 커밋을 기다리지 않습니다. counter는 처음 일어날 때 생기므로, 한 번도 일어나지 않은 조합은 수집 결과에 없습니다.
+- 코드에서는 UseCase가 `RecordMetricsPort`로 남깁니다 ([architecture.md §9](architecture.md#9-코드-규칙)).
+- Spring Boot 기본 지표(HTTP 요청 `http.server.requests`, JVM, DB 연결 풀 등)도 함께 나옵니다.
+
+### 10.3 추적
+
+- Micrometer Tracing(Brave)으로 요청마다 trace를 만듭니다. 요청에 W3C `traceparent` 헤더가 있으면 그 trace를 이어 갑니다.
+- trace id(소문자 hex 32자)가 응답의 `X-Trace-Id`, 에러 응답의 `traceId`, 그 요청 중에 남은 로그의 `traceId`에 같은 값으로 들어갑니다 ([api/conventions.md §9](api/conventions.md#9-추적과-로그)).
+- 스팬을 내보내는 곳(Zipkin, OTLP 등)은 아직 두지 않습니다. 지금은 trace id를 응답과 로그를 잇는 데만 씁니다. 수집기를 정하면 exporter 의존성과 `management.tracing.*` 설정(표본 비율 등)을 추가합니다.
+
+### 10.4 로그
+
+| 프로필 | 형식 |
+|---|---|
+| `prod` | 한 줄 JSON. Spring Boot 구조화 로그의 ECS 형식(`logging.structured.format.console: ecs`)이고, `traceId`·`spanId`가 최상위 필드 |
+| 그 밖 | Spring Boot 기본 텍스트 형식. 줄마다 `[{traceId}-{spanId}]`가 들어감 |
+
+- 로그에 남기지 않는 값은 [SEC-03](domain.md#12-민감정보-sec)을 따릅니다. 서버 코드와 Spring Web·Security 로그를 디버그로 올려도 비밀번호, 토큰, 쿠키 값, `Authorization` 헤더가 남지 않는지 테스트(`ObservabilityApiTest`)로 확인합니다.

@@ -51,6 +51,7 @@ src/test/kotlin/com/dozycoffee/auth/server/    테스트
 | 설정 키·환경 변수 | `docs/configuration.md` | `application.yaml`, `config/` |
 | 정책 수치 | `docs/domain.md` §2 | 정책 상수 (속성으로 노출할 때는 `dozy.auth.policy.*`) |
 | 메일 | 해당 API 문서 | `adapter/outbound/mail`, `templates/mail/` |
+| 지표 | `docs/configuration.md` §10.2 | `RecordMetricsPort` → `adapter/outbound/metrics` |
 
 - 적용된 마이그레이션 파일은 고치지 않고 새 번호로 추가합니다.
 - 규칙을 구현한 코드와 테스트 이름에는 규칙 ID를 씁니다 (예: `SES-03`).

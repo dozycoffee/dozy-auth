@@ -120,7 +120,7 @@ RFC 9457 Problem Details 형식이며 `Content-Type: application/problem+json`�
 
 ## 8. 요청 제한
 
-- 인증 방식이 "없음"인 API는 IP 단위로 제한합니다. 한도는 `policy.rate-limit-ip`입니다. JWKS와 개발용 API(`/dev/**`, `local`·`dev` 전용으로 비밀값을 확인하지 않음)는 제외합니다. CORS preflight(`OPTIONS`)는 세지 않습니다.
+- 인증 방식이 "없음"인 API는 IP 단위로 제한합니다. 한도는 `policy.rate-limit-ip`입니다. JWKS, 개발용 API(`/dev/**`, `local`·`dev` 전용으로 비밀값을 확인하지 않음), Actuator(상태 확인·지표 수집, [configuration.md §10.1](../configuration.md#101-actuator))는 제외합니다. CORS preflight(`OPTIONS`)는 세지 않습니다.
 - IP는 서버가 정한 클라이언트 주소입니다. 프록시 뒤에서는 신뢰할 프록시가 전달한 `X-Forwarded-For`만 반영합니다 ([configuration.md §9](../configuration.md#9-클라이언트-주소와-프록시)).
 - 메일을 보내는 API(가입, 인증 메일 재발송, 비밀번호 찾기)는 같은 이메일에 대한 반복 요청도 제한합니다. 한도는 `policy.rate-limit-email`이고 이메일은 대소문자를 구분하지 않습니다. 제한에 걸려도 계정 존재 여부가 드러나지 않게 같은 `202`로 응답하고 메일만 보내지 않습니다.
 - 서비스 토큰 발급은 요청 제한 대상이 아닙니다. client secret은 난수라 대입 공격이 의미 없고, 실패는 `invalid_client`로만 응답합니다.
@@ -132,7 +132,8 @@ RFC 9457 Problem Details 형식이며 `Content-Type: application/problem+json`�
 
 ## 9. 추적과 로그
 
-- 모든 응답에 `X-Trace-Id` 헤더를 넣습니다. 에러 응답의 `traceId`와 같습니다.
+- 모든 응답에 `X-Trace-Id` 헤더를 넣습니다. 값은 그 요청의 trace id(소문자 hex 32자)이며, 에러 응답의 `traceId`, 그 요청 중에 남은 서버 로그의 `traceId`와 같습니다.
+- 요청에 W3C `traceparent` 헤더가 있으면 그 trace를 이어 가므로 호출한 쪽의 trace id가 됩니다. 요청의 `X-Trace-Id`는 trace id로 쓰지 않습니다. 추적 설정은 [configuration.md §10.3](../configuration.md#103-추적)에 있습니다.
 - 목록 검색어 `q`는 쿼리 문자열로 받지만 접근 로그에서 값을 가립니다.
 - 로그 금지 항목은 [SEC-03](../domain.md#12-민감정보-sec)을 따릅니다.
 

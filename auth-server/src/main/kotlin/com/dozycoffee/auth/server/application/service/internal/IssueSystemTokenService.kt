@@ -10,6 +10,8 @@ import com.dozycoffee.auth.server.application.port.outbound.account.LoadAccountP
 import com.dozycoffee.auth.server.application.port.outbound.authorization.LoadPrincipalRolesPort
 import com.dozycoffee.auth.server.application.port.outbound.client.LoadSystemClientPort
 import com.dozycoffee.auth.server.application.port.outbound.jwt.SignTokenPort
+import com.dozycoffee.auth.server.application.port.outbound.metrics.RecordMetricsPort
+import com.dozycoffee.auth.server.application.port.outbound.metrics.TokenIssueKind
 import com.dozycoffee.auth.server.domain.SecretHash
 import com.dozycoffee.auth.server.domain.account.AccountStatus
 import com.dozycoffee.auth.server.domain.client.ClientId
@@ -30,7 +32,7 @@ import java.util.UUID
  * 2. secret이 맞으면 계정이 `system` 타입이고 `ACTIVE`인지 확인합니다 (CLI-04, ACC-04).
  * 3. 부여된 role로 `aud`·`roles`를 정하고 `sid` 없이 서명합니다 (token.md §4). refresh token은 없습니다 (CLI-05).
  *
- * 실패 원인은 구분하지 않고 모두 [InvalidClientException]입니다. 발급은 감사 action이 아닙니다 (AUD-01).
+ * 실패 원인은 구분하지 않고 모두 [InvalidClientException]입니다. 발급은 감사 action이 아니고, 지표로만 셉니다 (AUD-01, configuration.md §10).
  */
 @Service
 class IssueSystemTokenService(
@@ -38,6 +40,7 @@ class IssueSystemTokenService(
     private val loadAccount: LoadAccountPort,
     private val loadPrincipalRoles: LoadPrincipalRolesPort,
     private val signToken: SignTokenPort,
+    private val recordMetrics: RecordMetricsPort,
     private val issuerBaseUri: IssuerBaseUri,
     private val clock: Clock,
 ) : IssueSystemTokenUseCase {
@@ -62,6 +65,8 @@ class IssueSystemTokenService(
                 issuedAt = clock.instant(),
                 tokenId = UUID.randomUUID().toString(),
             )
-        return IssuedSystemToken(signToken.sign(claims), Duration.between(claims.issuedAt, claims.expiresAt))
+        val token = signToken.sign(claims)
+        recordMetrics.tokenIssued(TokenIssueKind.CLIENT_CREDENTIALS, Realm.INTERNAL)
+        return IssuedSystemToken(token, Duration.between(claims.issuedAt, claims.expiresAt))
     }
 }

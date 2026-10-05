@@ -1,5 +1,6 @@
 package com.dozycoffee.auth.server.application.service.dev
 
+import com.dozycoffee.auth.server.adapter.outbound.metrics.MetricsMicrometerAdapter
 import com.dozycoffee.auth.server.application.port.inbound.dev.IssueDevTokenCommand
 import com.dozycoffee.auth.server.application.port.outbound.jwt.SignTokenPort
 import com.dozycoffee.auth.server.domain.AuthPolicy
@@ -11,6 +12,8 @@ import com.dozycoffee.auth.server.support.TokenFixtures.ISSUER_BASE
 import com.dozycoffee.auth.server.support.TokenFixtures.NOW
 import com.dozycoffee.auth.server.support.TokenFixtures.PARTNER
 import com.dozycoffee.auth.server.support.TokenFixtures.SYSTEM
+import com.dozycoffee.auth.server.support.counted
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -28,7 +31,8 @@ class IssueDevTokenServiceTest {
     private val signToken = mockk<SignTokenPort>()
     private val signed = slot<AccessTokenClaims>()
 
-    private val service = IssueDevTokenService(signToken, ISSUER_BASE, FIXED_CLOCK)
+    private val meters = SimpleMeterRegistry()
+    private val service = IssueDevTokenService(signToken, MetricsMicrometerAdapter(meters), ISSUER_BASE, FIXED_CLOCK)
 
     init {
         every { signToken.sign(capture(signed)) } returns "signed-token"
@@ -47,6 +51,8 @@ class IssueDevTokenServiceTest {
         assertEquals(listOf("wms:inbound_manager", "catalog:menu_editor", "wms:stock_viewer"), claims.roles)
         assertEquals(NOW, claims.issuedAt)
         assertNull(claims.sessionId)
+        // 실제 발급과 구분해 셈 (configuration.md §10)
+        assertEquals(1.0, meters.counted("dozy.auth.token.issued", "kind", "dev", "realm", "internal"))
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.dozycoffee.auth.server.application.service.internal
 
 import com.dozycoffee.auth.core.PrincipalType
 import com.dozycoffee.auth.core.RoleCode
+import com.dozycoffee.auth.server.adapter.outbound.metrics.MetricsMicrometerAdapter
 import com.dozycoffee.auth.server.application.port.inbound.internal.IssueSystemTokenCommand
 import com.dozycoffee.auth.server.application.port.outbound.account.LoadAccountPort
 import com.dozycoffee.auth.server.application.port.outbound.authorization.LoadPrincipalRolesPort
@@ -19,6 +20,8 @@ import com.dozycoffee.auth.server.support.TokenFixtures.FIXED_CLOCK
 import com.dozycoffee.auth.server.support.TokenFixtures.ISSUER_BASE
 import com.dozycoffee.auth.server.support.TokenFixtures.NOW
 import com.dozycoffee.auth.server.support.TokenFixtures.SYSTEM
+import com.dozycoffee.auth.server.support.counted
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.Called
 import io.mockk.every
 import io.mockk.mockk
@@ -39,9 +42,18 @@ class IssueSystemTokenServiceTest {
     private val loadPrincipalRoles = mockk<LoadPrincipalRolesPort>()
     private val signToken = mockk<SignTokenPort>()
     private val signed = slot<AccessTokenClaims>()
+    private val meters = SimpleMeterRegistry()
 
     private val service =
-        IssueSystemTokenService(loadSystemClient, loadAccount, loadPrincipalRoles, signToken, ISSUER_BASE, FIXED_CLOCK)
+        IssueSystemTokenService(
+            loadSystemClient,
+            loadAccount,
+            loadPrincipalRoles,
+            signToken,
+            MetricsMicrometerAdapter(meters),
+            ISSUER_BASE,
+            FIXED_CLOCK,
+        )
 
     init {
         every { loadSystemClient.findByClientId(ClientId(CLIENT_ID)) } returns
@@ -66,6 +78,7 @@ class IssueSystemTokenServiceTest {
         assertEquals(NOW, claims.issuedAt)
         assertEquals(NOW.plus(AuthPolicy.ACCESS_TOKEN_TTL), claims.expiresAt)
         assertNull(claims.sessionId)
+        assertEquals(1.0, meters.counted("dozy.auth.token.issued", "kind", "client_credentials", "realm", "internal"))
     }
 
     @Test

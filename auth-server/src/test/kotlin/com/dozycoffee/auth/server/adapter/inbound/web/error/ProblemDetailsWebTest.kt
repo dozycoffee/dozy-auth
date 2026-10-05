@@ -34,7 +34,8 @@ import kotlin.test.assertTrue
 
 /**
  * 컨트롤러가 던진 예외를 Problem Details로 바꾸는지 상태 코드별로 확인합니다 (api/conventions.md §4, §5).
- * 에러 응답의 모양(`code`, `traceId`)과 계약 값은 명세의 문자열 그대로 기대값으로 씁니다.
+ * 에러 응답의 모양(`code`, `traceId`)과 계약 값은 명세의 문자열 그대로 기대값으로 씁니다. 이 슬라이스에는 Micrometer Tracing이 없어
+ * `traceId`는 요청의 `X-Trace-Id`나 새 값입니다. 추적이 있을 때의 값은 `ObservabilityApiTest`가 확인합니다.
  */
 @WebMvcTest
 @ContextConfiguration(
@@ -178,7 +179,7 @@ class ProblemDetailsWebTest {
     }
 
     @Test
-    fun `요청의 X-Trace-Id를 응답 헤더와 에러 본문의 traceId로 씀`() {
+    fun `추적이 없으면 요청의 X-Trace-Id를 응답 헤더와 에러 본문의 traceId로 씀`() {
         mockMvc
             .get("/test/token-rotated") { header("X-Trace-Id", "4bf92f3577b34da6a3ce929d0e0e4736") }
             .andExpect {
@@ -188,7 +189,7 @@ class ProblemDetailsWebTest {
     }
 
     @Test
-    fun `X-Trace-Id가 없거나 형식이 틀리면 새로 만들어 헤더와 본문에 같은 값을 씀`() {
+    fun `추적이 없고 X-Trace-Id가 없거나 형식이 틀리면 새로 만들어 헤더와 본문에 같은 값을 씀`() {
         for (incoming in listOf(null, "bad value!", "a".repeat(65))) {
             val result =
                 mockMvc

@@ -12,6 +12,13 @@ spring:
 server:
   forward-headers-strategy: native
 
+# 지표·추적 (docs/configuration.md §10). Actuator는 상태 확인과 Prometheus 수집만 HTTP로 엽니다.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, prometheus
+
 # 서버가 받는 토큰의 검증 설정 (스타터 속성, docs/configuration.md §7). issuer-base-uri는 프로필별로 넣습니다.
 dozy:
   auth:
