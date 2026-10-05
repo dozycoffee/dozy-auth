@@ -27,11 +27,11 @@ class CleanupPersistenceAdapterTest {
     private val auditLogs = AuditPersistenceAdapter()
 
     @Test
-    fun `AUD-05 절대 만료 시각이 기준 시각 이하인 세션을 지움`() {
+    fun `AUD-05 만료 시각이 기준 시각 이하인 세션을 지움 (절대 만료 전에 idle 만료된 세션 포함)`() {
         val principal = insertPrincipal()
-        val before = insertSessions(principal, absoluteExpiresAt = CUTOFF.minus(MICROSECOND)).single()
-        val exact = insertSessions(principal, absoluteExpiresAt = CUTOFF).single()
-        val after = insertSessions(principal, absoluteExpiresAt = CUTOFF.plus(MICROSECOND)).single()
+        val before = insertSessions(principal, expiresAt = CUTOFF.minus(MICROSECOND)).single()
+        val exact = insertSessions(principal, expiresAt = CUTOFF).single()
+        val after = insertSessions(principal, expiresAt = CUTOFF.plus(MICROSECOND)).single()
 
         val deleted = sessions.deleteEndedSessions(CUTOFF, LIMIT)
 
@@ -43,10 +43,10 @@ class CleanupPersistenceAdapterTest {
     fun `AUD-05 폐기 시각이 기준 시각 이하인 세션을 지움`() {
         val principal = insertPrincipal()
         val notEnded = CUTOFF.plus(Duration.ofDays(1))
-        val before = insertSessions(principal, absoluteExpiresAt = notEnded, revokedAt = CUTOFF.minus(MICROSECOND)).single()
-        val exact = insertSessions(principal, absoluteExpiresAt = notEnded, revokedAt = CUTOFF).single()
-        val after = insertSessions(principal, absoluteExpiresAt = notEnded, revokedAt = CUTOFF.plus(MICROSECOND)).single()
-        val live = insertSessions(principal, absoluteExpiresAt = notEnded).single()
+        val before = insertSessions(principal, expiresAt = notEnded, revokedAt = CUTOFF.minus(MICROSECOND)).single()
+        val exact = insertSessions(principal, expiresAt = notEnded, revokedAt = CUTOFF).single()
+        val after = insertSessions(principal, expiresAt = notEnded, revokedAt = CUTOFF.plus(MICROSECOND)).single()
+        val live = insertSessions(principal, expiresAt = notEnded).single()
 
         val deleted = sessions.deleteEndedSessions(CUTOFF, LIMIT)
 
@@ -56,7 +56,7 @@ class CleanupPersistenceAdapterTest {
 
     @Test
     fun `AUD-05 세션은 한 번에 limit개까지만 지움`() {
-        val ids = insertSessions(insertPrincipal(), absoluteExpiresAt = CUTOFF, count = 3)
+        val ids = insertSessions(insertPrincipal(), expiresAt = CUTOFF, count = 3)
 
         val deleted = sessions.deleteEndedSessions(CUTOFF, 2)
 

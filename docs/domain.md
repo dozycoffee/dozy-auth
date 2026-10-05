@@ -316,7 +316,7 @@ stateDiagram-v2
   - 부트스트랩([GOV-11](#8-관리-권한-규칙-gov))은 알리지 않습니다.
 - **AUD-04** 감사 로그는 owner만 조회합니다. 최신순이며 조회 기간은 `policy.audit-query-max-range` 이하입니다.
 - **AUD-05** 정리 배치(`policy.cleanup-schedule`)
-  - refresh 세션: `absolute_expires_at` 또는 `revoked_at` 후 `policy.session-retention` 경과
+  - refresh 세션: `expires_at` 또는 `revoked_at` 후 `policy.session-retention` 경과. `expires_at`은 `absolute_expires_at`을 넘지 않으므로 idle 만료와 절대 만료를 모두 끝난 시각부터 셉니다
   - verification: `expires_at`, `consumed_at`, `invalidated_at` 중 하나 후 `policy.verification-retention` 경과
   - 감사 로그: 발생 후 `policy.audit-retention` 경과
   - principal: 삭제하지 않음 ([ACC-05](#3-계정-상태-규칙-acc))
