@@ -14,7 +14,7 @@
 | 엔드포인트 요청·응답과 호출 흐름 | [api/auth.md](api/auth.md), [api/account.md](api/account.md), [api/admin.md](api/admin.md), [api/internal.md](api/internal.md), [api/dev.md](api/dev.md) |
 | 테이블, 컬럼, 인덱스, 제약, seed | [data-model.md](data-model.md) |
 | 스타터·auth-test가 서비스에 약속하는 것 | [starter.md](starter.md) |
-| 서버 환경 변수, 서명 키 파일, 프로필 | [configuration.md](configuration.md) |
+| 서버 환경 변수, 서명 키 파일, 프로필, 서버 이미지 실행 조건 | [configuration.md](configuration.md) |
 | 구성요소, 책임 경계, 모듈, 계층, 의존·이름·코드 규칙 | [architecture.md](architecture.md) |
 | 테스트 종류, 테스트 이름·기대값·fixture 규칙 | [testing.md](testing.md) |
 | 결정과 이유 | [adr/](adr/README.md) |
