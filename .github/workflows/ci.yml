@@ -61,6 +61,10 @@ jobs:
           tags: |
             type=sha
             type=raw,value=main,enable={{is_default_branch}}
+          # 저장소 정보로 채우는 기본 라벨이 Dockerfile의 title·description을 덮지 않도록 같은 값을 준다
+          labels: |
+            org.opencontainers.image.title=dozy-auth-api
+            org.opencontainers.image.description=Dozy Auth 서버
 
       - uses: docker/build-push-action@v7
         with:
