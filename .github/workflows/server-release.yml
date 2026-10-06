@@ -20,6 +20,11 @@ concurrency:
 env:
   IMAGE: ghcr.io/dozycoffee/dozy-auth-api
 
+# 기본 셸(bash -e)은 pipefail이 꺼져 있어 `inspect | jq`에서 inspect가 실패해도 성공으로 본다. shell: bash는 -eo pipefail로 실행한다
+defaults:
+  run:
+    shell: bash
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -97,7 +102,7 @@ jobs:
         run: |
           digest() { docker buildx imagetools inspect "$1" --format '{{json .Manifest}}' | jq -r .digest; }
           source_digest="$(digest "$SOURCE")"
-          if target_digest="$(digest "$TARGET" 2> /dev/null)"; then
+          if target_digest="$(digest "$TARGET" 2> /dev/null)" && [[ -n "$target_digest" ]]; then
             if [[ "$target_digest" != "$source_digest" ]]; then
               echo "::error::$TARGET 태그가 이미 다른 이미지($target_digest)에 있습니다. 같은 버전은 다시 쓰지 않고 다음 patch 버전으로 릴리스하세요."
               exit 1
