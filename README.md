@@ -20,7 +20,7 @@ Auth는 **"누구인가"와 "어떤 role을 가졌는가"만 보증**합니다. 
 - JDK 21 (Gradle 실행용. 라이브러리 빌드에 쓰는 JDK 17은 없으면 Gradle이 자동으로 내려받습니다)
 - Docker (로컬 실행과 통합 테스트용)
 
-PR과 `main` 푸시마다 GitHub Actions가 `./gradlew build`(ktlint, 테스트)를 실행합니다 ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
+PR과 `main` 푸시마다 GitHub Actions가 `./gradlew build`(ktlint, 테스트)와 서버 이미지 빌드를 실행합니다. `main` 푸시일 때는 이미지를 ghcr에 올립니다 ([.github/workflows/ci.yml](.github/workflows/ci.yml), [서버 이미지](#서버-이미지)).
 
 ## 빠른 시작
 
@@ -87,6 +87,39 @@ curl -X POST http://localhost:8080/dev/tokens \
 
 응답의 `accessToken`을 서비스 호출에 `Authorization: Bearer {accessToken}`으로 넣습니다. 서비스는 이 서버의 JWKS(`http://localhost:8080/.well-known/jwks.json`)로 검증합니다.
 
+### 서버 이미지
+
+서버는 컨테이너 이미지(`ghcr.io/dozycoffee/dozy-auth-api`)로 배포합니다. 서버 버전은 커밋 SHA이고, `main`에 병합되면 CI가 `sha-{7자리}`와 `main` 태그로 올립니다. 이미지 실행에 필요한 환경 변수, 볼륨, 포트, 상태 확인 경로는 [configuration.md §12](docs/configuration.md#12-컨테이너-이미지)에 있습니다.
+
+로컬에서 만들 때는 jar를 먼저 빌드합니다. Dockerfile은 이 jar를 계층별로 풀어 담기만 합니다.
+
+```bash
+./gradlew :auth-server:bootJar               # auth-server/build/libs/auth-server.jar
+docker build -t dozy-auth-api auth-server
+```
+
+로컬 DB(`compose.yaml`)와 Mailpit에 붙여 띄워 보려면 `dev` 프로필에 환경 변수와 서명 키 폴더를 줍니다. 키는 [configuration.md §3](docs/configuration.md#3-서명-키) 형식으로 저장소 밖에 만들고, 확인이 끝나면 지웁니다.
+
+```bash
+docker run --rm -p 8080:8080 \
+  -e SPRING_PROFILES_ACTIVE=dev \
+  -e AUTH_ISSUER_BASE_URL=http://localhost:8080 \
+  -e AUTH_DB_URL=jdbc:postgresql://host.docker.internal:5432/auth \
+  -e AUTH_DB_USERNAME=auth -e AUTH_DB_PASSWORD=auth \
+  -e AUTH_SIGNING_KEYS_DIR=/secrets/signing-keys -e AUTH_SIGNING_ACTIVE_KID=dozy-2026-10 \
+  -v /path/to/signing-keys:/secrets/signing-keys:ro \
+  -e AUTH_CORS_ALLOWED_ORIGINS=http://localhost:3000 \
+  -e AUTH_APP_URL_INTERNAL=http://localhost:3000 -e AUTH_APP_URL_PARTNER=http://localhost:3001 \
+  -e AUTH_MAIL_SENDER=console -e AUTH_MAIL_FROM=no-reply@dozycoffee.local \
+  -e BOOTSTRAP_OWNER_EMAIL=owner@dozycoffee.local \
+  dozy-auth-api
+
+curl http://localhost:8080/actuator/health   # {"status":"UP", ...}
+```
+
+- `local` 프로필의 Docker Compose 지원과 서명 키 자동 생성은 이미지에서 쓰지 않습니다.
+- `prod` 프로필은 `AUTH_MAIL_SENDER=console`을 거부하는 등 [기동 시 검사](docs/configuration.md#2-기동-시-검사)가 있어 SMTP 인증 정보까지 줘야 뜹니다.
+
 ## 자주 쓰는 명령
 
 ```bash
@@ -139,7 +172,7 @@ curl -X POST http://localhost:8080/dev/tokens \
 ```text
 dozy-auth/
 ├─ auth-core/                    공유 타입
-├─ auth-server/                  Auth 서버
+├─ auth-server/                  Auth 서버 (Dockerfile 포함)
 ├─ auth-spring-boot-starter/     서비스용 자동 설정
 ├─ auth-test/                    서비스 테스트 도구
 ├─ build-logic/                  공통 Gradle 설정 (convention 플러그인, 라이브러리 배포 설정)
@@ -148,7 +181,7 @@ dozy-auth/
 ├─ compose.yaml                  로컬 PostgreSQL, Mailpit
 ├─ AGENTS.md, CLAUDE.md          에이전트 작업 규칙
 ├─ CLAUDE.local.md.example       개인 로컬 지침 양식 (복사해서 CLAUDE.local.md로)
-└─ .github/                      PR·이슈 템플릿, 릴리스 노트 설정, CI·배포 워크플로
+└─ .github/                      PR·이슈 템플릿, 릴리스 노트 설정, CI(서버 이미지 포함)·라이브러리 배포 워크플로
 ```
 
 `CLAUDE.local.md`, `.context/`(개인 메모), `.local/`(로컬 서명 키)는 git에 올라가지 않습니다.

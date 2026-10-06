@@ -22,6 +22,7 @@ Dozy Auth 서버입니다. 로그인, 토큰 발급, 계정·role 관리 API를 
 - `bootRun`의 작업 폴더는 저장소 루트입니다. `compose.yaml`과 `.local/`을 루트에서 찾습니다.
 - 프로필별 동작은 [configuration.md §4](../docs/configuration.md#4-프로필)를 따릅니다.
 - 로컬에서 처음 owner 계정을 만드는 방법은 [루트 README](../README.md#첫-owner-계정-만들기)에 있습니다.
+- 컨테이너 이미지는 `Dockerfile`로 만듭니다. 빌드는 [루트 README](../README.md#서버-이미지), 실행 조건은 [configuration.md §12](../docs/configuration.md#12-컨테이너-이미지)를 봅니다.
 
 ## 구조
 
