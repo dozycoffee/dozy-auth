@@ -18,6 +18,7 @@ auth-server가 읽는 설정과 프로필별 동작입니다. 비밀값(DB 비�
 | `AUTH_MAIL_SMTP_HOST`, `_PORT`, `_USERNAME`, `_PASSWORD` | smtp일 때 | `smtp.example.com`, `587` | `HOST`가 없으면 기동 실패. `PORT` 기본값 `587`. dev·prod는 SMTP 인증과 STARTTLS를 요구 |
 | `AUTH_MAIL_FROM` | ✅ | `no-reply@dozycoffee.com` | 보내는 주소. 이메일 형식이 아니면 기동 실패 |
 | `BOOTSTRAP_OWNER_EMAIL` | owner가 없을 때 | `owner@dozycoffee.com` | [GOV-11](domain.md#8-관리-권한-규칙-gov). 비밀번호는 설정에 두지 않음. 속성 `dozy.auth.bootstrap.owner-email`, local 기본값 `owner@dozycoffee.local`. 이메일 형식이 아니면 기동 실패 |
+| `AUTH_RELEASE_VERSION` | | `0.1.0` | 배포한 릴리스 버전. 기동 로그와 `dozy.auth.build.info` 지표의 `version`. 속성 `dozy.auth.release-version` ([§12.1](#121-실행-중인-서버의-버전)) |
 
 - 정책 수치([domain.md §2](domain.md#2-정책-값))는 코드 기본값(`domain.AuthPolicy`)으로 두고, 바꿀 필요가 생기면 `dozy.auth.policy.*` 속성으로 노출합니다. 속성 이름은 정책 이름에서 `policy.`를 뗀 것입니다 (예: `dozy.auth.policy.access-token-ttl`).
 - 환경 변수와 Spring 속성의 연결은 `application.yaml`에서 `${AUTH_...}`로 합니다.
@@ -191,7 +192,7 @@ Auth 서버가 받는 토큰(`/realms/{realm}` 아래 본인 API, `/admin/**`, `
 
 ### 10.2 지표
 
-Micrometer counter입니다. Prometheus에서는 이름의 `.`이 `_`로 바뀌고 `_total`이 붙습니다 (예: `dozy_auth_login_failed_total`).
+`dozy.auth.build.info`만 gauge이고 나머지는 Micrometer counter입니다. Prometheus에서는 이름의 `.`이 `_`로 바뀌고 counter에는 `_total`이 붙습니다 (예: `dozy_auth_login_failed_total`, `dozy_auth_build_info`).
 
 | 지표 | 태그 | 세는 때 |
 |---|---|---|
@@ -203,11 +204,12 @@ Micrometer counter입니다. Prometheus에서는 이름의 `.`이 `_`로 바뀌�
 | `dozy.auth.cleanup.deleted` | `table` | 정리 배치([§11](#11-정리-배치))가 지우고 커밋한 행 수. `table`은 `refresh_session`, `verification`, `audit_log`. 묶음마다 더하므로 실패한 실행에서 앞서 커밋한 묶음도 셈 |
 | `dozy.auth.cleanup.runs` | `outcome` | 정리 배치 실행이 끝남. `outcome`은 `success`, `failure` |
 | `dozy.auth.mail.failed` | `kind` | 메일을 보내지 못함 (발송 실패, 발송 대기열 가득 참. [architecture.md §9.3](architecture.md#93-메일-발송)). `kind`는 `employee_invitation`, `password_reset`, `owner_transfer_request`, `owner_transfer_completed`, `owner_notification`. 커밋 뒤 메일 발송기가 셈 |
+| `dozy.auth.build.info` | `version`, `revision` | 값은 항상 1인 gauge. 기동할 때 정해지는 실행 중인 서버의 버전([§12.1](#121-실행-중인-서버의-버전))이라 인스턴스마다 한 줄 |
 
 - 이름은 `dozy.auth.`로 시작하는 점 구분 소문자입니다. 지표를 추가하면 이 표에 먼저 넣습니다.
-- 태그 값은 정해진 몇 가지만 씁니다 (realm, 에러 code, 위 표의 값). 이메일, principal id, 세션 id, IP, client_id처럼 값이 계속 늘어나는 것은 태그에 넣지 않습니다. 지표 저장소가 커지지 않게 하고, 개인정보가 지표로 나가지 않게 하기 위해서입니다 ([SEC-03](domain.md#12-민감정보-sec)).
+- 태그 값은 정해진 몇 가지만 씁니다 (realm, 에러 code, 위 표의 값, 인스턴스마다 하나인 서버 버전). 이메일, principal id, 세션 id, IP, client_id처럼 값이 계속 늘어나는 것은 태그에 넣지 않습니다. 지표 저장소가 커지지 않게 하고, 개인정보가 지표로 나가지 않게 하기 위해서입니다 ([SEC-03](domain.md#12-민감정보-sec)).
 - 결과가 정해진 시점에 세며 트랜잭션 커밋을 기다리지 않습니다. counter는 처음 일어날 때 생기므로, 한 번도 일어나지 않은 조합은 수집 결과에 없습니다.
-- 코드에서는 UseCase가 `RecordMetricsPort`로 남깁니다 ([architecture.md §9](architecture.md#9-코드-규칙)). `dozy.auth.mail.failed`만 커밋 뒤 발송을 맡는 메일 어댑터(`AfterCommitMailSender`)가 같은 포트로 남깁니다.
+- 코드에서는 UseCase가 `RecordMetricsPort`로 남깁니다 ([architecture.md §9](architecture.md#9-코드-규칙)). `dozy.auth.mail.failed`만 커밋 뒤 발송을 맡는 메일 어댑터(`AfterCommitMailSender`)가 같은 포트로 남깁니다. `dozy.auth.build.info`는 UseCase와 관계없이 기동할 때 `config`가 등록합니다 (`BuildInfoConfig`, 지표 코드는 `adapter/outbound/metrics`의 `BuildInfoMeterBinder`).
 - Spring Boot 기본 지표(HTTP 요청 `http.server.requests`, JVM, DB 연결 풀 등)도 함께 나옵니다.
 
 ### 10.3 추적
@@ -244,7 +246,9 @@ Micrometer counter입니다. Prometheus에서는 이름의 `.`이 `_`로 바뀌�
 | 항목 | 값 |
 |---|---|
 | 이미지 | `ghcr.io/dozycoffee/dozy-auth-api` |
-| 태그 | `sha-{커밋 SHA 7자리}`(서버 버전), `main`(가장 최근 `main` 커밋). `main`에 push될 때 CI가 올리고, PR에서는 빌드만 확인 |
+| 태그 | `sha-{커밋 SHA 7자리}`, `main`(가장 최근 `main` 커밋): `main`에 push될 때 CI가 올리고, PR에서는 빌드만 확인. `X.Y.Z`: 서버 릴리스가 그 커밋의 `sha-` 이미지에 덧붙임 ([ADR-0032](adr/0032-server-versioning.md), [README 서버 릴리스](../README.md#서버-릴리스)). `latest`, `X.Y` 같은 이동 태그는 없음 |
+| 플랫폼 | `linux/amd64`, `linux/arm64` (한 태그에 두 플랫폼. 실행하는 머신에 맞는 것을 받음) |
+| 라벨 | `org.opencontainers.image.revision`(커밋 SHA 전체), `org.opencontainers.image.version`(`sha-{7자리}`), `title`, `description`, `source` |
 | 포트 | `8080` (HTTP) |
 | 실행 사용자 | UID·GID `10001` (root 아님) |
 | 상태 확인 | `GET /actuator/health` ([§10.1](#101-actuator)) |
@@ -255,3 +259,18 @@ Micrometer counter입니다. Prometheus에서는 이름의 `.`이 `_`로 바뀌�
 - DB 마이그레이션은 앱이 기동할 때 Flyway가 적용합니다. 따로 실행하는 단계가 없습니다.
 - 힙 최대치는 컨테이너 메모리 제한의 75%입니다 (`JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=75`). JVM 옵션을 바꾸려면 `JAVA_TOOL_OPTIONS`를 다시 지정합니다. 비밀번호 해시가 쓰는 메모리는 [§6](#6-비밀번호-해시)을 봅니다.
 - 배포 환경, 배포·롤백 절차는 아직 정하지 않았습니다.
+
+### 12.1 실행 중인 서버의 버전
+
+릴리스는 이미지를 다시 빌드하지 않으므로([ADR-0032](adr/0032-server-versioning.md)) 이미지 안에는 빌드할 때 아는 값만 있습니다. `X.Y.Z` 태그와 그 커밋의 `sha-` 태그는 digest가 같은 이미지입니다.
+
+| 값 | 정해지는 때 | 어디서 보나 |
+|---|---|---|
+| `revision` (커밋 SHA 전체) | CI 빌드 | 이미지 라벨 `org.opencontainers.image.revision`, 기동 로그, `dozy.auth.build.info`의 `revision` |
+| 빌드 버전 (`sha-{7자리}`) | CI 빌드 | 이미지 라벨 `org.opencontainers.image.version` |
+| 릴리스 버전 (`X.Y.Z`) | 배포 | 이미지 태그, `AUTH_RELEASE_VERSION`을 주면 기동 로그와 `dozy.auth.build.info`의 `version` |
+
+- 배포할 때 `AUTH_RELEASE_VERSION`에 배포하는 이미지 태그의 버전(`X.Y.Z`)을 줍니다. 주지 않으면 `version`은 빌드 버전(`sha-{7자리}`)입니다. CI를 거치지 않은 로컬 빌드는 `local`, `revision`은 `unknown`입니다.
+- `AUTH_RELEASE_VERSION`은 배포가 알려 주는 값이라 검사하지 않습니다. `version`과 `revision`이 맞지 않으면 `revision`이 기준입니다 (`git tag --points-at {revision}`으로 확인).
+- 기동 로그는 `INFO` 한 줄입니다: `Dozy Auth 서버 버전 {version}, revision {revision}`.
+- 버전은 `/actuator/info` 같은 HTTP 엔드포인트로 노출하지 않습니다 ([§10.1](#101-actuator)). Prometheus에서 `dozy_auth_build_info`로 인스턴스별 버전을 봅니다 ([§10.2](#102-지표)).

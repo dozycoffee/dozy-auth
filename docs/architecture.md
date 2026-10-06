@@ -229,7 +229,7 @@ com.dozycoffee.auth.server
 | 난수 | `SecureRandom`만 | 예측 방지 |
 | 비교 | 토큰·해시는 상수 시간 비교 (`MessageDigest.isEqual`) | 타이밍 공격 방지 |
 | 로그 | [SEC-03](domain.md#12-민감정보-sec) | |
-| 지표 | UseCase가 결과를 `RecordMetricsPort`로 알리고(메일 발송 실패만 메일 어댑터가 알림), Micrometer는 `adapter/outbound/metrics`만 씀. 이름·태그는 [configuration.md §10.2](configuration.md#102-지표) | 지표 기술을 바꿔도 UseCase가 바뀌지 않게. 지표 이름을 한곳에서 관리 |
+| 지표 | UseCase가 결과를 `RecordMetricsPort`로 알리고(메일 발송 실패만 메일 어댑터가 알림, 기동 시 버전 지표는 `config`가 등록), Micrometer는 `adapter/outbound/metrics`만 씀. 이름·태그는 [configuration.md §10.2](configuration.md#102-지표) | 지표 기술을 바꿔도 UseCase가 바뀌지 않게. 지표 이름을 한곳에서 관리 |
 | 테스트 | [testing.md](testing.md) | |
 | 포맷 | ktlint | |
 

@@ -39,6 +39,7 @@
 | [0029](0029-inbound-outbound-packages.md) | 방향을 나타내는 계층 패키지는 inbound·outbound로 쓴다 | 채택 | `in`이 Kotlin 예약어라 `port/inbound`·`port/outbound`, `adapter/inbound`·`adapter/outbound` |
 | [0030](0030-starter-supports-mvc-and-webflux.md) | 스타터는 Spring MVC와 WebFlux를 모두 지원한다 | 채택 | 서비스는 WebFlux+코루틴, Auth 서버는 MVC. 검증 규칙은 공유하고 연결만 스택별 |
 | [0031](0031-server-uses-starter-verification.md) | Auth 서버의 토큰 검증은 스타터를 쓰고, 에러 응답은 서버가 만든다 | 채택 | 서버는 스타터 디코더(`create`, `createWithoutAudienceCheck`)와 메모리 공개키로 검증. 경로별 필터 체인과 401·403은 서버 |
+| [0032](0032-server-versioning.md) | 서버는 server-v* 태그로 시맨틱 버전을 붙이고, 릴리스는 다시 빌드하지 않고 이미지 태그만 덧붙인다 | 채택 | `server-v{X.Y.Z}` → 같은 `sha-` 이미지에 `X.Y.Z` 태그. 0.x 시작. 실행 중 버전은 `revision`(빌드 시 SHA)과 배포가 주는 `AUTH_RELEASE_VERSION` |
 
 ## 양식
 
