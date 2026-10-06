@@ -79,8 +79,22 @@ class ObservabilityApiTest {
     }
 
     @Test
+    fun `prometheus에 실행 중인 서버의 version과 revision이 값 1인 build_info로 나옴`() {
+        val body =
+            mockMvc
+                .get("/actuator/prometheus")
+                .andReturn()
+                .response.contentAsString
+
+        // 값은 빌드 방법에 따라 다르므로(CI는 sha-{7자리}와 커밋 SHA, 로컬은 local과 unknown) 형식만 봄
+        val line = body.lines().singleOrNull { it.startsWith("dozy_auth_build_info{") }
+        assertTrue(line != null && BUILD_INFO_LINE.matches(line), "build_info 지표 없음: $line")
+    }
+
+    @Test
     fun `health와 prometheus 말고 다른 Actuator 엔드포인트는 열지 않음`() {
-        listOf("/actuator", "/actuator/metrics", "/actuator/env", "/actuator/beans", "/actuator/loggers").forEach { path ->
+        // info는 서버 버전을 공개하지 않기 위해서도 닫음 (configuration.md §12.1)
+        CLOSED_ACTUATOR_PATHS.forEach { path ->
             assertNotEquals(
                 200,
                 mockMvc
@@ -176,6 +190,12 @@ class ObservabilityApiTest {
         /** test 프로필의 CORS 허용 origin (`application-test.yaml`). */
         const val ALLOWED_ORIGIN = "https://admin.dozycoffee.test"
         const val PARENT_TRACE_ID = "4bf92f3577b34da6a3ce929d0e0e4736"
+
+        val CLOSED_ACTUATOR_PATHS =
+            listOf("/actuator", "/actuator/metrics", "/actuator/env", "/actuator/beans", "/actuator/loggers", "/actuator/info")
+
+        /** configuration.md §10.2의 `dozy.auth.build.info`. gauge라 `_total`이 붙지 않음 */
+        val BUILD_INFO_LINE = Regex("""dozy_auth_build_info\{revision="[^"]+",version="[^"]+"} 1(\.0)?""")
 
         /** SEC-03 확인에서 디버그로 올리는 로거. 요청·보안 처리와 서버 코드의 로그입니다. */
         val VERBOSE_LOGGERS = listOf("com.dozycoffee.auth", "org.springframework.web", "org.springframework.security")

@@ -5,12 +5,14 @@
 #   docker build -t dozy-auth-api auth-server
 #
 # 서명 키, DB·SMTP 비밀번호 같은 비밀값은 이미지에 넣지 않고 실행할 때 환경 변수와 볼륨으로 준다.
+# CI는 linux/amd64, linux/arm64 두 플랫폼으로 빌드하고 버전·커밋 라벨(org.opencontainers.image.version·revision)을 붙인다.
 
 # JDK major와 OS(Ubuntu noble)를 고정하고 21의 patch 업데이트는 빌드할 때마다 받는다
 ARG JRE_IMAGE=eclipse-temurin:21-jre-noble
 
-# 1단계: jar를 Spring Boot 계층별 폴더로 푼다
-FROM ${JRE_IMAGE} AS extract
+# 1단계: jar를 Spring Boot 계층별 폴더로 푼다.
+# 결과가 플랫폼과 관계없는 파일이라 빌드하는 머신의 플랫폼에서 한 번만 실행한다 (multi-arch 빌드에서 에뮬레이션을 피함)
+FROM --platform=$BUILDPLATFORM ${JRE_IMAGE} AS extract
 WORKDIR /build
 COPY build/libs/auth-server.jar app.jar
 RUN java -Djarmode=tools -jar app.jar extract --layers --launcher --destination extracted

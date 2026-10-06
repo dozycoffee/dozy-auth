@@ -89,7 +89,7 @@ curl -X POST http://localhost:8080/dev/tokens \
 
 ### 서버 이미지
 
-서버는 컨테이너 이미지(`ghcr.io/dozycoffee/dozy-auth-api`)로 배포합니다. 서버 버전은 커밋 SHA이고, `main`에 병합되면 CI가 `sha-{7자리}`와 `main` 태그로 올립니다. 이미지 실행에 필요한 환경 변수, 볼륨, 포트, 상태 확인 경로는 [configuration.md §12](docs/configuration.md#12-컨테이너-이미지)에 있습니다.
+서버는 컨테이너 이미지(`ghcr.io/dozycoffee/dozy-auth-api`)로 배포합니다. `main`에 병합되면 CI가 `linux/amd64`, `linux/arm64` 두 플랫폼으로 빌드해 `sha-{7자리}`와 `main` 태그로 올리고, [서버 릴리스](#서버-릴리스)를 하면 같은 이미지에 `X.Y.Z` 태그가 붙습니다. 태그·라벨, 이미지 실행에 필요한 환경 변수, 볼륨, 포트, 상태 확인 경로는 [configuration.md §12](docs/configuration.md#12-컨테이너-이미지)에 있습니다.
 
 로컬에서 만들 때는 jar를 먼저 빌드합니다. Dockerfile은 이 jar를 계층별로 풀어 담기만 합니다.
 
@@ -97,6 +97,8 @@ curl -X POST http://localhost:8080/dev/tokens \
 ./gradlew :auth-server:bootJar               # auth-server/build/libs/auth-server.jar
 docker build -t dozy-auth-api auth-server
 ```
+
+로컬 빌드는 버전이 `local`, revision이 `unknown`입니다. CI처럼 넣으려면 `bootJar`에 `-PserverVersion=sha-{7자리} -PserverRevision={커밋 SHA}`를 줍니다. 두 플랫폼을 함께 확인하려면 `docker buildx build --platform linux/amd64,linux/arm64 auth-server`로 빌드합니다.
 
 로컬 DB(`compose.yaml`)와 Mailpit에 붙여 띄워 보려면 `dev` 프로필에 환경 변수와 서명 키 폴더를 줍니다. 키는 [configuration.md §3](docs/configuration.md#3-서명-키) 형식으로 저장소 밖에 만들고, 확인이 끝나면 지웁니다.
 
@@ -134,7 +136,7 @@ curl http://localhost:8080/actuator/health   # {"status":"UP", ...}
 
 ## 라이브러리 배포
 
-`auth-core`, `auth-spring-boot-starter`, `auth-test`를 GitHub Packages(`https://maven.pkg.github.com/dozycoffee/dozy-auth`)에 배포합니다. 세 모듈이 한 버전이며, 서버는 여기로 배포하지 않습니다.
+`auth-core`, `auth-spring-boot-starter`, `auth-test`를 GitHub Packages(`https://maven.pkg.github.com/dozycoffee/dozy-auth`)에 배포합니다. 세 모듈이 한 버전이며, 서버는 여기로 배포하지 않습니다 ([서버 릴리스](#서버-릴리스)).
 
 1. 배포할 변경이 모두 `main`에 병합되어 있는지 확인합니다.
 2. `main`의 최신 커밋에 태그를 붙여 push합니다. 태그는 `v{major}.{minor}.{patch}` 형식만 배포됩니다.
@@ -150,6 +152,26 @@ curl http://localhost:8080/actuator/health   # {"status":"UP", ...}
 - 로컬에서 `./gradlew publish`로는 배포되지 않습니다. 배포 워크플로에서만 배포합니다.
 - 같은 버전은 다시 올릴 수 없습니다. 배포가 도중에 실패해 일부 모듈만 올라갔으면, 올라간 패키지 버전을 지우고 Actions에서 다시 실행하거나 다음 patch 버전으로 다시 배포합니다.
 - 버전은 SemVer를 따르고, 토큰 계약의 major 변경은 major 버전입니다 ([starter.md §1](docs/starter.md#1-배포와-호환)).
+
+## 서버 릴리스
+
+서버 이미지에 시맨틱 버전(`X.Y.Z`)을 붙입니다. 라이브러리 버전과 따로 움직이고, 번호를 올리는 기준과 이유는 [ADR-0032](docs/adr/0032-server-versioning.md)에 있습니다. 릴리스는 다시 빌드하지 않고, 그 커밋에서 CI가 이미 빌드·테스트해 올린 `sha-{7자리}` 이미지에 버전 태그를 덧붙입니다.
+
+1. 릴리스할 변경이 모두 `main`에 병합되어 있고, 그 커밋의 CI가 성공해 `sha-{7자리}` 이미지가 올라갔는지 확인합니다 (Actions의 CI, Packages의 `dozy-auth-api`).
+2. 그 커밋에 태그를 붙여 push합니다. 태그는 `server-v{major}.{minor}.{patch}` 형식만 릴리스됩니다.
+
+   ```bash
+   git switch main && git pull
+   git tag -a server-v0.1.0 -m "server 0.1.0"
+   git push origin server-v0.1.0
+   ```
+
+3. 서버 릴리스 워크플로(`.github/workflows/server-release.yml`)가 실행됩니다. 태그 커밋이 `main`에 있는지 확인하고, 그 커밋의 `sha-` 이미지를 기다린 뒤(그 커밋의 CI가 아직 돌고 있으면 끝날 때까지), 같은 이미지에 `0.1.0` 태그를 붙이고 GitHub Release를 만듭니다. 릴리스 노트에는 직전 서버 릴리스 이후의 `module: server` PR만 들어갑니다.
+4. 배포할 때 이미지 `ghcr.io/dozycoffee/dozy-auth-api:0.1.0`과 함께 `AUTH_RELEASE_VERSION=0.1.0`을 줍니다. 실행 중인 서버의 버전을 확인하는 방법은 [configuration.md §12.1](docs/configuration.md#121-실행-중인-서버의-버전)에 있습니다.
+
+- `main` CI는 연달아 병합되면 중간 커밋을 건너뛸 수 있어, 모든 커밋에 `sha-` 이미지가 있지는 않습니다. 이미지가 없는 커밋에 태그하면 워크플로가 실패합니다. 원격 태그를 지우고(`git push origin :refs/tags/server-v0.1.0`) 이미지가 있는 커밋에 다시 태그합니다.
+- 같은 버전 태그는 다른 이미지로 옮기지 않습니다. 잘못 릴리스했으면 다음 patch 버전으로 다시 릴리스합니다.
+- 서버 릴리스는 GitHub의 Latest 릴리스로 표시하지 않습니다. Latest는 라이브러리 릴리스입니다.
 
 ## 문서
 
@@ -181,7 +203,7 @@ dozy-auth/
 ├─ compose.yaml                  로컬 PostgreSQL, Mailpit
 ├─ AGENTS.md, CLAUDE.md          에이전트 작업 규칙
 ├─ CLAUDE.local.md.example       개인 로컬 지침 양식 (복사해서 CLAUDE.local.md로)
-└─ .github/                      PR·이슈 템플릿, 릴리스 노트 설정, CI(서버 이미지 포함)·라이브러리 배포 워크플로
+└─ .github/                      PR·이슈 템플릿, 릴리스 노트 설정, CI(서버 이미지 포함)·라이브러리 배포·서버 릴리스 워크플로
 ```
 
 `CLAUDE.local.md`, `.context/`(개인 메모), `.local/`(로컬 서명 키)는 git에 올라가지 않습니다.
