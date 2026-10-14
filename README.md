@@ -132,6 +132,7 @@ curl http://localhost:8080/actuator/health   # {"status":"UP", ...}
 ```
 
 - 통합 테스트는 Testcontainers를 쓰므로 Docker가 켜져 있어야 합니다.
+- Gradle 빌드 캐시가 켜져 있어(`gradle.properties`) 입력이 같은 태스크는 `FROM-CACHE`로 건너뜁니다. 테스트를 다시 돌리려면 `./gradlew :auth-server:test --rerun`(또는 `cleanTest`)을 씁니다.
 - 의존성 버전은 `gradle/libs.versions.toml`, 공통 빌드 설정은 `build-logic/`에서만 바꿉니다.
 
 ## 라이브러리 배포
